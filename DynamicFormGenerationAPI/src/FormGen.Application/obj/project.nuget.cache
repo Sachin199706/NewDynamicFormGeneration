@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "dgSpecHash": "hC9curwV9Ew=",
+  "success": true,
+  "projectFilePath": "D:\\NewWebApplication\\NewDynamicFormGeneration\\DynamicFormGenerationAPI\\src\\FormGen.Application\\FormGen.Application.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Sachin.singh\\.nuget\\packages\\automapper\\13.0.1\\automapper.13.0.1.nupkg.sha512",
+    "C:\\Users\\Sachin.singh\\.nuget\\packages\\fluentvalidation\\11.9.0\\fluentvalidation.11.9.0.nupkg.sha512",
+    "C:\\Users\\Sachin.singh\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\6.0.0\\microsoft.extensions.dependencyinjection.abstractions.6.0.0.nupkg.sha512",
+    "C:\\Users\\Sachin.singh\\.nuget\\packages\\microsoft.extensions.options\\6.0.0\\microsoft.extensions.options.6.0.0.nupkg.sha512",
+    "C:\\Users\\Sachin.singh\\.nuget\\packages\\microsoft.extensions.primitives\\6.0.0\\microsoft.extensions.primitives.6.0.0.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "message": "Package 'AutoMapper' 13.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x",
+      "projectPath": "D:\\NewWebApplication\\NewDynamicFormGeneration\\DynamicFormGenerationAPI\\src\\FormGen.Application\\FormGen.Application.csproj",
+      "warningLevel": 1,
+      "filePath": "D:\\NewWebApplication\\NewDynamicFormGeneration\\DynamicFormGenerationAPI\\src\\FormGen.Application\\FormGen.Application.csproj",
+      "libraryId": "AutoMapper",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}

@@ -1,34 +1,47 @@
+using FormGen.API.Middleware;
+using FormGen.Application.Interfaces;
+using FormGen.Application.Services;
+using FormGen.Infrastructure.Persistence;
+using FormGen.Infrastructure.Persistence.Repositories;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ---- Database (Database-First: connection string points at the DB created from database/01_Schema.sql) ----
+builder.Services.AddDbContext<FormGenDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// ---- DI: repositories / services ----
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IFormService, FormService>();
+builder.Services.AddScoped<IRuleEngineService, RuleEngineService>();
+builder.Services.AddScoped<ISubmissionService, SubmissionService>();
+
+// ---- CORS for the Angular dev server ----
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AngularClient", policy =>
+        policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                            ?? new[] { "http://localhost:4200" })
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
+
+// No authentication in this application — every endpoint is open. If access control is ever
+// needed later (e.g. only for the form-builder screens, not the public fill-in link), add
+// JWT/auth back in here and put [Authorize] only on the controllers that need it.
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+
 
 app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-});
+app.UseCors("AngularClient");
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
