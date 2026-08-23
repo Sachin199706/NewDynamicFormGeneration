@@ -1,0 +1,57 @@
+<div class="p-4">
+    <h3 class="mb-4">Dashboard</h3>
+    <div class="row g-3 mb-4">
+        <div class="col-3">
+            <div class="card p-3">
+                <div class="text-muted small">Total Forms</div>
+                <div class="fs-3 fw-bold">{{ inumTotal }}</div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="card p-3">
+                <div class="text-muted small">Published</div>
+                <div class="fs-3 fw-bold">{{ inumPublished }}</div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="card p-3">
+                <div class="text-muted small">Draft</div>
+                <div class="fs-3 fw-bold">{{ inumDraft }}</div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="card p-3">
+                <div class="text-muted small">Archived</div>
+                <div class="fs-3 fw-bold">{{ inumArchived }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5>Forms</h5>
+        <a routerLink="/forms/builder" class="btn btn-primary btn-sm">+ Create Form</a>
+    </div>
+
+    <table class="table bg-white">
+        <thead>
+            <tr>
+                <th>Form Name</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Last Modified</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let f of iarrForms.slice(0, 5)">
+                <td>{{ f.formName }}</td>
+                <td>{{ f.description }}</td>
+                <td><span class="badge" [class.bg-success]="f.status==='Published'"
+                        [class.bg-secondary]="f.status==='Draft'" [class.bg-warning]="f.status==='Archived'">{{ f.status
+                        }}</span></td>
+                <td>{{ f.modifiedDate | date:'mediumDate' }}</td>
+                <td><a [routerLink]="['/forms/builder', f.formId]">Edit</a></td>
+            </tr>
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,29 @@
+<div class="p-4">
+    <div class="d-flex justify-content-between mb-3">
+        <h3>Forms</h3>
+        <a routerLink="/forms/builder" class="btn btn-primary">+ Create Form</a>
+    </div>
+    <table class="table bg-white">
+        <thead>
+            <tr>
+                <th>Form Name</th>
+                <th>Status</th>
+                <th>Version</th>
+                <th>Last Modified</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let f of forms">
+                <td>{{ f.formName }}</td>
+                <td>{{ f.status }}</td>
+                <td>v{{ f.currentVersionNo }}</td>
+                <td>{{ f.modifiedDate | date:'medium' }}</td>
+                <td class="d-flex gap-2">
+                    <a [routerLink]="['/forms/builder', f.formId]">Edit</a>
+                    <a [routerLink]="['/forms', f.formId, 'submissions']">Submissions</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>

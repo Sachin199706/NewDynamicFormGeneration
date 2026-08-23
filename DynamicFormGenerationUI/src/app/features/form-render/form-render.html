@@ -1,0 +1,33 @@
+<div class="p-4" style="max-width:700px; margin:0 auto;" *ngIf="payload">
+    <h4 class="mb-3">{{ payload.formName }}</h4>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="mb-3" *ngFor="let c of payload.controls" [hidden]="visibility[c.controlKey] === false">
+            <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired" class="text-danger">*</span></label>
+
+            <ng-container [ngSwitch]="c.controlTypeCode">
+                <textarea *ngSwitchCase="'TextArea'" class="form-control" [formControlName]="c.controlKey"></textarea>
+                <select *ngSwitchCase="'Dropdown'" class="form-control" [formControlName]="c.controlKey">
+                    <option value="">-- Select --</option>
+                    <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
+                </select>
+                <input *ngSwitchCase="'Number'" type="number" class="form-control" [formControlName]="c.controlKey" />
+                <input *ngSwitchCase="'DatePicker'" type="date" class="form-control" [formControlName]="c.controlKey" />
+                <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
+                    [formControlName]="c.controlKey" />
+            </ng-container>
+
+            <div class="text-danger small mt-1"
+                *ngIf="form.get(c.controlKey)?.touched && form.get(c.controlKey)?.errors?.['ruleFailure']">
+                {{ form.get(c.controlKey)?.errors?.['ruleFailure']?.message }}
+            </div>
+        </div>
+
+        <div class="alert alert-danger" *ngIf="serverErrors.length">
+            <div *ngFor="let e of serverErrors">{{ e }}</div>
+        </div>
+        <div class="alert alert-success" *ngIf="submitted">Submitted successfully.</div>
+
+        <button type="submit" class="btn btn-primary" [disabled]="form.invalid">Submit</button>
+    </form>
+</div>

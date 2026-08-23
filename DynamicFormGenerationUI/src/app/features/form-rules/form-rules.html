@@ -1,0 +1,158 @@
+<div class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Validation Rules</h4>
+    </div>
+
+    <table class="table bg-white">
+        <thead>
+            <tr>
+                <th>Field</th>
+                <th>Rule Type</th>
+                <th>Details</th>
+                <th>Error Message</th>
+                <th>Severity</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let r of iarrRules">
+                <td>{{ controlLabel(r.controlId) }}</td>
+                <td>{{ r.ruleType }}</td>
+                <td><code class="small">{{ r.ruleDetailsJson }}</code></td>
+                <td>{{ r.errorMessage }}</td>
+                <td><span class="badge" [class.bg-danger]="r.severity==='Error'"
+                        [class.bg-warning]="r.severity==='Warning'">{{ r.severity }}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" (click)="deleteRule(r)">Delete</button>
+                </td>
+            </tr>
+            <tr *ngIf="iarrRules.length === 0">
+                <td colspan="6" class="text-muted text-center">No rules configured yet.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Rule Builder panel -->
+    <div class="card p-3 mt-4" style="max-width:700px;">
+        <h6>Rule Builder</h6>
+        <div class="row g-2 mb-2">
+            <div class="col-4">
+                <label class="form-label small">Field</label>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjDraft.controlId">
+                    <option *ngFor="let c of iarrControls" [ngValue]="c.controlId">{{ c.label }}</option>
+                </select>
+            </div>
+            <div class="col-4">
+                <label class="form-label small">Rule Type</label>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjDraft.ruleType">
+                    <option *ngFor="let t of iarrRuleTypes" [value]="t">{{ t }}</option>
+                </select>
+            </div>
+            <div class="col-4">
+                <label class="form-label small">Severity</label>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjDraft.severity">
+                    <option value="Error">Error</option>
+                    <option value="Warning">Warning</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- rule-type-specific config -->
+        <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'MinLength' || iobjDraft.ruleType === 'MaxLength'">
+            <div class="col-6">
+                <label class="form-label small">{{ iobjDraft.ruleType === 'MinLength' ? 'Min length' : 'Max length'
+                    }}</label>
+                <input type="number" class="form-control form-control-sm" [(ngModel)]="inumLengthValue" />
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'Range'">
+            <div class="col-6">
+                <label class="form-label small">Min</label>
+                <input type="number" class="form-control form-control-sm" [(ngModel)]="inumRangeMin" />
+            </div>
+            <div class="col-6">
+                <label class="form-label small">Max</label>
+                <input type="number" class="form-control form-control-sm" [(ngModel)]="inumRangeMax" />
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'Regex'">
+            <div class="col-12">
+                <label class="form-label small">Pattern</label>
+                <input class="form-control form-control-sm" [(ngModel)]="istrRegexPattern" placeholder="^[A-Za-z]+$" />
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'Date'">
+            <div class="col-6">
+                <label class="form-label small">Operator</label>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjDateOperator">
+                    <option value="<=Today">On or before today</option>
+                    <option value=">=Today">On or after today</option>
+                    <option value="<Today">Before today</option>
+                    <option value=">Today">After today</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'CrossField'">
+            <div class="col-6">
+                <label class="form-label small">Compare to field</label>
+                <select class="form-select form-select-sm" [(ngModel)]="istrCrossFieldKey">
+                    <option *ngFor="let c of iarrControls" [value]="c.controlKey">{{ c.label }}</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label small">Operator</label>
+                <select class="form-select form-select-sm" [(ngModel)]="crossFieldOperator">
+                    <option value="==">Equal to</option>
+                    <option value="!=">Not equal to</option>
+                    <option value="<">Less than</option>
+                    <option value="<=">Less than or equal</option>
+                    <option value=">">Greater than</option>
+                    <option value=">=">Greater than or equal</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'Visibility'">
+            <div class="col-3">
+                <label class="form-label small">Action</label>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjVisibilityAction">
+                    <option value="Show">Show</option>
+                    <option value="Hide">Hide</option>
+                </select>
+            </div>
+            <div class="col-4">
+                <label class="form-label small">When field</label>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjVisibilityTriggerKey">
+                    <option *ngFor="let c of iarrControls" [value]="c.controlKey">{{ c.label }}</option>
+                </select>
+            </div>
+            <div class="col-2">
+                <label class="form-label small">Operator</label>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjVisibilityOperator">
+                    <option value="==">=</option>
+                    <option value="!=">&ne;</option>
+                </select>
+            </div>
+            <div class="col-3">
+                <label class="form-label small">Value</label>
+                <input class="form-control form-control-sm" [(ngModel)]="istrVisibilityValue" />
+            </div>
+            <div class="col-12">
+                <small class="text-muted">The field selected above under "Field" is the one that gets shown or
+                    hidden.</small>
+            </div>
+        </div>
+
+        <div class="mb-2" *ngIf="iobjDraft.ruleType !== 'Visibility'">
+            <label class="form-label small">Error Message</label>
+            <input class="form-control form-control-sm" [(ngModel)]="iobjDraft.errorMessage"
+                placeholder="This field is required." />
+        </div>
+
+        <button class="btn btn-primary btn-sm" (click)="addRule()">Add Rule</button>
+    </div>
+</div>

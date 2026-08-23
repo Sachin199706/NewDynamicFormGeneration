@@ -1,1 +1,41 @@
 /* You can add global styles to this file, and also import other style files */
+/* global styles */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    background: #f4f6fb;
+}
+
+.dfg-left-panel,
+.dfg-right-panel {
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+}
+
+.dfg-canvas-dropzone {
+    min-height: 600px;
+    background: #fff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+}
+
+.dfg-control-wrapper {
+    border: 1px solid transparent;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.dfg-control-wrapper.selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.dfg-toolbox-item {
+    cursor: grab;
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+
+.dfg-toolbox-item:hover {
+    background: #f1f5f9;
+}
