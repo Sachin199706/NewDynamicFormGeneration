@@ -1,18 +1,12 @@
-DynamicFormGenerationAPI/bin/Debug/net10.0/DynamicFormGeneration.dll
-DynamicFormGenerationAPI/bin/Debug/net10.0/DynamicFormGeneration.exe
-DynamicFormGenerationAPI/bin/Debug/net10.0/DynamicFormGeneration.pdb
-DynamicFormGenerationAPI/obj/Debug/net10.0/apphost.exe
-DynamicFormGenerationAPI/obj/Debug/net10.0/DynamicFormGeneration.AssemblyInfo.cs
-DynamicFormGenerationAPI/obj/Debug/net10.0/DynamicFormGeneration.AssemblyInfoInputs.cache
-DynamicFormGenerationAPI/obj/Debug/net10.0/DynamicFormGeneration.csproj.FileListAbsolute.txt
-DynamicFormGenerationAPI/obj/Debug/net10.0/DynamicFormGeneration.dll
-DynamicFormGenerationAPI/obj/Debug/net10.0/DynamicFormGeneration.genruntimeconfig.cache
-DynamicFormGenerationAPI/obj/Debug/net10.0/DynamicFormGeneration.pdb
-DynamicFormGenerationAPI/obj/Debug/net10.0/DynamicFormGeneration.sourcelink.json
-DynamicFormGenerationAPI/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json
-DynamicFormGenerationAPI/obj/Debug/net10.0/rjsmrazor.dswa.cache.json
-DynamicFormGenerationAPI/obj/Debug/net10.0/rpswa.dswa.cache.json
-DynamicFormGenerationAPI/obj/Debug/net10.0/ref/DynamicFormGeneration.dll
-DynamicFormGenerationAPI/obj/Debug/net10.0/refint/DynamicFormGeneration.dll
-DynamicFormGenerationAPI/bin/Debug/net10.0/DynamicFormGeneration.dll
-DynamicFormGenerationAPI/bin/Debug/net10.0/DynamicFormGeneration.exe
+# Visual Studio
+.vs/
+
+# .NET build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
