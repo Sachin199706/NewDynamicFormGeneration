@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { SubmissionListItem } from '../../core/models/rule.model';
 import { ActivatedRoute } from '@angular/router';
 import { SubmissionService } from '../../core/services/submission';
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './submissions.html',
   styleUrl: './submissions.scss',
 })
-export class Submissions {
+export class Submissions implements OnInit {
   submissions: SubmissionListItem[] = [];
 
   constructor(private route: ActivatedRoute, private submissionService: SubmissionService) { }

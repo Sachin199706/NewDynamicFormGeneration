@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormListItem } from '../../core/models/form.model';
 import { FormService } from '../../core/services/form';
 import { RouterLink } from '@angular/router';
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
-export class Dashboard {
+export class Dashboard implements OnInit {
   iarrForms: FormListItem[] = [];
   inumTotal: number = 0;
   inumPublished: number = 0;

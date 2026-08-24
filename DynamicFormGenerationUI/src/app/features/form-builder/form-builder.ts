@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ControlType, FormControlDef } from '../../core/models/form.model';
 import { ControlTypeService } from '../../core/services/control-type';
 import { FormService } from '../../core/services/form';
@@ -20,7 +20,7 @@ interface CanvasControl extends FormControlDef {
   templateUrl: './form-builder.html',
   styleUrl: './form-builder.scss',
 })
-export class FormBuilder {
+export class FormBuilder implements OnInit {
 
   formId: number | null = null;
   versionId: number | null = null;
@@ -34,14 +34,7 @@ export class FormBuilder {
   previewValues: Record<string, any> = {};
   previewVisibility: Record<string, boolean> = {};
 
-  constructor(
-    private controlTypeService: ControlTypeService,
-    private formService: FormService,
-    private ruleService: RuleService,
-    private ruleEngine: RuleEngineService,
-    private route: ActivatedRoute,
-    private router: Router
-  ) { }
+  constructor(private controlTypeService: ControlTypeService, private formService: FormService, private ruleService: RuleService, private ruleEngine: RuleEngineService, private route: ActivatedRoute, private router: Router) { }
 
   ngOnInit(): void {
     this.controlTypeService.getAll().subscribe(types => this.controlTypes = types);

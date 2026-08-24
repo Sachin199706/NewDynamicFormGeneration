@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormListItem } from '../../core/models/form.model';
 import { FormService } from '../../core/services/form';
@@ -10,7 +10,7 @@ import { FormService } from '../../core/services/form';
   templateUrl: './forms-list.html',
   styleUrl: './forms-list.scss',
 })
-export class FormsList {
+export class FormsList implements OnInit {
   forms: FormListItem[] = [];
 
   constructor(private formService: FormService) { }
