@@ -21,25 +21,71 @@
                 <i class="bi"></i>Preview
             </button>
             <button class="btn btn-success btn-sm" (click)="publish()" [disabled]="!formId">Publish</button>
+
+            <select class="form-select form-select-sm" style="width:140px;" [(ngModel)]="inumColumnLayout">
+                <option [ngValue]="1">1 Column</option>
+                <option [ngValue]="2">2 Columns</option>
+                <option [ngValue]="3">3 Columns</option>
+                <option [ngValue]="4">4 Columns</option>
+            </select>
+
             <a *ngIf="formId && versionId" class="btn btn-outline-secondary btn-sm"
                 [routerLink]="['/forms', formId, 'versions', versionId, 'rules']">Validation Rules</a>
         </div>
 
         <div class="p-3 flex-grow-1" style="overflow-y:auto;">
             <div cdkDropList id="canvasList" [cdkDropListData]="canvasControls" (cdkDropListDropped)="drop($event)"
-                class="dfg-canvas-dropzone p-3">
+                cdkDropListOrientation="mixed" class="dfg-canvas-dropzone p-3"
+                style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
+
                 <div *ngIf="canvasControls.length === 0" class="text-muted text-center py-5">Drag controls here</div>
 
                 <div *ngFor="let c of canvasControls" cdkDrag class="dfg-control-wrapper mb-2"
-                    [class.selected]="selected === c" (click)="select(c)">
+                    [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'" [class.selected]="selected === c"
+                    (click)="select(c)">
                     <label class="form-label small mb-1">{{ c.label }} <span *ngIf="c.isRequired"
                             class="text-danger">*</span></label>
                     <ng-container [ngSwitch]="c.controlTypeCode">
                         <textarea *ngSwitchCase="'TextArea'" class="form-control" [placeholder]="c.placeholder"
                             disabled></textarea>
+
                         <select *ngSwitchCase="'Dropdown'" class="form-control" disabled>
-                            <option>{{ c.placeholder }}</option>
+                            <option>{{ seedOptions(c).length === 0 ? c.placeholder : '-- Select --' }}</option>
+                            <option *ngFor="let opt of seedOptions(c)">{{ opt }}</option>
                         </select>
+
+                        <input *ngSwitchCase="'Number'" type="number" class="form-control" [placeholder]="c.placeholder"
+                            disabled />
+
+                        <input *ngSwitchCase="'Date'" type="date" class="form-control" disabled />
+
+                        <div *ngSwitchCase="'Radio'">
+                            <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                                <input type="radio" class="form-check-input" disabled />
+                                <label class="form-check-label">{{ opt }}</label>
+                            </div>
+                            <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
+                            </div>
+                        </div>
+
+                        <div class="form-check" *ngSwitchCase="'Checkbox'">
+                            <input type="checkbox" class="form-check-input" disabled />
+                            <label class="form-check-label">{{c.placeholder||c.label }}</label>
+                        </div>
+
+                        <div *ngSwitchCase="'CheckboxList'">
+                            <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                                <input type="checkbox" class="form-check-input" disabled />
+                                <label class="form-check-label">{{ opt }}</label>
+                            </div>
+                            <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
+                            </div>
+                        </div>
+
+                        <input *ngSwitchCase="'File'" type="file" class="form-control" disabled />
+
+                        <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
+
                         <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
                             disabled />
                     </ng-container>
@@ -61,9 +107,17 @@
                 <label class="form-label small">Placeholder</label>
                 <input class="form-control form-control-sm" [(ngModel)]="selected.placeholder" />
             </div>
+            <div class="mb-2" *ngIf="selectedNeedsOptions">
+                <label class="form-label small">Options (comma-separated)</label>
+                <input class="form-control form-control-sm" [ngModel]="selectedOptionsText"
+                    (ngModelChange)="onOptionsChange($event)" placeholder="e.g. Red,Green,Blue" />
+            </div>
             <div class="mb-2">
                 <label class="form-label small">Field Key</label>
-                <input class="form-control form-control-sm" [(ngModel)]="selected.controlKey" />
+                <!-- Internal reference used by Rules (CrossField/Visibility) and submitted data —
+                     not shown to the end user. Read-only so an accidental edit can't silently
+                     break a rule or disconnect from existing submissions tied to this key. -->
+                <input class="form-control form-control-sm" [(ngModel)]="selected.controlKey" readonly />
             </div>
             <div class="form-check mb-2">
                 <input type="checkbox" class="form-check-input" [(ngModel)]="selected.isRequired" id="reqChk" />
@@ -93,11 +147,41 @@
                 <ng-container [ngSwitch]="c.controlTypeCode">
                     <textarea *ngSwitchCase="'TextArea'" class="form-control" [ngModel]="previewValues[c.controlKey]"
                         (ngModelChange)="onPreviewChange(c.controlKey, $event)"></textarea>
+
                     <select *ngSwitchCase="'Dropdown'" class="form-control" [ngModel]="previewValues[c.controlKey]"
                         (ngModelChange)="onPreviewChange(c.controlKey, $event)">
                         <option value="">-- Select --</option>
                         <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
                     </select>
+
+                    <div *ngSwitchCase="'Radio'">
+                        <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                            <input type="radio" class="form-check-input" [name]="c.controlKey"
+                                [checked]="previewValues[c.controlKey] === opt"
+                                (change)="onPreviewChange(c.controlKey, opt)" />
+                            <label class="form-check-label">{{ opt }}</label>
+                        </div>
+                    </div>
+
+                    <div class="form-check" *ngSwitchCase="'Checkbox'">
+                        <input type="checkbox" class="form-check-input" [checked]="previewValues[c.controlKey]"
+                            (change)="onPreviewChange(c.controlKey, $event.target.checked)" />
+                        <label class="form-check-label">{{ c.placeholder || c.label }}</label>
+                    </div>
+
+                    <div *ngSwitchCase="'CheckboxList'">
+                        <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                            <input type="checkbox" class="form-check-input"
+                                [checked]="isPreviewCheckboxListSelected(c.controlKey, opt)"
+                                (change)="togglePreviewCheckboxListOption(c.controlKey, opt)" />
+                            <label class="form-check-label">{{ opt }}</label>
+                        </div>
+                    </div>
+
+                    <input *ngSwitchCase="'File'" type="file" class="form-control" disabled />
+
+                    <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
+
                     <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
                         [ngModel]="previewValues[c.controlKey]"
                         (ngModelChange)="onPreviewChange(c.controlKey, $event)" />

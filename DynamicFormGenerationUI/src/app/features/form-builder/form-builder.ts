@@ -28,6 +28,7 @@ export class FormBuilder implements OnInit {
   controlTypes: ControlType[] = [];
   canvasControls: CanvasControl[] = [];
   selected: CanvasControl | null = null;
+  inumColumnLayout = 1;
 
   previewOpen = false;
   previewRules: FormRule[] = [];
@@ -46,6 +47,13 @@ export class FormBuilder implements OnInit {
         if (res.success && res.data) {
           this.versionId = res.data.formVersionId;
           this.canvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
+
+          if (res.data.layoutDefinitionJson) {
+            try {
+              const lobjLayout = JSON.parse(res.data.layoutDefinitionJson);
+              if (lobjLayout.columnLayout) this.inumColumnLayout = lobjLayout.columnLayout;
+            } catch { /* ignore malformed layout, default stays 1 */ }
+          }
         }
       });
     }
@@ -84,12 +92,36 @@ export class FormBuilder implements OnInit {
     this.selected = null;
   }
 
+  get selectedNeedsOptions(): boolean {
+    return this.selected?.controlTypeCode === 'Dropdown'
+      || this.selected?.controlTypeCode === 'Radio'
+      || this.selected?.controlTypeCode === 'CheckboxList';
+  }
+
+  get selectedOptionsText(): string {
+    if (!this.selected?.propertiesJson) return '';
+    try {
+      const props = JSON.parse(this.selected.propertiesJson);
+      return typeof props.SeedData === 'string' ? props.SeedData : '';
+    } catch { return ''; }
+  }
+
+  onOptionsChange(value: string): void {
+    if (!this.selected) return;
+    let props: any = {};
+    if (this.selected.propertiesJson) {
+      try { props = JSON.parse(this.selected.propertiesJson); } catch { props = {}; }
+    }
+    props.SeedData = value;
+    this.selected.propertiesJson = JSON.stringify(props);
+  }
+
   save(): void {
     const dto = {
       formId: this.formId,
       formName: this.formName || 'Untitled Form',
       formDefinitionJson: JSON.stringify({ controls: this.canvasControls }),
-      layoutDefinitionJson: undefined,
+      layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
       controls: this.canvasControls.map(({ tempId, ...rest }) => rest),
       layouts: []
     };
@@ -142,6 +174,17 @@ export class FormBuilder implements OnInit {
     this.recomputePreviewVisibility();
   }
 
+  isPreviewCheckboxListSelected(key: string, opt: string): boolean {
+    const current: string[] = this.previewValues[key] ?? [];
+    return current.includes(opt);
+  }
+
+  togglePreviewCheckboxListOption(key: string, opt: string): void {
+    const current: string[] = this.previewValues[key] ?? [];
+    const next = current.includes(opt) ? current.filter(v => v !== opt) : [...current, opt];
+    this.onPreviewChange(key, next);
+  }
+
   private recomputePreviewVisibility(): void {
     const controlKeyById: Record<number, string> = {};
     this.canvasControls.forEach(c => { if (c.controlId) controlKeyById[c.controlId] = c.controlKey; });
@@ -156,5 +199,26 @@ export class FormBuilder implements OnInit {
       const props = JSON.parse(c.propertiesJson);
       return typeof props.SeedData === 'string' ? props.SeedData.split(',') : [];
     } catch { return []; }
+  }
+  get selectedIsCheckbox(): boolean {
+    return this.selected?.controlTypeCode === 'Checkbox';
+  }
+
+  get selectedCheckboxText(): string {
+    if (!this.selected?.propertiesJson) return '';
+    try {
+      const props = JSON.parse(this.selected.propertiesJson);
+      return typeof props.CheckboxText === 'string' ? props.CheckboxText : '';
+    } catch { return ''; }
+  }
+
+  onCheckboxTextChange(value: string): void {
+    if (!this.selected) return;
+    let props: any = {};
+    if (this.selected.propertiesJson) {
+      try { props = JSON.parse(this.selected.propertiesJson); } catch { props = {}; }
+    }
+    props.CheckboxText = value;
+    this.selected.propertiesJson = JSON.stringify(props);
   }
 }

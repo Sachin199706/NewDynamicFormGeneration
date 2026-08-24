@@ -2,24 +2,59 @@
     <h4 class="mb-3">{{ payload.formName }}</h4>
 
     <form [formGroup]="form" (ngSubmit)="submit()">
-        <div class="mb-3" *ngFor="let c of payload.controls" [hidden]="visibility[c.controlKey] === false">
-            <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired" class="text-danger">*</span></label>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
+            <div class="mb-3" *ngFor="let c of payload.controls" [hidden]="visibility[c.controlKey] === false"
+                [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
+                <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired" class="text-danger">*</span></label>
 
-            <ng-container [ngSwitch]="c.controlTypeCode">
-                <textarea *ngSwitchCase="'TextArea'" class="form-control" [formControlName]="c.controlKey"></textarea>
-                <select *ngSwitchCase="'Dropdown'" class="form-control" [formControlName]="c.controlKey">
-                    <option value="">-- Select --</option>
-                    <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
-                </select>
-                <input *ngSwitchCase="'Number'" type="number" class="form-control" [formControlName]="c.controlKey" />
-                <input *ngSwitchCase="'DatePicker'" type="date" class="form-control" [formControlName]="c.controlKey" />
-                <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
-                    [formControlName]="c.controlKey" />
-            </ng-container>
+                <ng-container [ngSwitch]="c.controlTypeCode">
+                    <textarea *ngSwitchCase="'TextArea'" class="form-control" [placeholder]="c.placeholder"
+                        disabled></textarea>
 
-            <div class="text-danger small mt-1"
-                *ngIf="form.get(c.controlKey)?.touched && form.get(c.controlKey)?.errors?.['ruleFailure']">
-                {{ form.get(c.controlKey)?.errors?.['ruleFailure']?.message }}
+                    <select *ngSwitchCase="'Dropdown'" class="form-control" disabled>
+                        <option *ngIf="seedOptions(c).length === 0">{{ c.placeholder }}</option>
+                        <option *ngFor="let opt of seedOptions(c)">{{ opt }}</option>
+                    </select>
+
+                    <input *ngSwitchCase="'Number'" type="number" class="form-control" [placeholder]="c.placeholder"
+                        disabled />
+
+                    <input *ngSwitchCase="'Date'" type="date" class="form-control" disabled />
+
+                    <div *ngSwitchCase="'Radio'">
+                        <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                            <input type="radio" class="form-check-input" disabled />
+                            <label class="form-check-label">{{ opt }}</label>
+                        </div>
+                        <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
+                        </div>
+                    </div>
+
+                    <div class="form-check" *ngSwitchCase="'Checkbox'">
+                        <input type="checkbox" class="form-check-input" disabled />
+                        <label class="form-check-label">{{ c.placeholder || c.label }}</label>
+                    </div>
+
+                    <div *ngSwitchCase="'CheckboxList'">
+                        <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                            <input type="checkbox" class="form-check-input" disabled />
+                            <label class="form-check-label">{{ opt }}</label>
+                        </div>
+                        <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
+                        </div>
+                    </div>
+
+                    <input *ngSwitchCase="'File'" type="file" class="form-control" disabled />
+
+                    <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
+
+                    <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder" disabled />
+                </ng-container>
+
+                <div class="text-danger small mt-1"
+                    *ngIf="form.get(c.controlKey)?.touched && form.get(c.controlKey)?.errors?.['ruleFailure']">
+                    {{ form.get(c.controlKey)?.errors?.['ruleFailure']?.message }}
+                </div>
             </div>
         </div>
 

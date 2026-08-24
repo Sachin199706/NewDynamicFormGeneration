@@ -17,10 +17,12 @@ import { RuleEngineService } from '../../core/services/rule-engine';
 export class FormRender implements OnInit {
   payload: FormRenderPayload | null = null;
   private fb: FormBuilder = inject(FormBuilder);
-  form: FormGroup = this.fb.group({});;
+  form: FormGroup = this.fb.group({});
   serverErrors: string[] = [];
   submitted = false;
   visibility: Record<string, boolean> = {};
+  inumColumnLayout = 1;
+  selectedFiles: Record<string, File> = {};
 
   private formId!: number;
   private versionId!: number;
@@ -47,8 +49,18 @@ export class FormRender implements OnInit {
     const group: Record<string, any> = {};
     this.controlKeyById = {};
 
+    this.inumColumnLayout = 1;
+    if (payload.layoutDefinitionJson) {
+      try {
+        const lobjLayout = JSON.parse(payload.layoutDefinitionJson);
+        if (lobjLayout.columnLayout) this.inumColumnLayout = lobjLayout.columnLayout;
+      } catch { /* default stays 1 */ }
+    }
+
     for (const c of payload.controls) {
       this.controlKeyById[c.controlId!] = c.controlKey;
+
+      if (c.controlTypeCode === 'Label') continue; // static text, not a real form field
 
       // Validation rules only — Visibility rules are excluded here and handled by computeVisibility().
       const rulesForControl = payload.rules.filter(r => r.controlId === c.controlId && r.ruleType !== 'Visibility');
@@ -57,7 +69,8 @@ export class FormRender implements OnInit {
       );
       if (c.isRequired) validators.push(Validators.required);
 
-      group[c.controlKey] = [c.defaultValue ?? '', validators];
+      const defaultValue = c.controlTypeCode === 'CheckboxList' ? [] : (c.defaultValue ?? '');
+      group[c.controlKey] = [defaultValue, validators];
     }
 
     this.form = this.fb.group(group);
@@ -115,6 +128,30 @@ export class FormRender implements OnInit {
     } catch { return []; }
   }
 
+  isCheckboxListOptionSelected(controlKey: string, opt: string): boolean {
+    const current: string[] = this.form.get(controlKey)?.value ?? [];
+    return current.includes(opt);
+  }
+
+  toggleCheckboxListOption(controlKey: string, opt: string): void {
+    const ctrl = this.form.get(controlKey);
+    if (!ctrl) return;
+    const current: string[] = ctrl.value ?? [];
+    const next = current.includes(opt) ? current.filter(v => v !== opt) : [...current, opt];
+    ctrl.setValue(next);
+  }
+
+  onFileSelected(controlKey: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // No upload endpoint exists yet (known gap, flagged earlier) — this only captures
+    // the file client-side for now and stores its name as the form value.
+    this.selectedFiles[controlKey] = file;
+    this.form.get(controlKey)?.setValue(file.name);
+  }
+
   submit(): void {
     this.serverErrors = [];
     this.form.markAllAsTouched();
@@ -135,4 +172,3 @@ export class FormRender implements OnInit {
     });
   }
 }
-

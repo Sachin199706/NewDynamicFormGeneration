@@ -60,6 +60,7 @@ export interface FormRenderPayload {
     formId: number;
     formVersionId: number;
     formName: string;
+    layoutDefinitionJson?: string;
     controls: FormControlDef[];
     layouts: FormLayoutDef[];
     rules: FormRule[];

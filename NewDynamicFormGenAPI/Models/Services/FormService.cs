@@ -166,6 +166,7 @@ public class FormService : IFormService
             FormId = form.FormId,
             FormVersionId = formVersionId,
             FormName = form.FormName,
+            LayoutDefinitionJson = versionDto.LayoutDefinitionJson,
             Controls = versionDto.Controls,
             Layouts = versionDto.Layouts,
             Rules = rules

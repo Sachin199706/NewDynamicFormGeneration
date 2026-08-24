@@ -74,6 +74,7 @@ public class FormRenderDto
     public int FormId { get; set; }
     public int FormVersionId { get; set; }
     public string FormName { get; set; } = null!;
+    public string? LayoutDefinitionJson { get; set; }
     public List<FormControlDto> Controls { get; set; } = new();
     public List<FormLayoutDto> Layouts { get; set; } = new();
     public List<Rules.FormRuleDto> Rules { get; set; } = new();
