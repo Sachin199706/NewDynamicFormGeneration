@@ -1,4 +1,3 @@
-
 using NewDynamicFormGenAPI.Models.Entities;
 using NewDynamicFormGenAPI.Models.Common;
 using NewDynamicFormGenAPI.Models.DTOs.Forms;
@@ -18,17 +17,17 @@ public class FormService : IFormService
         _ruleEngine = ruleEngine;
     }
 
-    public async Task<PagedResult<FormListItemDto>> GetFormsAsync(int page, int pageSize, string? search)
+    public async Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch)
     {
-        var query = _uow.Repository<Form>().Query().Where(f => f.IsActive);
+        var lobjQuery = _uow.Repository<Form>().Query().Where(f => f.IsActive);
 
-        if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(f => f.FormName.Contains(search));
+        if (!string.IsNullOrWhiteSpace(aStrSearch))
+            lobjQuery = lobjQuery.Where(f => f.FormName.Contains(aStrSearch));
 
-        var total = query.Count();
-        var items = query
+        var lnumTotal = lobjQuery.Count();
+        var larrItems = lobjQuery
             .OrderByDescending(f => f.ModifiedDate ?? f.CreatedDate)
-            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Skip((aNumPage - 1) * aNumPageSize).Take(aNumPageSize)
             .Select(f => new FormListItemDto
             {
                 FormId = f.FormId,
@@ -36,61 +35,63 @@ public class FormService : IFormService
                 FormName = f.FormName,
                 Description = f.Description,
                 Status = f.Status,
+                CurrentVersionId=f.CurrentVersionId,
                 CurrentVersionNo = f.CurrentVersion != null ? f.CurrentVersion.VersionNo : (int?)null,
                 ModifiedDate = f.ModifiedDate ?? f.CreatedDate
             }).ToList();
 
-        return new PagedResult<FormListItemDto> { Items = items, Page = page, PageSize = pageSize, TotalCount = total };
+        return new PagedResult<FormListItemDto> { Items = larrItems, Page = aNumPage, PageSize = aNumPageSize, TotalCount = lnumTotal };
     }
 
-    public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto dto)
+    public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto)
     {
-        int formId;
+        int lnumFormId;
         // Runs only on first save — form doesn't exist yet, so create a new row
         // Inserted into the Forms table
-        if (!dto.FormId.HasValue || dto.FormId.Value == 0)
+        if (!aObjDto.FormId.HasValue || aObjDto.FormId.Value == 0)
         {
-            var form = new Form
+            var lobjForm = new Form
             {
                 FormCode = Guid.NewGuid().ToString("N")[..12],
-                FormName = dto.FormName ?? "Untitled Form",
+                FormName = aObjDto.FormName ?? "Untitled Form",
                 Status = FormStatus.Draft,
                 CreatedDate = DateTime.UtcNow
             };
-            await _uow.Repository<Form>().AddAsync(form);
+            await _uow.Repository<Form>().AddAsync(lobjForm);
             await _uow.SaveChangesAsync();
-            formId = form.FormId;
+            lnumFormId = lobjForm.FormId;
         }
         else
         {
-            formId = dto.FormId.Value;
+            lnumFormId = aObjDto.FormId.Value;
         }
 
         // Find Version ID using FormId 
-        var nextVersionNo = _uow.Repository<FormVersion>().Query()
-            .Where(v => v.FormId == formId)
+        var lnumNextVersionNo = _uow.Repository<FormVersion>().Query()
+            .Where(v => v.FormId == lnumFormId)
             .Select(v => (int?)v.VersionNo)
             .Max() ?? 0;
-        nextVersionNo++;
+        lnumNextVersionNo++;
         //Prepare Version Object 
-        var version = new FormVersion
+        var lobjVersion = new FormVersion
         {
-            FormId = formId,
-            VersionNo = nextVersionNo,
+            FormId = lnumFormId,
+            VersionNo = lnumNextVersionNo,
             Status = FormStatus.Draft,
-            FormDefinitionJson = dto.FormDefinitionJson,
-            LayoutDefinitionJson = dto.LayoutDefinitionJson,
+            FormDefinitionJson = aObjDto.FormDefinitionJson,
+            LayoutDefinitionJson = aObjDto.LayoutDefinitionJson,
             CreatedDate = DateTime.UtcNow
         };
         //Store Data in FormVersion
-        await _uow.Repository<FormVersion>().AddAsync(version);
+        await _uow.Repository<FormVersion>().AddAsync(lobjVersion);
         await _uow.SaveChangesAsync(); // need FormVersionId
 
-        //foreach (var layout in dto.Layouts)
+        // TODO: FormLayouts not currently used — Layout Designer screen not built yet.
+        //foreach (var layout in aObjDto.Layouts)
         //{
         //    await _uow.Repository<FormLayout>().AddAsync(new FormLayout
         //    {
-        //        FormVersionId = version.FormVersionId,
+        //        FormVersionId = lobjVersion.FormVersionId,
         //        LayoutType = layout.LayoutType,
         //        ParentLayoutId = layout.ParentLayoutId,
         //        Name = layout.Name,
@@ -99,29 +100,29 @@ public class FormService : IFormService
         //    });
         //}
 
-        var controlTypeIdsByCode = _uow.Repository<ControlType>().Query()
+        var lobjControlTypeIdsByCode = _uow.Repository<ControlType>().Query()
             .ToDictionary(ct => ct.ControlCode, ct => ct.ControlTypeId);
 
-        foreach (var control in dto.Controls)
+        foreach (var lobjControl in aObjDto.Controls)
         {
-            if (!controlTypeIdsByCode.TryGetValue(control.ControlTypeCode, out var controlTypeId))
+            if (!lobjControlTypeIdsByCode.TryGetValue(lobjControl.ControlTypeCode, out var lnumControlTypeId))
                 continue; // unknown control type — skip rather than fail the whole save
 
             await _uow.Repository<FormControl>().AddAsync(new FormControl
             {
-                FormVersionId = version.FormVersionId,
-                ControlKey = control.ControlKey,
-                ControlTypeId = controlTypeId,
-                Label = control.Label,
-                Placeholder = control.Placeholder,
-                DefaultValue = control.DefaultValue,
-                IsRequired = control.IsRequired,
-                IsReadOnly = control.IsReadOnly,
-                IsVisible = control.IsVisible,
-                DisplayOrder = control.DisplayOrder,
-                ParentControlId = control.ParentControlId,
-                PropertiesJson = control.PropertiesJson,
-                DataSourceId = control.DataSourceId,
+                FormVersionId = lobjVersion.FormVersionId,
+                ControlKey = lobjControl.ControlKey,
+                ControlTypeId = lnumControlTypeId,
+                Label = lobjControl.Label,
+                Placeholder = lobjControl.Placeholder,
+                DefaultValue = lobjControl.DefaultValue,
+                IsRequired = lobjControl.IsRequired,
+                IsReadOnly = lobjControl.IsReadOnly,
+                IsVisible = lobjControl.IsVisible,
+                DisplayOrder = lobjControl.DisplayOrder,
+                ParentControlId = lobjControl.ParentControlId,
+                PropertiesJson = lobjControl.PropertiesJson,
+                DataSourceId = lobjControl.DataSourceId,
                 CreatedDate = DateTime.UtcNow
             });
         }
@@ -129,75 +130,80 @@ public class FormService : IFormService
         await _uow.SaveChangesAsync();
 
         // point the form at the version just saved
-        var formEntity = await _uow.Repository<Form>().GetByIdAsync(formId);
-        if (formEntity != null)
+        var lobjFormEntity = await _uow.Repository<Form>().GetByIdAsync(lnumFormId);
+        if (lobjFormEntity != null)
         {
-            formEntity.CurrentVersionId = version.FormVersionId;
-            formEntity.ModifiedDate = DateTime.UtcNow;
-            _uow.Repository<Form>().Update(formEntity);
+            lobjFormEntity.CurrentVersionId = lobjVersion.FormVersionId;
+            lobjFormEntity.ModifiedDate = DateTime.UtcNow;
+            _uow.Repository<Form>().Update(lobjFormEntity);
             await _uow.SaveChangesAsync();
         }
 
-        return await GetLatestVersionAsync(formId);
+        return await GetLatestVersionAsync(lnumFormId);
     }
 
-    public async Task<Result<FormVersionDto>> GetLatestVersionAsync(int formId)
+    public async Task<Result<FormVersionDto>> GetLatestVersionAsync(int aNumFormId)
     {
-        var version = _uow.Repository<FormVersion>().Query()
-            .Where(v => v.FormId == formId)
+        var lobjVersion = _uow.Repository<FormVersion>().Query()
+            .Where(v => v.FormId == aNumFormId)
             .OrderByDescending(v => v.VersionNo)
             .FirstOrDefault();
 
-        if (version == null)
+        if (lobjVersion == null)
             return Result<FormVersionDto>.Fail("No versions found for this form.");
 
-        return Result<FormVersionDto>.Ok(await BuildVersionDto(version));
+        var lobjDto = await BuildVersionDto(lobjVersion);
+
+        var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
+        lobjDto.FormName = lobjForm?.FormName ?? "";
+
+        return Result<FormVersionDto>.Ok(lobjDto);
     }
 
-    public async Task<Result<FormRenderDto>> GetRenderPayloadAsync(int formId, int formVersionId)
+    public async Task<Result<FormRenderDto>> GetRenderPayloadAsync(int aNumFormId, int aNumFormVersionId)
     {
-        var form = await _uow.Repository<Form>().GetByIdAsync(formId);
-        if (form == null) return Result<FormRenderDto>.Fail("Form not found.");
+        var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
+        if (lobjForm == null) return Result<FormRenderDto>.Fail("Form not found.");
 
-        var versionDto = await BuildVersionDto(
-            _uow.Repository<FormVersion>().Query().First(v => v.FormVersionId == formVersionId));
+        var lobjVersionDto = await BuildVersionDto(
+            _uow.Repository<FormVersion>().Query().First(v => v.FormVersionId == aNumFormVersionId));
 
-        var rules = await _ruleEngine.GetRulesForVersionAsync(formVersionId);
+        var larrRules = await _ruleEngine.GetRulesForVersionAsync(aNumFormVersionId);
 
         return Result<FormRenderDto>.Ok(new FormRenderDto
         {
-            FormId = form.FormId,
-            FormVersionId = formVersionId,
-            FormName = form.FormName,
-            LayoutDefinitionJson = versionDto.LayoutDefinitionJson,
-            Controls = versionDto.Controls,
-            Layouts = versionDto.Layouts,
-            Rules = rules
+            FormId = lobjForm.FormId,
+            FormVersionId = aNumFormVersionId,
+            FormName = lobjForm.FormName,
+            LayoutDefinitionJson = lobjVersionDto.LayoutDefinitionJson,
+            Controls = lobjVersionDto.Controls,
+            Layouts = lobjVersionDto.Layouts,
+            Rules = larrRules
         });
     }
 
-    public async Task<Result<bool>> PublishAsync(int formId, int formVersionId)
+    public async Task<Result<bool>> PublishAsync(int aNumFormId, int aNumFormVersionId)
     {
-        var version = await _uow.Repository<FormVersion>().GetByIdAsync(formVersionId);
-        if (version == null || version.FormId != formId)
+        var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(aNumFormVersionId);
+        if (lobjVersion == null || lobjVersion.FormId != aNumFormId)
             return Result<bool>.Fail("Version not found.");
 
-        version.Status = FormStatus.Published;
-        version.PublishedDate = DateTime.UtcNow;
-        _uow.Repository<FormVersion>().Update(version);
+        lobjVersion.Status = FormStatus.Published;
+        lobjVersion.PublishedDate = DateTime.UtcNow;
+        _uow.Repository<FormVersion>().Update(lobjVersion);
 
-        var form = await _uow.Repository<Form>().GetByIdAsync(formId);
-        if (form != null)
+        var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
+        if (lobjForm != null)
         {
-            form.Status = FormStatus.Published;
-            form.CurrentVersionId = formVersionId;
-            _uow.Repository<Form>().Update(form);
+            lobjForm.Status = FormStatus.Published;
+            lobjForm.CurrentVersionId = aNumFormVersionId;
+            _uow.Repository<Form>().Update(lobjForm);
         }
 
         await _uow.Repository<FormPublishHistory>().AddAsync(new FormPublishHistory
         {
-            FormId = formId,
-            FormVersionId = formVersionId,
+            FormId = aNumFormId,
+            FormVersionId = aNumFormVersionId,
             PublishedOn = DateTime.UtcNow
         });
 
@@ -205,19 +211,19 @@ public class FormService : IFormService
         return Result<bool>.Ok(true, "Published.");
     }
 
-    private async Task<FormVersionDto> BuildVersionDto(FormVersion version)
+    private async Task<FormVersionDto> BuildVersionDto(FormVersion aObjVersion)
     {
-        var controlTypeCodeById = _uow.Repository<ControlType>().Query()
+        var lobjControlTypeCodeById = _uow.Repository<ControlType>().Query()
             .ToDictionary(ct => ct.ControlTypeId, ct => ct.ControlCode);
 
-        var controls = _uow.Repository<FormControl>().Query()
-            .Where(c => c.FormVersionId == version.FormVersionId)
+        var larrControls = _uow.Repository<FormControl>().Query()
+            .Where(c => c.FormVersionId == aObjVersion.FormVersionId)
             .OrderBy(c => c.DisplayOrder)
             .Select(c => new FormControlDto
             {
                 ControlId = c.ControlId,
                 ControlKey = c.ControlKey,
-                ControlTypeCode = controlTypeCodeById.GetValueOrDefault(c.ControlTypeId, ""),
+                ControlTypeCode = lobjControlTypeCodeById.GetValueOrDefault(c.ControlTypeId, ""),
                 Label = c.Label,
                 Placeholder = c.Placeholder,
                 DefaultValue = c.DefaultValue,
@@ -230,30 +236,32 @@ public class FormService : IFormService
                 DataSourceId = c.DataSourceId
             }).ToList();
 
-        var layouts = _uow.Repository<FormLayout>().Query()
-            .Where(l => l.FormVersionId == version.FormVersionId)
-            .OrderBy(l => l.DisplayOrder)
-            .Select(l => new FormLayoutDto
-            {
-                LayoutId = l.LayoutId,
-                LayoutType = l.LayoutType,
-                ParentLayoutId = l.ParentLayoutId,
-                Name = l.Name,
-                DisplayOrder = l.DisplayOrder,
-                PropertiesJson = l.PropertiesJson
-            }).ToList();
+        // TODO: FormLayouts not currently used — Layout Designer screen not built yet.
+        //var larrLayouts = _uow.Repository<FormLayout>().Query()
+        //    .Where(l => l.FormVersionId == aObjVersion.FormVersionId)
+        //    .OrderBy(l => l.DisplayOrder)
+        //    .Select(l => new FormLayoutDto
+        //    {
+        //        LayoutId = l.LayoutId,
+        //        LayoutType = l.LayoutType,
+        //        ParentLayoutId = l.ParentLayoutId,
+        //        Name = l.Name,
+        //        DisplayOrder = l.DisplayOrder,
+        //        PropertiesJson = l.PropertiesJson
+        //    }).ToList();
+        var larrLayouts = new List<FormLayoutDto>();
 
         return new FormVersionDto
         {
-            FormVersionId = version.FormVersionId,
-            FormId = version.FormId,
-            VersionNo = version.VersionNo,
-            Status = version.Status,
-            FormDefinitionJson = version.FormDefinitionJson,
-            LayoutDefinitionJson = version.LayoutDefinitionJson,
-            Controls = controls,
-            Layouts = layouts,
-            CreatedDate = version.CreatedDate
+            FormVersionId = aObjVersion.FormVersionId,
+            FormId = aObjVersion.FormId,
+            VersionNo = aObjVersion.VersionNo,
+            Status = aObjVersion.Status,
+            FormDefinitionJson = aObjVersion.FormDefinitionJson,
+            LayoutDefinitionJson = aObjVersion.LayoutDefinitionJson,
+            Controls = larrControls,
+            Layouts = larrLayouts,
+            CreatedDate = aObjVersion.CreatedDate
         };
     }
 }

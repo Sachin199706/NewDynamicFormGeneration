@@ -8,6 +8,7 @@ export interface FormListItem {
     status: 'Draft' | 'Published' | 'Archived';
     currentVersionNo?: number;
     modifiedDate: string;
+    currentVersionId?: number;
 }
 
 export interface FormControlDef {
@@ -47,6 +48,7 @@ export interface SaveFormVersionRequest {
 export interface FormVersion {
     formVersionId: number;
     formId: number;
+    formName: string;
     versionNo: number;
     status: string;
     formDefinitionJson: string;

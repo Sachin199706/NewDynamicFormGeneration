@@ -18,42 +18,42 @@ public class FormsController : ControllerBase
 
     // GET api/forms?page=1&pageSize=10&search=employee
     [HttpGet]
-    public async Task<IActionResult> GetForms([FromQuery] int page = 1, [FromQuery] int pageSize = 10,
-        [FromQuery] string? search = null)
+    public async Task<IActionResult> GetForms([FromQuery] int aNumPage = 1, [FromQuery] int aNumPageSize = 10,
+        [FromQuery] string? aStrSearch = null)
     {
-        var result = await _formService.GetFormsAsync(page, pageSize, search);
-        return Ok(result);
+        var lobjResult = await _formService.GetFormsAsync(aNumPage, aNumPageSize, aStrSearch);
+        return Ok(lobjResult);
     }
 
-    // GET api/forms/{formId}/versions/latest
-    [HttpGet("{formId:int}/versions/latest")]
-    public async Task<IActionResult> GetLatestVersion(int formId)
+    // GET api/forms/{aNumFormId}/versions/latest
+    [HttpGet("{aNumFormId:int}/versions/latest")]
+    public async Task<IActionResult> GetLatestVersion(int aNumFormId)
     {
-        var result = await _formService.GetLatestVersionAsync(formId);
-        return result.Success ? Ok(result) : NotFound(result);
+        var lobjResult = await _formService.GetLatestVersionAsync(aNumFormId);
+        return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
     }
 
     // POST api/forms/versions   — save a new design version (create or update)
     [HttpPost("versions")]
-    public async Task<IActionResult> SaveVersion([FromBody] SaveFormVersionDto dto)
+    public async Task<IActionResult> SaveVersion([FromBody] SaveFormVersionDto aObjDto)
     {
-        var result = await _formService.SaveVersionAsync(dto);
-        return result.Success ? Ok(result) : BadRequest(result);
+        var lobjResult = await _formService.SaveVersionAsync(aObjDto);
+        return lobjResult.Success ? Ok(lobjResult) : BadRequest(lobjResult);
     }
 
-    // PUT api/forms/{formId}/versions/{versionId}/publish
-    [HttpPut("{formId:int}/versions/{versionId:int}/publish")]
-    public async Task<IActionResult> Publish(int formId, int versionId)
+    // PUT api/forms/{aNumFormId}/versions/{aNumVersionId}/publish
+    [HttpPut("{aNumFormId:int}/versions/{aNumVersionId:int}/publish")]
+    public async Task<IActionResult> Publish(int aNumFormId, int aNumVersionId)
     {
-        var result = await _formService.PublishAsync(formId, versionId);
-        return result.Success ? Ok(result) : BadRequest(result);
+        var lobjResult = await _formService.PublishAsync(aNumFormId, aNumVersionId);
+        return lobjResult.Success ? Ok(lobjResult) : BadRequest(lobjResult);
     }
 
-    // GET api/forms/{formId}/versions/{versionId}/render — payload for the fill-in screen
-    [HttpGet("{formId:int}/versions/{versionId:int}/render")]
-    public async Task<IActionResult> GetRenderPayload(int formId, int versionId)
+    // GET api/forms/{aNumFormId}/versions/{aNumVersionId}/render — payload for the fill-in screen
+    [HttpGet("{aNumFormId:int}/versions/{aNumVersionId:int}/render")]
+    public async Task<IActionResult> GetRenderPayload(int aNumFormId, int aNumVersionId)
     {
-        var result = await _formService.GetRenderPayloadAsync(formId, versionId);
-        return result.Success ? Ok(result) : NotFound(result);
+        var lobjResult = await _formService.GetRenderPayloadAsync(aNumFormId, aNumVersionId);
+        return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
     }
 }

@@ -8,6 +8,7 @@ public class FormListItemDto
     public string FormName { get; set; } = null!;
     public string? Description { get; set; }
     public string Status { get; set; } = null!;
+    public int? CurrentVersionId { get; set; }
     public int? CurrentVersionNo { get; set; }
     public DateTime ModifiedDate { get; set; }
 }
@@ -59,6 +60,7 @@ public class FormVersionDto
 {
     public int FormVersionId { get; set; }
     public int FormId { get; set; }
+    public string FormName { get; set; }
     public int VersionNo { get; set; }
     public string Status { get; set; } = null!;
     public string FormDefinitionJson { get; set; } = null!;

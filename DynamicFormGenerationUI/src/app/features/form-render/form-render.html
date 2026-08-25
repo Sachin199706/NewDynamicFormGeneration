@@ -8,47 +8,47 @@
                 <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired" class="text-danger">*</span></label>
 
                 <ng-container [ngSwitch]="c.controlTypeCode">
-                    <textarea *ngSwitchCase="'TextArea'" class="form-control" [placeholder]="c.placeholder"
-                        disabled></textarea>
+                    <textarea *ngSwitchCase="'TextArea'" class="form-control" [formControlName]="c.controlKey"></textarea>
 
-                    <select *ngSwitchCase="'Dropdown'" class="form-control" disabled>
-                        <option *ngIf="seedOptions(c).length === 0">{{ c.placeholder }}</option>
-                        <option *ngFor="let opt of seedOptions(c)">{{ opt }}</option>
+                    <select *ngSwitchCase="'Dropdown'" class="form-control" [formControlName]="c.controlKey">
+                        <option value="">-- Select --</option>
+                        <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
                     </select>
 
-                    <input *ngSwitchCase="'Number'" type="number" class="form-control" [placeholder]="c.placeholder"
-                        disabled />
+                    <input *ngSwitchCase="'Number'" type="number" class="form-control" [formControlName]="c.controlKey" />
 
-                    <input *ngSwitchCase="'Date'" type="date" class="form-control" disabled />
+                    <input *ngSwitchCase="'Date'" type="date" class="form-control" [formControlName]="c.controlKey" />
 
                     <div *ngSwitchCase="'Radio'">
                         <div class="form-check" *ngFor="let opt of seedOptions(c)">
-                            <input type="radio" class="form-check-input" disabled />
-                            <label class="form-check-label">{{ opt }}</label>
-                        </div>
-                        <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
+                            <input type="radio" class="form-check-input" [formControlName]="c.controlKey" [value]="opt"
+                                [id]="c.controlKey + '_' + opt" />
+                            <label class="form-check-label" [for]="c.controlKey + '_' + opt">{{ opt }}</label>
                         </div>
                     </div>
 
                     <div class="form-check" *ngSwitchCase="'Checkbox'">
-                        <input type="checkbox" class="form-check-input" disabled />
-                        <label class="form-check-label">{{ c.placeholder || c.label }}</label>
+                        <input type="checkbox" class="form-check-input" [formControlName]="c.controlKey"
+                            [id]="c.controlKey" />
+                        <label class="form-check-label" [for]="c.controlKey">{{ c.placeholder || c.label }}</label>
                     </div>
 
                     <div *ngSwitchCase="'CheckboxList'">
                         <div class="form-check" *ngFor="let opt of seedOptions(c)">
-                            <input type="checkbox" class="form-check-input" disabled />
-                            <label class="form-check-label">{{ opt }}</label>
-                        </div>
-                        <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
+                            <input type="checkbox" class="form-check-input"
+                                [checked]="isCheckboxListOptionSelected(c.controlKey, opt)"
+                                (change)="toggleCheckboxListOption(c.controlKey, opt)" [id]="c.controlKey + '_' + opt" />
+                            <label class="form-check-label" [for]="c.controlKey + '_' + opt">{{ opt }}</label>
                         </div>
                     </div>
 
-                    <input *ngSwitchCase="'File'" type="file" class="form-control" disabled />
+                    <input *ngSwitchCase="'File'" type="file" class="form-control"
+                        (change)="onFileSelected(c.controlKey, $event)" />
 
                     <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
 
-                    <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder" disabled />
+                    <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
+                        [formControlName]="c.controlKey" />
                 </ng-container>
 
                 <div class="text-danger small mt-1"

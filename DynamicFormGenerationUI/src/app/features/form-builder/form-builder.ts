@@ -22,32 +22,33 @@ interface CanvasControl extends FormControlDef {
 })
 export class FormBuilder implements OnInit {
 
-  formId: number | null = null;
-  versionId: number | null = null;
-  formName = '';
-  controlTypes: ControlType[] = [];
-  canvasControls: CanvasControl[] = [];
-  selected: CanvasControl | null = null;
+  inumFormId: number | null = null;
+  inumVersionId: number | null = null;
+  istrFormName = '';
+  iarrControlTypes: ControlType[] = [];
+  iarrCanvasControls: CanvasControl[] = [];
+  iobjSelected: CanvasControl | null = null;
   inumColumnLayout = 1;
 
-  previewOpen = false;
-  previewRules: FormRule[] = [];
-  previewValues: Record<string, any> = {};
-  previewVisibility: Record<string, boolean> = {};
-  selectedFiles: Record<string, File> = {};
+  iboolPreviewOpen = false;
+  iarrPreviewRules: FormRule[] = [];
+  iobjPreviewValues: Record<string, any> = {};
+  iobjPreviewVisibility: Record<string, boolean> = {};
+  iobjSelectedFiles: Record<string, File> = {};
 
-  constructor(private controlTypeService: ControlTypeService, private formService: FormService, private ruleService: RuleService, private ruleEngine: RuleEngineService, private route: ActivatedRoute, private router: Router) { }
+  constructor(private iobjControlTypeService: ControlTypeService, private iobjFormService: FormService, private iobjRuleService: RuleService, private iobjRuleEngine: RuleEngineService, private iobjRoute: ActivatedRoute, private iobjRouter: Router) { }
 
   ngOnInit(): void {
-    this.controlTypeService.getAll().subscribe(types => this.controlTypes = types);
+    this.iobjControlTypeService.getAll().subscribe(types => this.iarrControlTypes = types);
 
-    const idParam = this.route.snapshot.paramMap.get('formId');
-    if (idParam) {
-      this.formId = Number(idParam);
-      this.formService.getLatestVersion(this.formId).subscribe(res => {
+    const lStrIdParam = this.iobjRoute.snapshot.paramMap.get('formId');
+    if (lStrIdParam) {
+      this.inumFormId = Number(lStrIdParam);
+      this.iobjFormService.getLatestVersion(this.inumFormId).subscribe(res => {
         if (res.success && res.data) {
-          this.versionId = res.data.formVersionId;
-          this.canvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
+          this.istrFormName = res.data.formName;
+          this.inumVersionId = res.data.formVersionId;
+          this.iarrCanvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
 
           if (res.data.layoutDefinitionJson) {
             try {
@@ -60,85 +61,85 @@ export class FormBuilder implements OnInit {
     }
   }
 
-  drop(event: CdkDragDrop<any>): void {
-    if (event.previousContainer === event.container) {
-      moveItemInArray(this.canvasControls, event.previousIndex, event.currentIndex);
-      this.canvasControls.forEach((c, i) => c.displayOrder = i);
+  drop(aObjEvent: CdkDragDrop<any>): void {
+    if (aObjEvent.previousContainer === aObjEvent.container) {
+      moveItemInArray(this.iarrCanvasControls, aObjEvent.previousIndex, aObjEvent.currentIndex);
+      this.iarrCanvasControls.forEach((c, i) => c.displayOrder = i);
       return;
     }
 
-    const ct: ControlType = event.item.data;
-    const newControl: CanvasControl = {
+    const lobjCt: ControlType = aObjEvent.item.data;
+    const lobjNewControl: CanvasControl = {
       tempId: crypto.randomUUID(),
-      controlKey: `${ct.controlCode.toLowerCase()}_${Date.now()}`,
-      controlTypeCode: ct.controlCode,
-      label: ct.controlName,
-      placeholder: `Enter ${ct.controlName.toLowerCase()}`,
+      controlKey: `${lobjCt.controlCode.toLowerCase()}_${Date.now()}`,
+      controlTypeCode: lobjCt.controlCode,
+      label: lobjCt.controlName,
+      placeholder: `Enter ${lobjCt.controlName.toLowerCase()}`,
       isRequired: false,
       isReadOnly: false,
       isVisible: true,
-      displayOrder: event.currentIndex
+      displayOrder: aObjEvent.currentIndex
     };
-    this.canvasControls.splice(event.currentIndex, 0, newControl);
-    this.select(newControl);
+    this.iarrCanvasControls.splice(aObjEvent.currentIndex, 0, lobjNewControl);
+    this.select(lobjNewControl);
   }
 
-  select(c: CanvasControl): void {
-    this.selected = c;
+  select(aObjC: CanvasControl): void {
+    this.iobjSelected = aObjC;
   }
 
   removeSelected(): void {
-    if (!this.selected) return;
-    this.canvasControls = this.canvasControls.filter(c => c !== this.selected);
-    this.selected = null;
+    if (!this.iobjSelected) return;
+    this.iarrCanvasControls = this.iarrCanvasControls.filter(c => c !== this.iobjSelected);
+    this.iobjSelected = null;
   }
 
   get selectedNeedsOptions(): boolean {
-    return this.selected?.controlTypeCode === 'Dropdown'
-      || this.selected?.controlTypeCode === 'Radio'
-      || this.selected?.controlTypeCode === 'CheckboxList';
+    return this.iobjSelected?.controlTypeCode === 'Dropdown'
+      || this.iobjSelected?.controlTypeCode === 'Radio'
+      || this.iobjSelected?.controlTypeCode === 'CheckboxList';
   }
 
   get selectedOptionsText(): string {
-    if (!this.selected?.propertiesJson) return '';
+    if (!this.iobjSelected?.propertiesJson) return '';
     try {
-      const props = JSON.parse(this.selected.propertiesJson);
-      return typeof props.SeedData === 'string' ? props.SeedData : '';
+      const lobjProps = JSON.parse(this.iobjSelected.propertiesJson);
+      return typeof lobjProps.SeedData === 'string' ? lobjProps.SeedData : '';
     } catch { return ''; }
   }
 
-  onOptionsChange(value: string): void {
-    if (!this.selected) return;
-    let props: any = {};
-    if (this.selected.propertiesJson) {
-      try { props = JSON.parse(this.selected.propertiesJson); } catch { props = {}; }
+  onOptionsChange(aStrValue: string): void {
+    if (!this.iobjSelected) return;
+    let lobjProps: any = {};
+    if (this.iobjSelected.propertiesJson) {
+      try { lobjProps = JSON.parse(this.iobjSelected.propertiesJson); } catch { lobjProps = {}; }
     }
-    props.SeedData = value;
-    this.selected.propertiesJson = JSON.stringify(props);
+    lobjProps.SeedData = aStrValue;
+    this.iobjSelected.propertiesJson = JSON.stringify(lobjProps);
   }
 
   save(): void {
-    const dto = {
-      formId: this.formId,
-      formName: this.formName || 'Untitled Form',
-      formDefinitionJson: JSON.stringify({ controls: this.canvasControls }),
+    const lobjDto = {
+      formId: this.inumFormId,
+      formName: this.istrFormName || 'Untitled Form',
+      formDefinitionJson: JSON.stringify({ controls: this.iarrCanvasControls }),
       layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
-      controls: this.canvasControls.map(({ tempId, ...rest }) => rest),
+      controls: this.iarrCanvasControls.map(({ tempId, ...rest }) => rest),
       layouts: []
     };
 
-    this.formService.saveVersion(dto).subscribe(res => {
+    this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
       if (res.success && res.data) {
-        this.formId = res.data.formId;
-        this.versionId = res.data.formVersionId;
-        this.router.navigate(['/forms/builder', this.formId], { replaceUrl: true });
+        this.inumFormId = res.data.formId;
+        this.inumVersionId = res.data.formVersionId;
+        this.iobjRouter.navigate(['/forms/builder', this.inumFormId], { replaceUrl: true });
       }
     });
   }
 
   publish(): void {
-    if (!this.formId || !this.versionId) return;
-    this.formService.publish(this.formId, this.versionId).subscribe();
+    if (!this.inumFormId || !this.inumVersionId) return;
+    this.iobjFormService.publish(this.inumFormId, this.inumVersionId).subscribe();
   }
 
   /**
@@ -149,87 +150,88 @@ export class FormBuilder implements OnInit {
    * save it first to preview conditional show/hide.
    */
   openPreview(): void {
-    this.previewValues = {};
-    this.previewVisibility = {};
-    this.canvasControls.forEach(c => this.previewValues[c.controlKey] = c.defaultValue ?? '');
+    this.iobjPreviewValues = {};
+    this.iobjPreviewVisibility = {};
+    this.iarrCanvasControls.forEach(c => this.iobjPreviewValues[c.controlKey] = c.defaultValue ?? '');
 
-    if (this.versionId) {
-      this.ruleService.getRules(this.versionId).subscribe(rules => {
-        this.previewRules = rules;
+    if (this.inumVersionId) {
+      this.iobjRuleService.getRules(this.inumVersionId).subscribe(rules => {
+        this.iarrPreviewRules = rules;
         this.recomputePreviewVisibility();
-        this.previewOpen = true;
+        this.iboolPreviewOpen = true;
       });
     } else {
-      this.previewRules = [];
+      this.iarrPreviewRules = [];
       this.recomputePreviewVisibility();
-      this.previewOpen = true;
+      this.iboolPreviewOpen = true;
     }
   }
 
   closePreview(): void {
-    this.previewOpen = false;
+    this.iboolPreviewOpen = false;
   }
 
-  onPreviewChange(controlKey: string, value: any): void {
-    this.previewValues[controlKey] = value;
+  onPreviewChange(aStrControlKey: string, aObjValue: any): void {
+    this.iobjPreviewValues[aStrControlKey] = aObjValue;
     this.recomputePreviewVisibility();
   }
 
-  isPreviewCheckboxListSelected(key: string, opt: string): boolean {
-    const current: string[] = this.previewValues[key] ?? [];
-    return current.includes(opt);
+  isPreviewCheckboxListSelected(aStrKey: string, aStrOpt: string): boolean {
+    const larrCurrent: string[] = this.iobjPreviewValues[aStrKey] ?? [];
+    return larrCurrent.includes(aStrOpt);
   }
 
-  togglePreviewCheckboxListOption(key: string, opt: string): void {
-    const current: string[] = this.previewValues[key] ?? [];
-    const next = current.includes(opt) ? current.filter(v => v !== opt) : [...current, opt];
-    this.onPreviewChange(key, next);
+  togglePreviewCheckboxListOption(aStrKey: string, aStrOpt: string): void {
+    const larrCurrent: string[] = this.iobjPreviewValues[aStrKey] ?? [];
+    const larrNext = larrCurrent.includes(aStrOpt) ? larrCurrent.filter(v => v !== aStrOpt) : [...larrCurrent, aStrOpt];
+    this.onPreviewChange(aStrKey, larrNext);
   }
 
   private recomputePreviewVisibility(): void {
-    const controlKeyById: Record<number, string> = {};
-    this.canvasControls.forEach(c => { if (c.controlId) controlKeyById[c.controlId] = c.controlKey; });
+    const lobjControlKeyById: Record<number, string> = {};
+    this.iarrCanvasControls.forEach(c => { if (c.controlId) lobjControlKeyById[c.controlId] = c.controlKey; });
 
-    this.previewVisibility = this.ruleEngine.computeVisibility(
-      this.previewRules, this.previewValues, controlKeyById);
+    this.iobjPreviewVisibility = this.iobjRuleEngine.computeVisibility(
+      this.iarrPreviewRules, this.iobjPreviewValues, lobjControlKeyById);
   }
 
-  seedOptions(c: CanvasControl): string[] {
-    if (!c.propertiesJson) return [];
+  seedOptions(aObjC: CanvasControl): string[] {
+    if (!aObjC.propertiesJson) return [];
     try {
-      const props = JSON.parse(c.propertiesJson);
-      return typeof props.SeedData === 'string' ? props.SeedData.split(',') : [];
+      const lobjProps = JSON.parse(aObjC.propertiesJson);
+      return typeof lobjProps.SeedData === 'string' ? lobjProps.SeedData.split(',') : [];
     } catch { return []; }
   }
+
   get selectedIsCheckbox(): boolean {
-    return this.selected?.controlTypeCode === 'Checkbox';
+    return this.iobjSelected?.controlTypeCode === 'Checkbox';
   }
 
   get selectedCheckboxText(): string {
-    if (!this.selected?.propertiesJson) return '';
+    if (!this.iobjSelected?.propertiesJson) return '';
     try {
-      const props = JSON.parse(this.selected.propertiesJson);
-      return typeof props.CheckboxText === 'string' ? props.CheckboxText : '';
+      const lobjProps = JSON.parse(this.iobjSelected.propertiesJson);
+      return typeof lobjProps.CheckboxText === 'string' ? lobjProps.CheckboxText : '';
     } catch { return ''; }
   }
 
-  onCheckboxTextChange(value: string): void {
-    if (!this.selected) return;
-    let props: any = {};
-    if (this.selected.propertiesJson) {
-      try { props = JSON.parse(this.selected.propertiesJson); } catch { props = {}; }
+  onCheckboxTextChange(aStrValue: string): void {
+    if (!this.iobjSelected) return;
+    let lobjProps: any = {};
+    if (this.iobjSelected.propertiesJson) {
+      try { lobjProps = JSON.parse(this.iobjSelected.propertiesJson); } catch { lobjProps = {}; }
     }
-    props.CheckboxText = value;
-    this.selected.propertiesJson = JSON.stringify(props);
+    lobjProps.CheckboxText = aStrValue;
+    this.iobjSelected.propertiesJson = JSON.stringify(lobjProps);
   }
-  onFileSelected(controlKey: string, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
+
+  onFileSelected(aStrControlKey: string, aObjEvent: Event): void {
+    const lobjInput = aObjEvent.target as HTMLInputElement;
+    const lobjFile = lobjInput.files?.[0];
+    if (!lobjFile) return;
 
     // No upload endpoint exists yet (known gap, flagged earlier) — this only captures
     // the file client-side for now and stores its name as the form value.
-    this.selectedFiles[controlKey] = file;
-    //this.form.get(controlKey)?.setValue(file.name);
+    this.iobjSelectedFiles[aStrControlKey] = lobjFile;
   }
 }

@@ -3,9 +3,9 @@
     <!-- LEFT: toolbox -->
     <div class="p-3" style="width:230px; background:#fff; border-right:1px solid #e5e7eb; overflow-y:auto;">
         <h6>Controls</h6>
-        <div cdkDropList id="toolboxList" [cdkDropListConnectedTo]="['canvasList']" [cdkDropListData]="controlTypes"
+        <div cdkDropList id="toolboxList" [cdkDropListConnectedTo]="['canvasList']" [cdkDropListData]="iarrControlTypes"
             [cdkDropListSortingDisabled]="true">
-            <div *ngFor="let ct of controlTypes" cdkDrag [cdkDragData]="ct" class="dfg-toolbox-item border mb-1">
+            <div *ngFor="let ct of iarrControlTypes" cdkDrag [cdkDragData]="ct" class="dfg-toolbox-item border mb-1">
                 {{ ct.controlName }}
             </div>
         </div>
@@ -15,34 +15,37 @@
     <div class="flex-grow-1 d-flex flex-column">
         <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
             <label class="fw-bold">Form Name:</label>
-            <input class="form-control" style="width:260px;" [(ngModel)]="formName" placeholder="Enter form name" />
+            <input class="form-control" style="width:260px;" [(ngModel)]="istrFormName" placeholder="Enter form name"
+                [disabled]="inumFormId !== null" />
             <button class="btn btn-primary btn-sm" (click)="save()">Save</button>
             <button class="btn btn-outline-primary btn-sm" (click)="openPreview()">
                 <i class="bi"></i>Preview
             </button>
-            <button class="btn btn-success btn-sm" (click)="publish()" [disabled]="!formId">Publish</button>
+            <button class="btn btn-success btn-sm" (click)="publish()" [disabled]="!inumFormId">Publish</button>
 
-            <select class="form-select form-select-sm" style="width:140px;" [(ngModel)]="inumColumnLayout">
+            <select class="form-select form-select-sm" style="width:140px;" [(ngModel)]="inumColumnLayout"
+                aria-label="Number of columns">
                 <option [ngValue]="1">1 Column</option>
                 <option [ngValue]="2">2 Columns</option>
                 <option [ngValue]="3">3 Columns</option>
                 <option [ngValue]="4">4 Columns</option>
             </select>
 
-            <a *ngIf="formId && versionId" class="btn btn-outline-secondary btn-sm"
-                [routerLink]="['/forms', formId, 'versions', versionId, 'rules']">Validation Rules</a>
+            <a *ngIf="inumFormId && inumVersionId" class="btn btn-outline-secondary btn-sm"
+                [routerLink]="['/forms', inumFormId, 'versions', inumVersionId, 'rules']">Validation Rules</a>
         </div>
 
         <div class="p-3 flex-grow-1" style="overflow-y:auto;">
-            <div cdkDropList id="canvasList" [cdkDropListData]="canvasControls" (cdkDropListDropped)="drop($event)"
+            <div cdkDropList id="canvasList" [cdkDropListData]="iarrCanvasControls" (cdkDropListDropped)="drop($event)"
                 cdkDropListOrientation="mixed" class="dfg-canvas-dropzone p-3"
                 style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
 
-                <div *ngIf="canvasControls.length === 0" class="text-muted text-center py-5">Drag controls here</div>
+                <div *ngIf="iarrCanvasControls.length === 0" class="text-muted text-center py-5">Drag controls here
+                </div>
 
-                <div *ngFor="let c of canvasControls" cdkDrag class="dfg-control-wrapper mb-2"
-                    [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'" [class.selected]="selected === c"
-                    (click)="select(c)">
+                <div *ngFor="let c of iarrCanvasControls" cdkDrag class="dfg-control-wrapper mb-2"
+                    [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'"
+                    [class.selected]="iobjSelected === c" (click)="select(c)">
                     <label class="form-label small mb-1">{{ c.label }} <span *ngIf="c.isRequired"
                             class="text-danger">*</span></label>
                     <ng-container [ngSwitch]="c.controlTypeCode">
@@ -70,7 +73,7 @@
 
                         <div class="form-check" *ngSwitchCase="'Checkbox'">
                             <input type="checkbox" class="form-check-input" disabled />
-                            <label class="form-check-label">{{c.placeholder||c.label }}</label>
+                            <label class="form-check-label">{{ c.placeholder || c.label }}</label>
                         </div>
 
                         <div *ngSwitchCase="'CheckboxList'">
@@ -97,30 +100,35 @@
     <!-- RIGHT: property panel -->
     <div class="p-3" style="width:280px; background:#fff; border-left:1px solid #e5e7eb; overflow-y:auto;">
         <h6>Properties</h6>
-        <div *ngIf="!selected"><em class="text-muted">Select a control to edit its properties</em></div>
-        <div *ngIf="selected">
+        <div *ngIf="!iobjSelected"><em class="text-muted">Select a control to edit its properties</em></div>
+        <div *ngIf="iobjSelected">
             <div class="mb-2">
                 <label class="form-label small">Label</label>
-                <input class="form-control form-control-sm" [(ngModel)]="selected.label" />
+                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.label" />
             </div>
             <div class="mb-2">
                 <label class="form-label small">Placeholder</label>
-                <input class="form-control form-control-sm" [(ngModel)]="selected.placeholder" />
+                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.placeholder" />
             </div>
             <div class="mb-2" *ngIf="selectedNeedsOptions">
                 <label class="form-label small">Options (comma-separated)</label>
                 <input class="form-control form-control-sm" [ngModel]="selectedOptionsText"
                     (ngModelChange)="onOptionsChange($event)" placeholder="e.g. Red,Green,Blue" />
             </div>
+            <div class="mb-2" *ngIf="selectedIsCheckbox">
+                <label class="form-label small">Checkbox Text</label>
+                <input class="form-control form-control-sm" [ngModel]="selectedCheckboxText"
+                    (ngModelChange)="onCheckboxTextChange($event)" placeholder="e.g. I agree to the terms" />
+            </div>
             <div class="mb-2">
                 <label class="form-label small">Field Key</label>
                 <!-- Internal reference used by Rules (CrossField/Visibility) and submitted data —
                      not shown to the end user. Read-only so an accidental edit can't silently
                      break a rule or disconnect from existing submissions tied to this key. -->
-                <input class="form-control form-control-sm" [(ngModel)]="selected.controlKey" readonly />
+                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.controlKey" readonly />
             </div>
             <div class="form-check mb-2">
-                <input type="checkbox" class="form-check-input" [(ngModel)]="selected.isRequired" id="reqChk" />
+                <input type="checkbox" class="form-check-input" [(ngModel)]="iobjSelected.isRequired" id="reqChk" />
                 <label class="form-check-label small" for="reqChk">Required</label>
             </div>
             <button class="btn btn-outline-danger btn-sm w-100" (click)="removeSelected()">Delete</button>
@@ -130,11 +138,11 @@
 
 <!-- PREVIEW OVERLAY: renders the same JSON (controls + rules) an end user would get,
          through the identical RuleEngineService used by the real fill-in screen. -->
-<div *ngIf="previewOpen" class="preview-overlay" (click)="closePreview()">
+<div *ngIf="iboolPreviewOpen" class="preview-overlay" (click)="closePreview()">
     <div class="preview-panel" (click)="$event.stopPropagation()">
         <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
             <div>
-                <div class="fw-bold">{{ formName || 'Untitled Form' }}</div>
+                <div class="fw-bold">{{ istrFormName || 'Untitled Form' }}</div>
                 <div class="small text-muted">Preview — rules applied live, nothing is saved here</div>
             </div>
             <button class="btn btn-sm btn-outline-secondary" (click)="closePreview()">Close</button>
@@ -142,16 +150,18 @@
 
         <div class="p-4" style="max-width:720px; margin:0 auto;">
             <div style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
-                <div class="mb-3" *ngFor="let c of canvasControls" [hidden]="previewVisibility[c.controlKey] === false"
+                <div class="mb-3" *ngFor="let c of iarrCanvasControls"
+                    [hidden]="iobjPreviewVisibility[c.controlKey] === false"
                     [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
                     <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired"
                             class="text-danger">*</span></label>
                     <ng-container [ngSwitch]="c.controlTypeCode">
                         <textarea *ngSwitchCase="'TextArea'" class="form-control"
-                            [ngModel]="previewValues[c.controlKey]"
+                            [ngModel]="iobjPreviewValues[c.controlKey]"
                             (ngModelChange)="onPreviewChange(c.controlKey, $event)"></textarea>
 
-                        <select *ngSwitchCase="'Dropdown'" class="form-control" [ngModel]="previewValues[c.controlKey]"
+                        <select *ngSwitchCase="'Dropdown'" class="form-control"
+                            [ngModel]="iobjPreviewValues[c.controlKey]"
                             (ngModelChange)="onPreviewChange(c.controlKey, $event)">
                             <option value="">-- Select --</option>
                             <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
@@ -160,18 +170,18 @@
                         <div *ngSwitchCase="'Radio'">
                             <div class="form-check" *ngFor="let opt of seedOptions(c)">
                                 <input type="radio" class="form-check-input" [name]="c.controlKey"
-                                    [checked]="previewValues[c.controlKey] === opt"
+                                    [checked]="iobjPreviewValues[c.controlKey] === opt"
                                     (change)="onPreviewChange(c.controlKey, opt)" />
                                 <label class="form-check-label">{{ opt }}</label>
                             </div>
                         </div>
 
                         <input *ngSwitchCase="'Date'" type="date" class="form-control"
-                            [ngModel]="previewValues[c.controlKey]"
+                            [ngModel]="iobjPreviewValues[c.controlKey]"
                             (ngModelChange)="onPreviewChange(c.controlKey, $event)" />
 
                         <div class="form-check" *ngSwitchCase="'Checkbox'">
-                            <input type="checkbox" class="form-check-input" [checked]="previewValues[c.controlKey]"
+                            <input type="checkbox" class="form-check-input" [checked]="iobjPreviewValues[c.controlKey]"
                                 (change)="onPreviewChange(c.controlKey, $event.target.checked)" />
                             <label class="form-check-label">{{ c.placeholder || c.label }}</label>
                         </div>
@@ -191,7 +201,7 @@
                         <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
 
                         <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
-                            [ngModel]="previewValues[c.controlKey]"
+                            [ngModel]="iobjPreviewValues[c.controlKey]"
                             (ngModelChange)="onPreviewChange(c.controlKey, $event)" />
                     </ng-container>
                 </div>
@@ -200,3 +210,4 @@
             </div>
         </div>
     </div>
+</div>

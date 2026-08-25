@@ -50,7 +50,11 @@
                         [class.bg-secondary]="f.status==='Draft'" [class.bg-warning]="f.status==='Archived'">{{ f.status
                         }}</span></td>
                 <td>{{ f.modifiedDate | date:'mediumDate' }}</td>
-                <td><a [routerLink]="['/forms/builder', f.formId]">Edit</a></td>
+                <td><a [routerLink]="['/forms/builder', f.formId]">Edit</a>
+                    <a *ngIf="f.status === 'Published'"
+                        [routerLink]="['/forms', f.formId, 'versions', f.currentVersionId, 'fill']" target="_blank"
+                        class="ms-2">View</a>
+                </td>
             </tr>
         </tbody>
     </table>
