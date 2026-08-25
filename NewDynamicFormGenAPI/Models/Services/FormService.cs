@@ -46,7 +46,8 @@ public class FormService : IFormService
     public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto dto)
     {
         int formId;
-
+        // Runs only on first save — form doesn't exist yet, so create a new row
+        // Inserted into the Forms table
         if (!dto.FormId.HasValue || dto.FormId.Value == 0)
         {
             var form = new Form
@@ -65,12 +66,13 @@ public class FormService : IFormService
             formId = dto.FormId.Value;
         }
 
+        // Find Version ID using FormId 
         var nextVersionNo = _uow.Repository<FormVersion>().Query()
             .Where(v => v.FormId == formId)
             .Select(v => (int?)v.VersionNo)
             .Max() ?? 0;
         nextVersionNo++;
-
+        //Prepare Version Object 
         var version = new FormVersion
         {
             FormId = formId,
@@ -80,21 +82,22 @@ public class FormService : IFormService
             LayoutDefinitionJson = dto.LayoutDefinitionJson,
             CreatedDate = DateTime.UtcNow
         };
+        //Store Data in FormVersion
         await _uow.Repository<FormVersion>().AddAsync(version);
         await _uow.SaveChangesAsync(); // need FormVersionId
 
-        foreach (var layout in dto.Layouts)
-        {
-            await _uow.Repository<FormLayout>().AddAsync(new FormLayout
-            {
-                FormVersionId = version.FormVersionId,
-                LayoutType = layout.LayoutType,
-                ParentLayoutId = layout.ParentLayoutId,
-                Name = layout.Name,
-                DisplayOrder = layout.DisplayOrder,
-                PropertiesJson = layout.PropertiesJson
-            });
-        }
+        //foreach (var layout in dto.Layouts)
+        //{
+        //    await _uow.Repository<FormLayout>().AddAsync(new FormLayout
+        //    {
+        //        FormVersionId = version.FormVersionId,
+        //        LayoutType = layout.LayoutType,
+        //        ParentLayoutId = layout.ParentLayoutId,
+        //        Name = layout.Name,
+        //        DisplayOrder = layout.DisplayOrder,
+        //        PropertiesJson = layout.PropertiesJson
+        //    });
+        //}
 
         var controlTypeIdsByCode = _uow.Repository<ControlType>().Query()
             .ToDictionary(ct => ct.ControlCode, ct => ct.ControlTypeId);

@@ -34,6 +34,7 @@ export class FormBuilder implements OnInit {
   previewRules: FormRule[] = [];
   previewValues: Record<string, any> = {};
   previewVisibility: Record<string, boolean> = {};
+  selectedFiles: Record<string, File> = {};
 
   constructor(private controlTypeService: ControlTypeService, private formService: FormService, private ruleService: RuleService, private ruleEngine: RuleEngineService, private route: ActivatedRoute, private router: Router) { }
 
@@ -220,5 +221,15 @@ export class FormBuilder implements OnInit {
     }
     props.CheckboxText = value;
     this.selected.propertiesJson = JSON.stringify(props);
+  }
+  onFileSelected(controlKey: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // No upload endpoint exists yet (known gap, flagged earlier) — this only captures
+    // the file client-side for now and stores its name as the form value.
+    this.selectedFiles[controlKey] = file;
+    //this.form.get(controlKey)?.setValue(file.name);
   }
 }
