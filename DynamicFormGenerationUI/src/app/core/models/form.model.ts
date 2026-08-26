@@ -77,3 +77,20 @@ export interface ControlType {
     defaultPropertiesJson?: string;
     displayOrder: number;
 }
+
+export interface FormVersionListItem {
+  formId: number;
+  formVersionId: number;
+  formName: string;
+  versionNo: number;
+  status: string;
+  modifiedDate: string;
+}
+
+export interface FormPublishHistoryItem {
+  formId: number;
+  formVersionId: number;
+  formName: string;
+  versionNo: number;
+  publishedOn: string;
+}

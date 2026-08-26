@@ -81,3 +81,21 @@ public class FormRenderDto
     public List<FormLayoutDto> Layouts { get; set; } = new();
     public List<Rules.FormRuleDto> Rules { get; set; } = new();
 }
+
+public class FormVersionListItemDto
+{
+    public int FormId { get; set; }
+    public int FormVersionId { get; set; }
+    public string FormName { get; set; } = null!;
+    public int VersionNo { get; set; }
+    public string Status { get; set; } = null!;
+    public DateTime ModifiedDate { get; set; }
+}
+public class FormPublishHistoryItemDto
+{
+    public int FormId { get; set; }
+    public int FormVersionId { get; set; }
+    public string FormName { get; set; } = null!;
+    public int VersionNo { get; set; }
+    public DateTime PublishedOn { get; set; }
+}

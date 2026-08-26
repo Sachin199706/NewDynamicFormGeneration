@@ -35,31 +35,39 @@ export class FormBuilder implements OnInit {
   iobjPreviewValues: Record<string, any> = {};
   iobjPreviewVisibility: Record<string, boolean> = {};
   iobjSelectedFiles: Record<string, File> = {};
+  istrPublishError = '';
 
   constructor(private iobjControlTypeService: ControlTypeService, private iobjFormService: FormService, private iobjRuleService: RuleService, private iobjRuleEngine: RuleEngineService, private iobjRoute: ActivatedRoute, private iobjRouter: Router) { }
 
   ngOnInit(): void {
-    this.iobjControlTypeService.getAll().subscribe(types => this.iarrControlTypes = types);
+  this.iobjControlTypeService.getAll().subscribe(types => this.iarrControlTypes = types);
 
-    const lStrIdParam = this.iobjRoute.snapshot.paramMap.get('formId');
-    if (lStrIdParam) {
-      this.inumFormId = Number(lStrIdParam);
-      this.iobjFormService.getLatestVersion(this.inumFormId).subscribe(res => {
-        if (res.success && res.data) {
-          this.istrFormName = res.data.formName;
-          this.inumVersionId = res.data.formVersionId;
-          this.iarrCanvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
+  const lStrIdParam = this.iobjRoute.snapshot.paramMap.get('formId');
+  const lStrVersionParam = this.iobjRoute.snapshot.queryParamMap.get('version');
 
-          if (res.data.layoutDefinitionJson) {
-            try {
-              const lobjLayout = JSON.parse(res.data.layoutDefinitionJson);
-              if (lobjLayout.columnLayout) this.inumColumnLayout = lobjLayout.columnLayout;
-            } catch { /* ignore malformed layout, default stays 1 */ }
-          }
+  if (lStrIdParam) {
+    this.inumFormId = Number(lStrIdParam);
+
+    const lobjVersionLoad$ = lStrVersionParam
+      ? this.iobjFormService.getVersionById(Number(lStrVersionParam))
+      : this.iobjFormService.getLatestVersion(this.inumFormId);
+
+    lobjVersionLoad$.subscribe(res => {
+      if (res.success && res.data) {
+        this.istrFormName = res.data.formName;
+        this.inumVersionId = res.data.formVersionId;
+        this.iarrCanvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
+
+        if (res.data.layoutDefinitionJson) {
+          try {
+            const lobjLayout = JSON.parse(res.data.layoutDefinitionJson);
+            if (lobjLayout.columnLayout) this.inumColumnLayout = lobjLayout.columnLayout;
+          } catch { /* ignore malformed layout, default stays 1 */ }
         }
-      });
-    }
+      }
+    });
   }
+}
 
   drop(aObjEvent: CdkDragDrop<any>): void {
     if (aObjEvent.previousContainer === aObjEvent.container) {
@@ -118,29 +126,41 @@ export class FormBuilder implements OnInit {
     this.iobjSelected.propertiesJson = JSON.stringify(lobjProps);
   }
 
-  save(): void {
-    const lobjDto = {
-      formId: this.inumFormId,
-      formName: this.istrFormName || 'Untitled Form',
-      formDefinitionJson: JSON.stringify({ controls: this.iarrCanvasControls }),
-      layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
-      controls: this.iarrCanvasControls.map(({ tempId, ...rest }) => rest),
-      layouts: []
-    };
+save(): void {
+  const lobjDto = {
+    formId: this.inumFormId,
+    formName: this.istrFormName || 'Untitled Form',
+    formDefinitionJson: JSON.stringify({ controls: this.iarrCanvasControls }),
+    layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
+    controls: this.iarrCanvasControls.map(({ tempId, ...rest }) => rest),
+    layouts: []
+  };
 
-    this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
-      if (res.success && res.data) {
-        this.inumFormId = res.data.formId;
-        this.inumVersionId = res.data.formVersionId;
-        this.iobjRouter.navigate(['/forms/builder', this.inumFormId], { replaceUrl: true });
-      }
-    });
-  }
+  this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
+    if (res.success && res.data) {
+      this.iobjRouter.navigate(['/dashboard']);
+    }
+  });
+}
 
   publish(): void {
-    if (!this.inumFormId || !this.inumVersionId) return;
-    this.iobjFormService.publish(this.inumFormId, this.inumVersionId).subscribe();
-  }
+  if (!this.inumFormId || !this.inumVersionId) return;
+  this.istrPublishError = '';
+
+  this.iobjFormService.publish(this.inumFormId, this.inumVersionId).subscribe({
+    next: (res) => {
+      if (res.success) {
+        this.iobjRouter.navigate(['/forms']);
+      } else {
+        this.istrPublishError = res.message ?? 'Publish failed.';
+      }
+    },
+    error: (err) => {
+      this.istrPublishError = 'Publish failed. Check the console for details.';
+      console.error('Publish failed:', err);
+    }
+  });
+}
 
   /**
    * Preview reads the SAME JSON the end user's fill-in screen would get:

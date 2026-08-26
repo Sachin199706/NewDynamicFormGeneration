@@ -56,4 +56,28 @@ public class FormsController : ControllerBase
         var lobjResult = await _formService.GetRenderPayloadAsync(aNumFormId, aNumVersionId);
         return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
     }
+
+    // GET api/forms/versions/all — draft versions across every form, for the dashboard's version list
+    [HttpGet("versions/all")]
+    public async Task<IActionResult> GetAllVersions()
+    {
+        var lobjResult = await _formService.GetAllVersionsAsync();
+        return Ok(lobjResult);
+    }
+
+    // GET api/forms/publish-history — every publish event, each version independently viewable
+    [HttpGet("publish-history")]
+    public async Task<IActionResult> GetPublishHistory()
+    {
+        var lobjResult = await _formService.GetPublishHistoryAsync();
+        return Ok(lobjResult);
+    }
+
+    // GET api/forms/versions/{versionId} — a specific version by its own ID, not just "latest"
+    [HttpGet("versions/{aNumVersionId:int}")]
+    public async Task<IActionResult> GetVersionById(int aNumVersionId)
+    {
+        var lobjResult = await _formService.GetVersionByIdAsync(aNumVersionId);
+        return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
+    }
 }

@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { FormListItem, FormRenderPayload, FormVersion, SaveFormVersionRequest } from '../models/form.model';
+import { FormListItem, FormPublishHistoryItem, FormRenderPayload, FormVersion, FormVersionListItem, SaveFormVersionRequest } from '../models/form.model';
 import { environment } from '../../../environments/environment';
 import { ApiResult, PagedResult } from '../models/api-result.model';
 
@@ -34,4 +34,16 @@ export class FormService {
   getRenderPayload(aNumFormId: number, aNumVersionId: number): Observable<ApiResult<FormRenderPayload>> {
     return this.iobjHttp.get<ApiResult<FormRenderPayload>>(`${this.istrBase}/${aNumFormId}/versions/${aNumVersionId}/render`);
   }
+
+  getAllVersions(): Observable<FormVersionListItem[]> {
+    return this.iobjHttp.get<FormVersionListItem[]>(`${this.istrBase}/versions/all`);
+  }
+  getPublishHistory(): Observable<FormPublishHistoryItem[]> {
+    return this.iobjHttp.get<FormPublishHistoryItem[]>(`${this.istrBase}/publish-history`);
+  }
+
+  getVersionById(aNumVersionId: number): Observable<ApiResult<FormVersion>> {
+  return this.iobjHttp.get<ApiResult<FormVersion>>(`${this.istrBase}/versions/${aNumVersionId}`);
+}
+
 }
