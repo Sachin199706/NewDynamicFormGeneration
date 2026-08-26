@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FormListItem } from '../../core/models/form.model';
+import { FormPublishHistoryItem } from '../../core/models/form.model';
 import { FormService } from '../../core/services/form';
 
 @Component({
@@ -11,12 +11,11 @@ import { FormService } from '../../core/services/form';
   styleUrl: './forms-list.scss',
 })
 export class FormsList implements OnInit {
-  forms: FormListItem[] = [];
+  iarrForms: FormPublishHistoryItem[] = [];
 
-  constructor(private formService: FormService) { }
+  constructor(private iobjFormService: FormService) { }
 
   ngOnInit(): void {
-    this.formService.getForms().subscribe(res => this.forms = res.items);
+    this.iobjFormService.getPublishHistory().subscribe(res => this.iarrForms = res);
   }
-
 }

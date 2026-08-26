@@ -14,6 +14,9 @@ public interface IFormService
     Task<Result<FormVersionDto>> GetLatestVersionAsync(int formId);
     Task<Result<FormRenderDto>> GetRenderPayloadAsync(int formId, int formVersionId);
     Task<Result<bool>> PublishAsync(int formId, int formVersionId);
+    Task<List<FormVersionListItemDto>> GetAllVersionsAsync();
+    Task<List<FormPublishHistoryItemDto>> GetPublishHistoryAsync();
+    Task<Result<FormVersionDto>> GetVersionByIdAsync(int formVersionId);
 }
 
 /// <summary>

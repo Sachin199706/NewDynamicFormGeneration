@@ -1,28 +1,30 @@
 <div class="p-4">
     <div class="d-flex justify-content-between mb-3">
-        <h3>Forms</h3>
+        <h3>Published Forms</h3>
         <a routerLink="/forms/builder" class="btn btn-primary">+ Create Form</a>
     </div>
     <table class="table bg-white">
         <thead>
             <tr>
                 <th>Form Name</th>
-                <th>Status</th>
                 <th>Version</th>
-                <th>Last Modified</th>
+                <th>Published On</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let f of forms">
+            <tr *ngFor="let f of iarrForms">
                 <td>{{ f.formName }}</td>
-                <td>{{ f.status }}</td>
-                <td>v{{ f.currentVersionNo }}</td>
-                <td>{{ f.modifiedDate | date:'medium' }}</td>
+                <td>v{{ f.versionNo }}</td>
+                <td>{{ f.publishedOn | date:'medium' }}</td>
                 <td class="d-flex gap-2">
-                    <a [routerLink]="['/forms/builder', f.formId]">Edit</a>
+                    <a [routerLink]="['/forms/builder', f.formId]" [queryParams]="{ version: f.formVersionId }">Edit</a>
+                    <a [routerLink]="['/forms', f.formId, 'versions', f.formVersionId, 'fill']" target="_blank">View</a>
                     <a [routerLink]="['/forms', f.formId, 'submissions']">Submissions</a>
                 </td>
+            </tr>
+            <tr *ngIf="iarrForms.length === 0">
+                <td colspan="4" class="text-muted text-center">No forms published yet.</td>
             </tr>
         </tbody>
     </table>

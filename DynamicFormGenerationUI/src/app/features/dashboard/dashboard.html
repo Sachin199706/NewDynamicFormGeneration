@@ -7,12 +7,12 @@
                 <div class="fs-3 fw-bold">{{ inumTotal }}</div>
             </div>
         </div>
-        <div class="col-3">
+        <!-- <div class="col-3">
             <div class="card p-3">
                 <div class="text-muted small">Published</div>
                 <div class="fs-3 fw-bold">{{ inumPublished }}</div>
             </div>
-        </div>
+        </div> -->
         <div class="col-3">
             <div class="card p-3">
                 <div class="text-muted small">Draft</div>
@@ -32,30 +32,26 @@
         <a routerLink="/forms/builder" class="btn btn-primary btn-sm">+ Create Form</a>
     </div>
 
-    <table class="table bg-white">
-        <thead>
-            <tr>
-                <th>Form Name</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th>Last Modified</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr *ngFor="let f of iarrForms.slice(0, 5)">
-                <td>{{ f.formName }}</td>
-                <td>{{ f.description }}</td>
-                <td><span class="badge" [class.bg-success]="f.status==='Published'"
-                        [class.bg-secondary]="f.status==='Draft'" [class.bg-warning]="f.status==='Archived'">{{ f.status
-                        }}</span></td>
-                <td>{{ f.modifiedDate | date:'mediumDate' }}</td>
-                <td><a [routerLink]="['/forms/builder', f.formId]">Edit</a>
-                    <a *ngIf="f.status === 'Published'"
-                        [routerLink]="['/forms', f.formId, 'versions', f.currentVersionId, 'fill']" target="_blank"
-                        class="ms-2">View</a>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+<table class="table bg-white">
+    <thead>
+        <tr>
+            <th>Form Name</th>
+            <th>Version</th>
+            <th>Status</th>
+            <th>Last Modified</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let v of iarrDraftVersions">
+            <td>{{ v.formName }}</td>
+            <td>v{{ v.versionNo }}</td>
+            <td><span class="badge bg-secondary">{{ v.status }}</span></td>
+            <td>{{ v.modifiedDate | date:'mediumDate' }}</td>
+            <td><a [routerLink]="['/forms/builder', v.formId]" [queryParams]="{ version: v.formVersionId }">Edit</a></td>
+        </tr>
+        <tr *ngIf="iarrDraftVersions.length === 0">
+            <td colspan="5" class="text-muted text-center">No draft versions.</td>
+        </tr>
+    </tbody>
+</table></div>
