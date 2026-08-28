@@ -7,6 +7,7 @@ import { FormService } from '../../core/services/form';
 import { SubmissionService } from '../../core/services/submission';
 import { FormRule } from '../../core/models/rule.model';
 import { RuleEngineService } from '../../core/services/rule-engine';
+import { FileService } from '../../core/services/file';
 
 @Component({
   selector: 'app-form-render',
@@ -23,14 +24,13 @@ export class FormRender implements OnInit {
   visibility: Record<string, boolean> = {};
   inumColumnLayout = 1;
   selectedFiles: Record<string, File> = {};
+  imagePreviewUrls: Record<string, string> = {};
 
   private formId!: number;
   private versionId!: number;
   private controlKeyById: Record<number, string> = {};
 
-  constructor(private route: ActivatedRoute, private formService: FormService, private submissionService: SubmissionService,
-    private ruleEngine: RuleEngineService
-  ) {
+  constructor(private route: ActivatedRoute, private formService: FormService, private submissionService: SubmissionService, private ruleEngine: RuleEngineService, private fileService: FileService) {
 
   }
 
@@ -146,10 +146,17 @@ export class FormRender implements OnInit {
     const file = input.files?.[0];
     if (!file) return;
 
-    // No upload endpoint exists yet (known gap, flagged earlier) — this only captures
-    // the file client-side for now and stores its name as the form value.
     this.selectedFiles[controlKey] = file;
     this.form.get(controlKey)?.setValue(file.name);
+
+    // Image preview — only relevant for the Image control, harmless no-op for File
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.imagePreviewUrls[controlKey] = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   submit(): void {
@@ -162,13 +169,23 @@ export class FormRender implements OnInit {
       formVersionId: this.versionId,
       values: this.form.value
     }).subscribe(res => {
-      if (res.success) {
+      if (res.success && res.data) {
+        this.uploadSelectedFiles(res.data);
         this.submitted = true;
       } else {
-        // Server re-validated via the same rule contract and rejected — show it,
-        // since the client's checks are UX only, not the actual gate.
         this.serverErrors = res.errors ?? [res.message ?? 'Submission failed.'];
       }
     });
+  }
+
+  private uploadSelectedFiles(submissionId: number): void {
+    for (const controlKey of Object.keys(this.selectedFiles)) {
+      const controlIdEntry = Object.entries(this.controlKeyById).find(([, key]) => key === controlKey);
+      if (!controlIdEntry) continue;
+
+      this.fileService.upload(submissionId, Number(controlIdEntry[0]), this.selectedFiles[controlKey]).subscribe({
+        error: (err) => console.error(`File upload failed for ${controlKey}:`, err)
+      });
+    }
   }
 }

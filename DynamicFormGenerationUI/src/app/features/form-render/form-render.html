@@ -8,14 +8,16 @@
                 <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired" class="text-danger">*</span></label>
 
                 <ng-container [ngSwitch]="c.controlTypeCode">
-                    <textarea *ngSwitchCase="'TextArea'" class="form-control" [formControlName]="c.controlKey"></textarea>
+                    <textarea *ngSwitchCase="'TextArea'" class="form-control"
+                        [formControlName]="c.controlKey"></textarea>
 
                     <select *ngSwitchCase="'Dropdown'" class="form-control" [formControlName]="c.controlKey">
                         <option value="">-- Select --</option>
                         <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
                     </select>
 
-                    <input *ngSwitchCase="'Number'" type="number" class="form-control" [formControlName]="c.controlKey" />
+                    <input *ngSwitchCase="'Number'" type="number" class="form-control"
+                        [formControlName]="c.controlKey" />
 
                     <input *ngSwitchCase="'Date'" type="date" class="form-control" [formControlName]="c.controlKey" />
 
@@ -37,13 +39,23 @@
                         <div class="form-check" *ngFor="let opt of seedOptions(c)">
                             <input type="checkbox" class="form-check-input"
                                 [checked]="isCheckboxListOptionSelected(c.controlKey, opt)"
-                                (change)="toggleCheckboxListOption(c.controlKey, opt)" [id]="c.controlKey + '_' + opt" />
+                                (change)="toggleCheckboxListOption(c.controlKey, opt)"
+                                [id]="c.controlKey + '_' + opt" />
                             <label class="form-check-label" [for]="c.controlKey + '_' + opt">{{ opt }}</label>
                         </div>
                     </div>
 
-                    <input *ngSwitchCase="'File'" type="file" class="form-control"
-                        (change)="onFileSelected(c.controlKey, $event)" />
+                    <div *ngSwitchCase="'File'">
+                        <input type="file" class="form-control" (change)="onFileSelected(c.controlKey, $event)" />
+                    </div>
+
+                    <div *ngSwitchCase="'Image'">
+                        <input type="file" accept="image/*" class="form-control"
+                            (change)="onFileSelected(c.controlKey, $event)" />
+                        <img *ngIf="imagePreviewUrls[c.controlKey]" [src]="imagePreviewUrls[c.controlKey]"
+                            style="max-width:150px; max-height:150px; margin-top:8px; border-radius:6px; display:block;" />
+                    </div>
+
 
                     <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
 

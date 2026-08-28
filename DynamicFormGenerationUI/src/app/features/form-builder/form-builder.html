@@ -87,6 +87,8 @@
 
                         <input *ngSwitchCase="'File'" type="file" class="form-control" disabled />
 
+                        <input *ngSwitchCase="'Image'" type="file" accept="image/*" class="form-control" disabled />
+
                         <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
 
                         <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
@@ -196,7 +198,14 @@
                         </div>
 
                         <input *ngSwitchCase="'File'" type="file" class="form-control"
-                            (change)="onFileSelected(c.controlKey, $event)" />
+                            (change)="onPreviewFileChange(c.controlKey, $event)" />
+
+                        <div *ngSwitchCase="'Image'">
+                            <input type="file" accept="image/*" class="form-control"
+                                (change)="onPreviewFileChange(c.controlKey, $event)" />
+                            <img *ngIf="iobjPreviewImageUrls[c.controlKey]" [src]="iobjPreviewImageUrls[c.controlKey]"
+                                style="max-width:120px; max-height:120px; margin-top:8px; border-radius:6px; display:block;" />
+                        </div>
 
                         <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
 

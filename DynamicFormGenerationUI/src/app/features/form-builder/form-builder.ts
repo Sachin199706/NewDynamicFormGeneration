@@ -36,6 +36,7 @@ export class FormBuilder implements OnInit {
   iobjPreviewVisibility: Record<string, boolean> = {};
   iobjSelectedFiles: Record<string, File> = {};
   istrPublishError = '';
+  iobjPreviewImageUrls: Record<string, string> = {};
 
   constructor(private iobjControlTypeService: ControlTypeService, private iobjFormService: FormService, private iobjRuleService: RuleService, private iobjRuleEngine: RuleEngineService, private iobjRoute: ActivatedRoute, private iobjRouter: Router) { }
 
@@ -195,6 +196,22 @@ save(): void {
     this.iobjPreviewValues[aStrControlKey] = aObjValue;
     this.recomputePreviewVisibility();
   }
+
+  onPreviewFileChange(controlKey: string, event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  this.onPreviewChange(controlKey, file.name);
+
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.iobjPreviewImageUrls[controlKey] = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+}
 
   isPreviewCheckboxListSelected(aStrKey: string, aStrOpt: string): boolean {
     const larrCurrent: string[] = this.iobjPreviewValues[aStrKey] ?? [];

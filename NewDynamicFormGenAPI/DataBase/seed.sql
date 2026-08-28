@@ -20,4 +20,5 @@ VALUES                   ('TextBox', 'Text', 'Basic', 'dfg-textbox', 1),
 ('Checkbox', 'Checkbox', 'Choice', 'dfg-checkbox', 6),
 ('CheckboxList', 'Checkbox List', 'Choice', 'dfg-checkboxlist', 7),
 ('File', 'File Upload', 'Files', 'dfg-file', 8),
-('Label', 'Label', 'Basic', 'dfg-label', 9);
+('Label', 'Label', 'Basic', 'dfg-label', 9),
+('Image', 'Image Upload', 'Files', 'dfg-image', 10);
