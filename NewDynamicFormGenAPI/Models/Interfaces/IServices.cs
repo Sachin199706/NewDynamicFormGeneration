@@ -13,6 +13,7 @@ public interface IFormService
     Task<Result<FormRenderDto>> GetRenderPayloadAsync(int aNumFormId, int aNumFormVersionId);
     Task<Result<bool>> PublishAsync(int aNumFormId, int aNumFormVersionId);
     Task<List<FormVersionListItemDto>> GetAllVersionsAsync();
+    Task<DashboardDTO> GetDashboardCountAsync();
     Task<List<FormPublishHistoryItemDto>> GetPublishHistoryAsync();
     Task<Result<FormVersionDto>> GetVersionByIdAsync(int aNumFormVersionId);
 }

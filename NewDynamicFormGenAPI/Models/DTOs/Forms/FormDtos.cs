@@ -99,3 +99,33 @@ public class FormPublishHistoryItemDto
     public int VersionNo { get; set; }
     public DateTime PublishedOn { get; set; }
 }
+
+/// <summary>
+/// Represents dashboard information for the form generation system.
+/// </summary>
+public class DashboardDTO
+{
+    /// <summary>
+    /// Gets or sets the total number of forms.
+    /// </summary>
+    public int TotalForms { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total number of Archived forms.
+    /// </summary>
+    public int ArchivedForms { get; set; }
+    /// <summary>
+    /// Gets or sets the number of forms that have a draft version.
+    /// </summary>
+    public int DraftForms { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of forms that have a published version.
+    /// </summary>
+    public int PublishedForms { get; set; }
+
+    /// <summary>
+    /// Gets or sets the recently modified form versions.
+    /// </summary>
+    public List<FormVersionListItemDto> RecentForms { get; set; } = new();
+}

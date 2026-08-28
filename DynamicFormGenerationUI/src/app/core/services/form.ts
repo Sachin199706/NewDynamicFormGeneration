@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { FormListItem, FormPublishHistoryItem, FormRenderPayload, FormVersion, FormVersionListItem, SaveFormVersionRequest } from '../models/form.model';
+import { DashboardItems, FormListItem, FormPublishHistoryItem, FormRenderPayload, FormVersion, FormVersionListItem, SaveFormVersionRequest } from '../models/form.model';
 import { environment } from '../../../environments/environment';
 import { ApiResult, PagedResult } from '../models/api-result.model';
 
@@ -43,7 +43,11 @@ export class FormService {
   }
 
   getVersionById(aNumVersionId: number): Observable<ApiResult<FormVersion>> {
-  return this.iobjHttp.get<ApiResult<FormVersion>>(`${this.istrBase}/versions/${aNumVersionId}`);
-}
+    return this.iobjHttp.get<ApiResult<FormVersion>>(`${this.istrBase}/versions/${aNumVersionId}`);
+  }
+
+    getDashboardCount(): Observable<DashboardItems> {
+      return this.iobjHttp.get<DashboardItems>(`${this.istrBase}/versions/dashboardcount`);
+    }
 
 }

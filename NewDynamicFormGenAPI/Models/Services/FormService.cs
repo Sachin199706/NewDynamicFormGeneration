@@ -234,6 +234,8 @@ public class FormService : IFormService
         }).ToList();
     }
 
+    
+
     public async Task<List<FormPublishHistoryItemDto>> GetPublishHistoryAsync()
     {
         var larrHistory = _uow.Repository<FormPublishHistory>().Query()
@@ -323,6 +325,61 @@ public class FormService : IFormService
             Layouts = larrLayouts,
             CreatedDate = aObjVersion.CreatedDate
         };
+    }
+
+    /// <summary>
+    /// Retrieves the dashboard information for the form generation system.
+    /// </summary>
+    /// <returns>
+    /// A <see cref="DashboardDTO"/> containing form counts and recently modified forms.
+    /// </returns>
+    public async Task<DashboardDTO> GetDashboardCountAsync()
+    {
+        var lobjForms = _uow.Repository<Form>().Query();
+        var lobjVersions = _uow.Repository<FormVersion>().Query();
+
+        var lobjDashboard = new DashboardDTO
+        {
+            TotalForms = lobjForms.Count(),
+
+            DraftForms = lobjVersions
+                .Where(v => v.Status == FormStatus.Draft)
+                .Select(v => v.FormId)
+                .Distinct()
+                .Count(),
+
+            PublishedForms = lobjVersions
+                .Where(v => v.Status == FormStatus.Published)
+                .Select(v => v.FormId)
+                .Distinct()
+                .Count(),
+
+            ArchivedForms = lobjVersions
+                .Where(v => v.Status == FormStatus.Archived)
+                .Select(v => v.FormId)
+                .Distinct()
+                .Count(),
+
+            RecentForms = (
+                from v in lobjVersions
+                join f in lobjForms
+                    on v.FormId equals f.FormId
+                orderby v.CreatedDate descending
+                select new FormVersionListItemDto
+                {
+                    FormId = v.FormId,
+                    FormVersionId = v.FormVersionId,
+                    FormName = f.FormName,
+                    VersionNo = v.VersionNo,
+                    Status = v.Status,
+                    ModifiedDate = v.CreatedDate
+                }
+            )
+            .Take(5)
+            .ToList()
+        };
+
+        return await Task.FromResult(lobjDashboard);
     }
 
 }
