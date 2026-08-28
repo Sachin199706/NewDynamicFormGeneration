@@ -65,6 +65,14 @@ public class FormsController : ControllerBase
         return Ok(lobjResult);
     }
 
+    // GET api/forms/versions/dashboardcounts — draft for the dashboard's counter list
+    [HttpGet("versions/dashboardcount")]
+    public async Task<IActionResult> DashboardCount()
+    {
+        var lobjResult = await _formService.GetDashboardCountAsync();
+        return Ok(lobjResult);
+    }
+
     // GET api/forms/publish-history — every publish event, each version independently viewable
     [HttpGet("publish-history")]
     public async Task<IActionResult> GetPublishHistory()

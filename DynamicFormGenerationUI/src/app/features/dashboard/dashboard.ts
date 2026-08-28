@@ -1,5 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { FormListItem, FormVersionListItem } from '../../core/models/form.model';
+import { Component, OnInit } from '@angular/core';
+import { FormListItem, FormVersionListItem, DashboardItems } from '../../core/models/form.model';
 import { FormService } from '../../core/services/form';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -24,15 +24,15 @@ export class Dashboard implements OnInit {
   ngOnInit(): void {
     this.formService.getForms(1, 50).subscribe(res => {
       this.iarrForms = res.items;
-      this.inumTotal = res.totalCount;
-    //  this.inumPublished = res.items.filter(f => f.status === 'Published').length;
-    //  this.inumDraft = res.items.filter(f => f.status === 'Draft').length;
-      this.inumArchived = res.items.filter(f => f.status === 'Archived').length;
     });
-this.formService.getAllVersions().subscribe(versions => {
-    this.iarrDraftVersions = versions;
-    this.inumDraft = versions.length;   // Draft card now counts draft VERSIONS, matching the table below
-  });  }
+    this.formService.getDashboardCount().subscribe(dashboardCounts => {
+        this.iarrDraftVersions = dashboardCounts.recentForms;
+        this.inumArchived = dashboardCounts.archivedForms;
+        this.inumDraft = dashboardCounts.draftForms;
+        this.inumPublished = dashboardCounts.publishedForms;
+        this.inumTotal = dashboardCounts.totalForms;
+    });  
+}
 }
 
 

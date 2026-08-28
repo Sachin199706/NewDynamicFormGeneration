@@ -94,3 +94,11 @@ export interface FormPublishHistoryItem {
   versionNo: number;
   publishedOn: string;
 }
+
+export interface DashboardItems {
+    totalForms: number;
+    draftForms: number;
+    publishedForms: number;
+    archivedForms: number;
+    recentForms: FormVersionListItem[];
+}
