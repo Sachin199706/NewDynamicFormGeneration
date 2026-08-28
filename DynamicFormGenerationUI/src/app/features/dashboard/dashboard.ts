@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormListItem, FormVersionListItem } from '../../core/models/form.model';
 import { FormService } from '../../core/services/form';
 import { RouterLink } from '@angular/router';
@@ -17,6 +17,7 @@ export class Dashboard implements OnInit {
   inumDraft: number = 0;
   inumArchived: number = 0;
   iarrDraftVersions: FormVersionListItem[] = [];
+  
 
   constructor(private formService: FormService) { }
 

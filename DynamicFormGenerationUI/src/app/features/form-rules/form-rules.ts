@@ -2,14 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormControlDef } from '../../core/models/form.model';
 import { CreateFormRuleRequest, FormRule, RuleType } from '../../core/models/rule.model';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormService } from '../../core/services/form';
 import { RuleService } from '../../core/services/rule';
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-form-rules',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule,RouterLink],
   templateUrl: './form-rules.html',
   styleUrl: './form-rules.scss',
 })
@@ -27,13 +27,13 @@ export class FormRules implements OnInit {
   inumRangeMin?: number;
   inumRangeMax?: number;
   istrRegexPattern = '';
-  iobjDateOperator: '<=Today' | '>=Today' | '<Today' | '>Today' = '<=Today';
+  istrDateOperator: '<=Today' | '>=Today' | '<Today' | '>Today' = '<=Today';
   istrCrossFieldKey = '';
-  crossFieldOperator: '==' | '!=' | '<' | '<=' | '>' | '>=' = '==';
+  istrCrossFieldOperator: '==' | '!=' | '<' | '<=' | '>' | '>=' = '==';
 
-  iobjVisibilityAction: 'Show' | 'Hide' = 'Show';
-  iobjVisibilityTriggerKey = '';
-  iobjVisibilityOperator: '==' | '!=' = '==';
+  istrVisibilityAction: 'Show' | 'Hide' = 'Show';
+  istrVisibilityTriggerKey = '';
+  istrVisibilityOperator: '==' | '!=' = '==';
   istrVisibilityValue = '';
 
   constructor(private iobjRoute: ActivatedRoute, private iobjRuleService: RuleService, private iobjFormService: FormService) { }
@@ -42,20 +42,18 @@ export class FormRules implements OnInit {
     this.inumFormId = Number(this.iobjRoute.snapshot.paramMap.get('formId'));
     this.inumVersionId = Number(this.iobjRoute.snapshot.paramMap.get('versionId'));
 
-    this.iobjFormService.getLatestVersion(this.inumFormId).subscribe(res => {
+    this.iobjFormService.getVersionById(this.inumVersionId).subscribe(res => {
       if (res.success && res.data) this.iarrControls = res.data.controls;
     });
-
     this.loadRules();
   }
 
   loadRules(): void {
-    const _self = this;
-    this.iobjRuleService.getRules(this.inumVersionId).subscribe(rules => _self.iarrRules = rules);
+    this.iobjRuleService.getRules(this.inumVersionId).subscribe(rules => this.iarrRules = rules);
   }
 
-  controlLabel(controlId: number): string {
-    return this.iarrControls.find(c => c.controlId === controlId)?.label ?? `#${controlId}`;
+  controlLabel(aNumControlId: number): string {
+    return this.iarrControls.find(c => c.controlId === aNumControlId)?.label ?? `#${aNumControlId}`;
   }
 
   private buildDetailsJson(): string | undefined {
@@ -64,47 +62,45 @@ export class FormRules implements OnInit {
       case 'MaxLength': return JSON.stringify({ max: this.inumLengthValue });
       case 'Range': return JSON.stringify({ min: this.inumRangeMin, max: this.inumRangeMax });
       case 'Regex': return JSON.stringify({ pattern: this.istrRegexPattern });
-      case 'Date': return JSON.stringify({ operator: this.iobjDateOperator });
-      case 'CrossField': return JSON.stringify({ compareControlKey: this.istrCrossFieldKey, operator: this.crossFieldOperator });
+      case 'Date': return JSON.stringify({ operator: this.istrDateOperator });
+      case 'CrossField': return JSON.stringify({ compareControlKey: this.istrCrossFieldKey, operator: this.istrCrossFieldOperator });
       case 'Visibility': return JSON.stringify({
-        triggerControlKey: this.iobjVisibilityTriggerKey,
-        operator: this.iobjVisibilityOperator,
+        triggerControlKey: this.istrVisibilityTriggerKey,
+        operator: this.istrVisibilityOperator,
         triggerValue: this.istrVisibilityValue,
-        action: this.iobjVisibilityAction
+        action: this.istrVisibilityAction
       });
       default: return undefined;
     }
   }
 
   addRule(): void {
-    const isVisibility = this.iobjDraft.ruleType === 'Visibility';
+    const lboolIsVisibility = this.iobjDraft.ruleType === 'Visibility';
     if (!this.iobjDraft.controlId || !this.iobjDraft.ruleType) return;
-    if (!isVisibility && !this.iobjDraft.errorMessage) return;
-    if (isVisibility && (!this.iobjVisibilityTriggerKey || !this.istrVisibilityValue)) return;
+    if (!lboolIsVisibility && !this.iobjDraft.errorMessage) return;
+    if (lboolIsVisibility && (!this.istrVisibilityTriggerKey || !this.istrVisibilityValue)) return;
 
-    const dto: CreateFormRuleRequest = {
+    const lobjDto: CreateFormRuleRequest = {
       controlId: this.iobjDraft.controlId,
       ruleType: this.iobjDraft.ruleType,
       ruleDetailsJson: this.buildDetailsJson(),
-      errorMessage: isVisibility
-        ? `${this.iobjVisibilityAction} when ${this.iobjVisibilityTriggerKey} ${this.iobjVisibilityOperator} ${this.istrVisibilityValue}`
+      errorMessage: lboolIsVisibility
+        ? `${this.istrVisibilityAction} when ${this.istrVisibilityTriggerKey} ${this.istrVisibilityOperator} ${this.istrVisibilityValue}`
         : this.iobjDraft.errorMessage!,
-      // Visibility rules never block submission regardless of Severity (RuleEngineService skips
-      // them entirely) — force Warning so the intent reads correctly if this list is ever surfaced.
-      severity: isVisibility ? 'Warning' : (this.iobjDraft.severity ?? 'Error'),
+      severity: lboolIsVisibility ? 'Warning' : (this.iobjDraft.severity ?? 'Error'),
       displayOrder: this.iarrRules.length
     };
 
-    this.iobjRuleService.addRule(this.inumVersionId, dto).subscribe(() => {
+    this.iobjRuleService.addRule(this.inumVersionId, lobjDto).subscribe(() => {
       this.loadRules();
       this.iobjDraft = { ruleType: 'Required', severity: 'Error' };
-      this.iobjVisibilityTriggerKey = '';
+      this.istrVisibilityTriggerKey = '';
       this.istrVisibilityValue = '';
     });
   }
 
-  deleteRule(r: FormRule): void {
-    this.iobjRuleService.deleteRule(r.ruleId).subscribe(() => this.loadRules());
+  deleteRule(aObjR: FormRule): void {
+    this.iobjRuleService.deleteRule(aObjR.ruleId).subscribe(() => this.loadRules());
   }
 
 }

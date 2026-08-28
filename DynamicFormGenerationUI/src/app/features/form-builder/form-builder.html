@@ -153,7 +153,7 @@
                 <div class="mb-3" *ngFor="let c of iarrCanvasControls"
                     [hidden]="iobjPreviewVisibility[c.controlKey] === false"
                     [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
-                    <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired"
+                    <label class="form-label">{{ c.label }} <span *ngIf="isEffectivelyRequired(c)"
                             class="text-danger">*</span></label>
                     <ng-container [ngSwitch]="c.controlTypeCode">
                         <textarea *ngSwitchCase="'TextArea'" class="form-control"

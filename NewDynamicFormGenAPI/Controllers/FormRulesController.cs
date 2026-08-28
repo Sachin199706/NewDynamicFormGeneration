@@ -20,31 +20,31 @@ public class FormRulesController : ControllerBase
         _ruleEngine = ruleEngine;
     }
 
-    [HttpGet("forms/versions/{formVersionId:int}/rules")]
-    public async Task<IActionResult> GetRules(int formVersionId)
+    [HttpGet("forms/versions/{aNumFormVersionId:int}/rules")]
+    public async Task<IActionResult> GetRules(int aNumFormVersionId)
     {
-        var rules = await _ruleEngine.GetRulesForVersionAsync(formVersionId);
-        return Ok(rules);
+        var lobjRules = await _ruleEngine.GetRulesForVersionAsync(aNumFormVersionId);
+        return Ok(lobjRules);
     }
 
-    [HttpPost("forms/versions/{formVersionId:int}/rules")]
-    public async Task<IActionResult> AddRule(int formVersionId, [FromBody] CreateFormRuleDto dto)
+    [HttpPost("forms/versions/{aNumFormVersionId:int}/rules")]
+    public async Task<IActionResult> AddRule(int aNumFormVersionId, [FromBody] CreateFormRuleDto aObjDto)
     {
-        var rule = await _ruleEngine.AddRuleAsync(formVersionId, dto);
-        return Ok(rule);
+        var lobjRule = await _ruleEngine.AddRuleAsync(aNumFormVersionId, aObjDto);
+        return Ok(lobjRule);
     }
 
-    [HttpPut("rules/{ruleId:int}")]
-    public async Task<IActionResult> UpdateRule(int ruleId, [FromBody] CreateFormRuleDto dto)
+    [HttpPut("rules/{aNumRuleId:int}")]
+    public async Task<IActionResult> UpdateRule(int aNumRuleId, [FromBody] CreateFormRuleDto aObjDto)
     {
-        await _ruleEngine.UpdateRuleAsync(ruleId, dto);
+        await _ruleEngine.UpdateRuleAsync(aNumRuleId, aObjDto);
         return NoContent();
     }
 
-    [HttpDelete("rules/{ruleId:int}")]
-    public async Task<IActionResult> DeleteRule(int ruleId)
+    [HttpDelete("rules/{aNumRuleId:int}")]
+    public async Task<IActionResult> DeleteRule(int aNumRuleId)
     {
-        await _ruleEngine.DeleteRuleAsync(ruleId);
+        await _ruleEngine.DeleteRuleAsync(aNumRuleId);
         return NoContent();
     }
 }

@@ -8,24 +8,24 @@ import { CreateFormRuleRequest, FormRule } from '../models/rule.model';
   providedIn: 'root',
 })
 export class RuleService {
-  private base = `${environment.apiUrl}/forms/versions`;
+  private istrBase = `${environment.apiUrl}/forms/versions`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private iobjHttp: HttpClient) { }
 
-  getRules(formVersionId: number): Observable<FormRule[]> {
-    return this.http.get<FormRule[]>(`${this.base}/${formVersionId}/rules`);
+  getRules(aNumFormVersionId: number): Observable<FormRule[]> {
+    return this.iobjHttp.get<FormRule[]>(`${this.istrBase}/${aNumFormVersionId}/rules`);
   }
 
-  addRule(formVersionId: number, dto: CreateFormRuleRequest): Observable<FormRule> {
-    return this.http.post<FormRule>(`${this.base}/${formVersionId}/rules`, dto);
+  addRule(aNumFormVersionId: number, aObjDto: CreateFormRuleRequest): Observable<FormRule> {
+    return this.iobjHttp.post<FormRule>(`${this.istrBase}/${aNumFormVersionId}/rules`, aObjDto);
   }
 
-  updateRule(ruleId: number, dto: CreateFormRuleRequest): Observable<void> {
-    return this.http.put<void>(`${environment.apiUrl}/rules/${ruleId}`, dto);
+  updateRule(aNumRuleId: number, aObjDto: CreateFormRuleRequest): Observable<void> {
+    return this.iobjHttp.put<void>(`${environment.apiUrl}/rules/${aNumRuleId}`, aObjDto);
   }
 
-  deleteRule(ruleId: number): Observable<void> {
-    return this.http.delete<void>(`${environment.apiUrl}/rules/${ruleId}`);
+  deleteRule(aNumRuleId: number): Observable<void> {
+    return this.iobjHttp.delete<void>(`${environment.apiUrl}/rules/${aNumRuleId}`);
   }
 
 }

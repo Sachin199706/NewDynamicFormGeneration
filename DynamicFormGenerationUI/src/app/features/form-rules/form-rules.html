@@ -1,6 +1,8 @@
 <div class="p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4>Validation Rules</h4>
+           <a [routerLink]="['/forms/builder', inumFormId]" [queryParams]="{ version: inumVersionId }"
+        class="btn btn-outline-primary btn-sm">Back to Design</a>
     </div>
 
     <table class="table bg-white">
@@ -87,7 +89,7 @@
         <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'Date'">
             <div class="col-6">
                 <label class="form-label small">Operator</label>
-                <select class="form-select form-select-sm" [(ngModel)]="iobjDateOperator">
+                <select class="form-select form-select-sm" [(ngModel)]="istrDateOperator">
                     <option value="<=Today">On or before today</option>
                     <option value=">=Today">On or after today</option>
                     <option value="<Today">Before today</option>
@@ -105,7 +107,7 @@
             </div>
             <div class="col-6">
                 <label class="form-label small">Operator</label>
-                <select class="form-select form-select-sm" [(ngModel)]="crossFieldOperator">
+                <select class="form-select form-select-sm" [(ngModel)]="istrCrossFieldOperator">
                     <option value="==">Equal to</option>
                     <option value="!=">Not equal to</option>
                     <option value="<">Less than</option>
@@ -119,20 +121,20 @@
         <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'Visibility'">
             <div class="col-3">
                 <label class="form-label small">Action</label>
-                <select class="form-select form-select-sm" [(ngModel)]="iobjVisibilityAction">
+                <select class="form-select form-select-sm" [(ngModel)]="istrVisibilityAction">
                     <option value="Show">Show</option>
                     <option value="Hide">Hide</option>
                 </select>
             </div>
             <div class="col-4">
                 <label class="form-label small">When field</label>
-                <select class="form-select form-select-sm" [(ngModel)]="iobjVisibilityTriggerKey">
+                <select class="form-select form-select-sm" [(ngModel)]="istrVisibilityTriggerKey">
                     <option *ngFor="let c of iarrControls" [value]="c.controlKey">{{ c.label }}</option>
                 </select>
             </div>
             <div class="col-2">
                 <label class="form-label small">Operator</label>
-                <select class="form-select form-select-sm" [(ngModel)]="iobjVisibilityOperator">
+                <select class="form-select form-select-sm" [(ngModel)]="istrVisibilityOperator">
                     <option value="==">=</option>
                     <option value="!=">&ne;</option>
                 </select>

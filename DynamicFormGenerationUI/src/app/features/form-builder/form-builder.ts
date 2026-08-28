@@ -69,13 +69,10 @@ export class FormBuilder implements OnInit {
   }
 }
 
-  drop(aObjEvent: CdkDragDrop<any>): void {
-    if (aObjEvent.previousContainer === aObjEvent.container) {
-      moveItemInArray(this.iarrCanvasControls, aObjEvent.previousIndex, aObjEvent.currentIndex);
-      this.iarrCanvasControls.forEach((c, i) => c.displayOrder = i);
-      return;
-    }
-
+ drop(aObjEvent: CdkDragDrop<any>): void {
+  if (aObjEvent.previousContainer === aObjEvent.container) {
+    moveItemInArray(this.iarrCanvasControls, aObjEvent.previousIndex, aObjEvent.currentIndex);
+  } else {
     const lobjCt: ControlType = aObjEvent.item.data;
     const lobjNewControl: CanvasControl = {
       tempId: crypto.randomUUID(),
@@ -86,11 +83,14 @@ export class FormBuilder implements OnInit {
       isRequired: false,
       isReadOnly: false,
       isVisible: true,
-      displayOrder: aObjEvent.currentIndex
+      displayOrder: 0
     };
     this.iarrCanvasControls.splice(aObjEvent.currentIndex, 0, lobjNewControl);
     this.select(lobjNewControl);
   }
+
+  this.iarrCanvasControls.forEach((c, i) => c.displayOrder = i);
+}
 
   select(aObjC: CanvasControl): void {
     this.iobjSelected = aObjC;
@@ -254,4 +254,9 @@ save(): void {
     // the file client-side for now and stores its name as the form value.
     this.iobjSelectedFiles[aStrControlKey] = lobjFile;
   }
+
+  isEffectivelyRequired(c: CanvasControl): boolean {
+  if (c.isRequired) return true;
+  return this.iarrPreviewRules.some(r => r.isActive && r.controlId === c.controlId && r.ruleType === 'Required');
+}
 }

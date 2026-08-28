@@ -1,5 +1,3 @@
-
-
 using NewDynamicFormGenAPI.Models.Common;
 using NewDynamicFormGenAPI.Models.DTOs.Forms;
 using NewDynamicFormGenAPI.Models.DTOs.Rules;
@@ -9,14 +7,14 @@ namespace NewDynamicFormGenAPI.Models.Interfaces;
 
 public interface IFormService
 {
-    Task<PagedResult<FormListItemDto>> GetFormsAsync(int page, int pageSize, string? search);
-    Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto dto);
-    Task<Result<FormVersionDto>> GetLatestVersionAsync(int formId);
-    Task<Result<FormRenderDto>> GetRenderPayloadAsync(int formId, int formVersionId);
-    Task<Result<bool>> PublishAsync(int formId, int formVersionId);
+    Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch);
+    Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto);
+    Task<Result<FormVersionDto>> GetLatestVersionAsync(int aNumFormId);
+    Task<Result<FormRenderDto>> GetRenderPayloadAsync(int aNumFormId, int aNumFormVersionId);
+    Task<Result<bool>> PublishAsync(int aNumFormId, int aNumFormVersionId);
     Task<List<FormVersionListItemDto>> GetAllVersionsAsync();
     Task<List<FormPublishHistoryItemDto>> GetPublishHistoryAsync();
-    Task<Result<FormVersionDto>> GetVersionByIdAsync(int formVersionId);
+    Task<Result<FormVersionDto>> GetVersionByIdAsync(int aNumFormVersionId);
 }
 
 /// <summary>
@@ -26,20 +24,18 @@ public interface IFormService
 /// </summary>
 public interface IRuleEngineService
 {
-    Task<List<FormRuleDto>> GetRulesForVersionAsync(int formVersionId);
-    Task<FormRuleDto> AddRuleAsync(int formVersionId, CreateFormRuleDto dto);
-    Task UpdateRuleAsync(int ruleId, CreateFormRuleDto dto);
-    Task DeleteRuleAsync(int ruleId);
+    Task<List<FormRuleDto>> GetRulesForVersionAsync(int aNumFormVersionId);
+    Task<FormRuleDto> AddRuleAsync(int aNumFormVersionId, CreateFormRuleDto aObjDto);
+    Task UpdateRuleAsync(int aNumRuleId, CreateFormRuleDto aObjDto);
+    Task DeleteRuleAsync(int aNumRuleId);
 
     /// <summary>Evaluates all active rules for a version against submitted values. Pure function, no I/O.</summary>
-    RuleEvaluationResultDto Evaluate(List<FormRuleDto> rules,
-                                      IReadOnlyDictionary<string, object?> submittedValues,
-                                      IReadOnlyDictionary<int, string> controlKeysById);
+    RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules,IReadOnlyDictionary<string, object?> aObjSubmittedValues,IReadOnlyDictionary<int, string> aObjControlKeysById);
 }
 
 public interface ISubmissionService
 {
-    Task<Result<int>> SubmitAsync(SubmitFormDto dto);
-    Task<PagedResult<SubmissionListItemDto>> GetSubmissionsAsync(int formId, int page, int pageSize);
-    Task<Result<SubmissionDetailDto>> GetDetailAsync(int submissionId);
+    Task<Result<int>> SubmitAsync(SubmitFormDto aObjDto);
+    Task<PagedResult<SubmissionListItemDto>> GetSubmissionsAsync(int aNumFormId, int aNumPage, int aNumPageSize);
+    Task<Result<SubmissionDetailDto>> GetDetailAsync(int aNumSubmissionId);
 }
