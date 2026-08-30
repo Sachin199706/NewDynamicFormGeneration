@@ -14,7 +14,7 @@ public class CreateFormRuleDtoValidator : AbstractValidator<CreateFormRuleDto>
 
     public CreateFormRuleDtoValidator()
     {
-        RuleFor(x => x.ControlId).GreaterThan(0);
+        RuleFor(x => x.ControlKey).NotEmpty();
         RuleFor(x => x.RuleType).NotEmpty().Must(t => System.Array.Exists(ValidTypes, v => v == t))
             .WithMessage("RuleType must be one of: " + string.Join(", ", ValidTypes));
         RuleFor(x => x.ErrorMessage).NotEmpty().MaximumLength(300);

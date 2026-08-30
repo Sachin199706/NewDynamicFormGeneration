@@ -5,9 +5,8 @@ using NewDynamicFormGenAPI.Models.Interfaces;
 namespace NewDynamicFormGenAPI.API.Controllers;
 
 /// <summary>
-/// Backs the Rule Builder screen (Validation Rules panel). Rules are always scoped
-/// to a specific FormVersion so editing a draft never mutates a published version.
-/// No auth in this application — reachable by URL alone.
+/// Backs the Rule Builder screen (Validation Rules panel). Rules live embedded inside
+/// FormVersions.FormDefinitionJson now — no FormRules table. No auth in this application.
 /// </summary>
 [ApiController]
 [Route("api")]
@@ -34,17 +33,10 @@ public class FormRulesController : ControllerBase
         return Ok(lobjRule);
     }
 
-    [HttpPut("rules/{aNumRuleId:int}")]
-    public async Task<IActionResult> UpdateRule(int aNumRuleId, [FromBody] CreateFormRuleDto aObjDto)
+    [HttpDelete("forms/versions/{aNumFormVersionId:int}/rules/{aStrControlKey}/{aStrRuleType}")]
+    public async Task<IActionResult> DeleteRule(int aNumFormVersionId, string aStrControlKey, string aStrRuleType)
     {
-        await _ruleEngine.UpdateRuleAsync(aNumRuleId, aObjDto);
-        return NoContent();
-    }
-
-    [HttpDelete("rules/{aNumRuleId:int}")]
-    public async Task<IActionResult> DeleteRule(int aNumRuleId)
-    {
-        await _ruleEngine.DeleteRuleAsync(aNumRuleId);
+        await _ruleEngine.DeleteRuleAsync(aNumFormVersionId, aStrControlKey, aStrRuleType);
         return NoContent();
     }
 }

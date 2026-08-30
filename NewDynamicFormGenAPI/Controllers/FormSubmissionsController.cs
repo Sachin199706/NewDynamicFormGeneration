@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NewDynamicFormGenAPI.Models.DTOs.Submissions;
 using NewDynamicFormGenAPI.Models.Interfaces;
+using System.Text.Json;
 
 namespace NewDynamicFormGenAPI.API.Controllers;
 
@@ -16,13 +17,18 @@ public class FormSubmissionsController : ControllerBase
         _submissionService = submissionService;
     }
 
-    // POST api/forms/{formId}/submissions
-    [HttpPost("forms/{formId:int}/submissions")]
-    public async Task<IActionResult> Submit(int formId, [FromBody] SubmitFormDto dto)
+    [HttpPost("forms/{aNumFormId:int}/submissions")]
+    public async Task<IActionResult> Submit(int aNumFormId, [FromForm] string values, [FromForm] int formVersionId)
     {
-        dto.FormId = formId;
-        var result = await _submissionService.SubmitAsync(dto);
-        return result.Success ? Ok(result) : BadRequest(result); // 400 => rule validation failures in result.Errors
+        var lobjDto = new SubmitFormDto
+        {
+            FormId = aNumFormId,
+            FormVersionId = formVersionId,
+            Values = JsonSerializer.Deserialize<Dictionary<string, object?>>(values) ?? new Dictionary<string, object?>()
+        };
+
+        var lobjResult = await _submissionService.SubmitAsync(lobjDto, Request.Form.Files);
+        return lobjResult.Success ? Ok(lobjResult) : BadRequest(lobjResult);
     }
 
     [HttpGet("forms/{formId:int}/submissions")]

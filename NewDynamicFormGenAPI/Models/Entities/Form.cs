@@ -1,5 +1,3 @@
-
-
 namespace NewDynamicFormGenAPI.Models.Entities;
 
 public class Form
@@ -28,16 +26,13 @@ public class FormVersion
     public string? VersionName { get; set; }
     public string Status { get; set; } = "Draft";
 
-    /// <summary>Full canvas snapshot: controls + layout tree, as designed in the builder.</summary>
+    /// <summary>Full snapshot: every control on the canvas, each with its own embedded
+    /// "rules" array — this is the single source of truth now, no FormControls/FormRules tables.</summary>
     public string FormDefinitionJson { get; set; } = "{}";
 
-    /// <summary>Layout-only snapshot (sections/rows/columns), used by the Layout Designer screen.</summary>
+    /// <summary>Just the column-count setting, e.g. {"columnLayout": 4}.</summary>
     public string? LayoutDefinitionJson { get; set; }
 
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     public DateTime? PublishedDate { get; set; }
-
-    public ICollection<FormControl> Controls { get; set; } = new List<FormControl>();
-    public ICollection<FormLayout> Layouts { get; set; } = new List<FormLayout>();
-    public ICollection<FormRule> Rules { get; set; } = new List<FormRule>();
 }

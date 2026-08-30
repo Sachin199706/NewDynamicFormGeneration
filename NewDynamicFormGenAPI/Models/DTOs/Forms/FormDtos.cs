@@ -33,17 +33,6 @@ public class FormControlDto
     public int DisplayOrder { get; set; }
     public int? ParentControlId { get; set; }
     public string? PropertiesJson { get; set; }
-    public int? DataSourceId { get; set; }
-}
-
-public class FormLayoutDto
-{
-    public int LayoutId { get; set; }
-    public string LayoutType { get; set; } = null!;
-    public int? ParentLayoutId { get; set; }
-    public string? Name { get; set; }
-    public int DisplayOrder { get; set; }
-    public string? PropertiesJson { get; set; }
 }
 
 public class SaveFormVersionDto
@@ -53,7 +42,6 @@ public class SaveFormVersionDto
     public string FormDefinitionJson { get; set; } = "{}";
     public string? LayoutDefinitionJson { get; set; }
     public List<FormControlDto> Controls { get; set; } = new();
-    public List<FormLayoutDto> Layouts { get; set; } = new();
 }
 
 public class FormVersionDto
@@ -64,9 +52,8 @@ public class FormVersionDto
     public int VersionNo { get; set; }
     public string Status { get; set; } = null!;
     public string FormDefinitionJson { get; set; } = null!;
-    public string? LayoutDefinitionJson { get; set; }
+    public string LayoutDefinitionJson { get; set; }
     public List<FormControlDto> Controls { get; set; } = new();
-    public List<FormLayoutDto> Layouts { get; set; } = new();
     public DateTime CreatedDate { get; set; }
 }
 
@@ -78,7 +65,6 @@ public class FormRenderDto
     public string FormName { get; set; } = null!;
     public string? LayoutDefinitionJson { get; set; }
     public List<FormControlDto> Controls { get; set; } = new();
-    public List<FormLayoutDto> Layouts { get; set; } = new();
     public List<Rules.FormRuleDto> Rules { get; set; } = new();
 }
 
