@@ -9,7 +9,7 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-form-rules',
-  imports: [CommonModule, FormsModule,RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './form-rules.html',
   styleUrl: './form-rules.scss',
 })
@@ -45,6 +45,7 @@ export class FormRules implements OnInit {
     this.iobjFormService.getVersionById(this.inumVersionId).subscribe(res => {
       if (res.success && res.data) this.iarrControls = res.data.controls;
     });
+
     this.loadRules();
   }
 
@@ -52,8 +53,8 @@ export class FormRules implements OnInit {
     this.iobjRuleService.getRules(this.inumVersionId).subscribe(rules => this.iarrRules = rules);
   }
 
-  controlLabel(aNumControlId: number): string {
-    return this.iarrControls.find(c => c.controlId === aNumControlId)?.label ?? `#${aNumControlId}`;
+  controlLabel(aStrControlKey: string): string {
+    return this.iarrControls.find(c => c.controlKey === aStrControlKey)?.label ?? aStrControlKey;
   }
 
   private buildDetailsJson(): string | undefined {
@@ -76,12 +77,12 @@ export class FormRules implements OnInit {
 
   addRule(): void {
     const lboolIsVisibility = this.iobjDraft.ruleType === 'Visibility';
-    if (!this.iobjDraft.controlId || !this.iobjDraft.ruleType) return;
+    if (!this.iobjDraft.controlKey || !this.iobjDraft.ruleType) return;
     if (!lboolIsVisibility && !this.iobjDraft.errorMessage) return;
     if (lboolIsVisibility && (!this.istrVisibilityTriggerKey || !this.istrVisibilityValue)) return;
 
     const lobjDto: CreateFormRuleRequest = {
-      controlId: this.iobjDraft.controlId,
+      controlKey: this.iobjDraft.controlKey,
       ruleType: this.iobjDraft.ruleType,
       ruleDetailsJson: this.buildDetailsJson(),
       errorMessage: lboolIsVisibility
@@ -100,7 +101,7 @@ export class FormRules implements OnInit {
   }
 
   deleteRule(aObjR: FormRule): void {
-    this.iobjRuleService.deleteRule(aObjR.ruleId).subscribe(() => this.loadRules());
+    this.iobjRuleService.deleteRule(this.inumVersionId, aObjR.controlKey, aObjR.ruleType).subscribe(() => this.loadRules());
   }
 
 }

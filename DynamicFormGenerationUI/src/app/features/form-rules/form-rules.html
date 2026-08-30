@@ -1,8 +1,8 @@
 <div class="p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4>Validation Rules</h4>
-           <a [routerLink]="['/forms/builder', inumFormId]" [queryParams]="{ version: inumVersionId }"
-        class="btn btn-outline-primary btn-sm">Back to Design</a>
+        <a [routerLink]="['/forms/builder', inumFormId]" [queryParams]="{ version: inumVersionId }"
+            class="btn btn-outline-primary btn-sm">Back to Design</a>
     </div>
 
     <table class="table bg-white">
@@ -18,7 +18,7 @@
         </thead>
         <tbody>
             <tr *ngFor="let r of iarrRules">
-                <td>{{ controlLabel(r.controlId) }}</td>
+                <td>{{ controlLabel(r.controlKey) }}</td>
                 <td>{{ r.ruleType }}</td>
                 <td><code class="small">{{ r.ruleDetailsJson }}</code></td>
                 <td>{{ r.errorMessage }}</td>
@@ -34,14 +34,13 @@
         </tbody>
     </table>
 
-    <!-- Rule Builder panel -->
     <div class="card p-3 mt-4" style="max-width:700px;">
         <h6>Rule Builder</h6>
         <div class="row g-2 mb-2">
             <div class="col-4">
                 <label class="form-label small">Field</label>
-                <select class="form-select form-select-sm" [(ngModel)]="iobjDraft.controlId">
-                    <option *ngFor="let c of iarrControls" [ngValue]="c.controlId">{{ c.label }}</option>
+                <select class="form-select form-select-sm" [(ngModel)]="iobjDraft.controlKey">
+                    <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
                 </select>
             </div>
             <div class="col-4">
@@ -59,7 +58,6 @@
             </div>
         </div>
 
-        <!-- rule-type-specific config -->
         <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'MinLength' || iobjDraft.ruleType === 'MaxLength'">
             <div class="col-6">
                 <label class="form-label small">{{ iobjDraft.ruleType === 'MinLength' ? 'Min length' : 'Max length'

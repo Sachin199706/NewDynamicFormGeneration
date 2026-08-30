@@ -11,59 +11,52 @@ namespace FormGen.Application.Services
     {
         private readonly IUnitOfWork _uow;
         private readonly IRuleEngineService _ruleEngine;
+        private readonly IFileStorageService _fileStorage;
 
-        public SubmissionService(IUnitOfWork uow, IRuleEngineService ruleEngine)
+        public SubmissionService(IUnitOfWork uow, IRuleEngineService ruleEngine, IFileStorageService fileStorage)
         {
             _uow = uow;
             _ruleEngine = ruleEngine;
+            _fileStorage = fileStorage;
         }
 
-        public async Task<Result<int>> SubmitAsync(SubmitFormDto dto)
+        public async Task<Result<int>> SubmitAsync(SubmitFormDto aobjDto, IFormFileCollection aObjFiles)
         {
-            // 1. Load controls for this version, to map ControlKey <-> ControlId
-            var controls = _uow.Repository<FormControl>().Query()
-                .Where(c => c.FormVersionId == dto.FormVersionId)
-                .ToList();
+            var larrStoredFileNames = new List<string>();
 
-            var controlIdByKey = controls.ToDictionary(c => c.ControlKey, c => c.ControlId);
-            var controlKeyById = controls.ToDictionary(c => c.ControlId, c => c.ControlKey);
+            foreach (var lobjFile in aObjFiles)
+            {
+                var lstrStoredFileName = await _fileStorage.SaveFileAsync(lobjFile);
+                larrStoredFileNames.Add(lstrStoredFileName);
+                aobjDto.Values[lobjFile.Name] = lstrStoredFileName;
+            }
 
-            // 2. Load active rules and re-validate server-side — this is the actual gate.
-            //    The client already validated for UX; we do not trust it.
-            var rules = await _ruleEngine.GetRulesForVersionAsync(dto.FormVersionId);
-            var evaluation = _ruleEngine.Evaluate(rules, dto.Values, controlKeyById);
+            // Rules now live inside FormVersions.FormDefinitionJson, keyed by controlKey —
+            // no more FormControls table to query for a ControlId <-> ControlKey mapping.
+            var rules = await _ruleEngine.GetRulesForVersionAsync(aobjDto.FormVersionId);
+            var evaluation = _ruleEngine.Evaluate(rules, aobjDto.Values);
 
             if (!evaluation.IsValid)
             {
+                foreach (var lstrFileName in larrStoredFileNames)
+                {
+                    _fileStorage.DeleteFile(lstrFileName);
+                }
+
                 return Result<int>.Fail(
                     "Validation failed.",
                     evaluation.Failures.Select(f => $"{f.ControlKey}: {f.ErrorMessage}").ToList());
             }
 
-            // 3. Persist submission (raw JSON snapshot + normalized per-field rows)
             var submission = new FormSubmission
             {
-                FormId = dto.FormId,
-                FormVersionId = dto.FormVersionId,
+                FormId = aobjDto.FormId,
+                FormVersionId = aobjDto.FormVersionId,
                 SubmittedOn = DateTime.UtcNow,
-                JsonData = JsonSerializer.Serialize(dto.Values)
+                JsonData = JsonSerializer.Serialize(aobjDto.Values)
             };
 
             await _uow.Repository<FormSubmission>().AddAsync(submission);
-            await _uow.SaveChangesAsync(); // need SubmissionId for child rows
-
-            foreach (var kvp in dto.Values)
-            {
-                if (!controlIdByKey.TryGetValue(kvp.Key, out var controlId)) continue;
-
-                await _uow.Repository<FormSubmissionValue>().AddAsync(new FormSubmissionValue
-                {
-                    SubmissionId = submission.SubmissionId,
-                    ControlId = controlId,
-                    Value = kvp.Value?.ToString()
-                });
-            }
-
             await _uow.SaveChangesAsync();
 
             return Result<int>.Ok(submission.SubmissionId, "Submitted successfully.");

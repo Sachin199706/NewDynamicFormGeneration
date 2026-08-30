@@ -4,12 +4,7 @@ export type RuleType =
 
 export type RuleSeverity = 'Error' | 'Warning';
 
-
-
 export interface FormRule {
-    ruleId: number;
-    formVersionId: number;
-    controlId: number;
     controlKey: string;
     ruleType: RuleType;
     ruleDetailsJson?: string;
@@ -20,7 +15,7 @@ export interface FormRule {
 }
 
 export interface CreateFormRuleRequest {
-    controlId: number;
+    controlKey: string;
     ruleType: RuleType;
     ruleDetailsJson?: string;
     errorMessage: string;
@@ -39,7 +34,7 @@ export interface CrossFieldDetails {
 }
 
 /**
- * Visibility rule: the target control is the rule's ControlId itself.
+ * Visibility rule: the target control is the rule's ControlKey itself.
  * "Show" the target when the trigger condition is true; "Hide" flips the sense.
  */
 export interface VisibilityDetails {

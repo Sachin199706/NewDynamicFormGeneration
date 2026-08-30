@@ -25,8 +25,8 @@ CREATE TABLE Forms (
     FormCode          NVARCHAR(50)  NOT NULL UNIQUE,
     FormName          NVARCHAR(150) NOT NULL,
     Description       NVARCHAR(500) NULL,
-    Status            VARCHAR(20)   NOT NULL DEFAULT ('Draft'),  -- Draft | Published | Archived
-    CurrentVersionId  INT           NULL,   -- FK added after FormVersions exists (below)
+    Status            VARCHAR(20)   NOT NULL DEFAULT ('Draft'),
+    CurrentVersionId  INT           NULL,
     IsActive          BIT           NOT NULL DEFAULT (1),
     CreatedDate       DATETIME      NOT NULL DEFAULT (GETUTCDATE()),
     ModifiedDate      DATETIME      NULL
@@ -38,9 +38,9 @@ CREATE TABLE FormVersions (
     FormId               INT NOT NULL FOREIGN KEY REFERENCES Forms(FormId),
     VersionNo            INT NOT NULL,
     VersionName          NVARCHAR(100) NULL,
-    Status               VARCHAR(20)   NOT NULL DEFAULT ('Draft'), -- Draft | Published | Archived
-    FormDefinitionJson   NVARCHAR(MAX) NOT NULL,   -- full canvas snapshot (controls + layout tree)
-    LayoutDefinitionJson NVARCHAR(MAX) NULL,       -- layout-only snapshot (sections/rows/cols)
+    Status               VARCHAR(20)   NOT NULL DEFAULT ('Draft'),
+    FormDefinitionJson   NVARCHAR(MAX) NOT NULL,   -- controls + rules, fully embedded — source of truth now
+    LayoutDefinitionJson NVARCHAR(MAX) NULL,
     CreatedDate          DATETIME NOT NULL DEFAULT (GETUTCDATE()),
     PublishedDate        DATETIME NULL,
     CONSTRAINT UQ_FormVersions UNIQUE (FormId, VersionNo)
@@ -52,128 +52,32 @@ ALTER TABLE Forms
     FOREIGN KEY (CurrentVersionId) REFERENCES FormVersions(FormVersionId);
 GO
 
-/* ---------- 2. Control catalog ---------- */
+/* ---------- 2. Control catalog (toolbox only — NOT per-form controls) ---------- */
 
 CREATE TABLE ControlTypes (
     ControlTypeId         INT IDENTITY(1,1) PRIMARY KEY,
-    ControlCode           NVARCHAR(50)  NOT NULL UNIQUE,  -- TextBox, Number, Dropdown, ...
+    ControlCode           NVARCHAR(50)  NOT NULL UNIQUE,
     ControlName           NVARCHAR(100) NOT NULL,
-    Category              NVARCHAR(50)  NULL,             -- Basic | Choice | Files | Layout
-    ComponentName         NVARCHAR(100) NULL,             -- Angular component selector
-    DefaultPropertiesJson NVARCHAR(MAX) NULL,             -- default PropertyItem set
+    Category              NVARCHAR(50)  NULL,
+    ComponentName         NVARCHAR(100) NULL,
+    DefaultPropertiesJson NVARCHAR(MAX) NULL,
     IsActive              BIT NOT NULL DEFAULT (1),
     DisplayOrder          INT NOT NULL DEFAULT (0)
 );
 GO
 
-CREATE TABLE FormControls (
-    ControlId         INT IDENTITY(1,1) PRIMARY KEY,
-    FormVersionId     INT NOT NULL FOREIGN KEY REFERENCES FormVersions(FormVersionId),
-    ControlKey        NVARCHAR(100) NOT NULL,   -- stable field key, e.g. "employeeName"
-    ControlTypeId     INT NOT NULL FOREIGN KEY REFERENCES ControlTypes(ControlTypeId),
-    ControlName       NVARCHAR(150) NULL,
-    Label             NVARCHAR(150) NULL,
-    Placeholder       NVARCHAR(150) NULL,
-    DefaultValue      NVARCHAR(500) NULL,
-    IsRequired        BIT NOT NULL DEFAULT (0),
-    IsReadOnly        BIT NOT NULL DEFAULT (0),
-    IsVisible         BIT NOT NULL DEFAULT (1),
-    DisplayOrder      INT NOT NULL DEFAULT (0),
-    ParentControlId   INT NULL FOREIGN KEY REFERENCES FormControls(ControlId), -- nesting (e.g. inside a Grid)
-    PropertiesJson    NVARCHAR(MAX) NULL,   -- control-specific overrides (SeedData, MaxLength, etc.)
-    ValidationJson    NVARCHAR(MAX) NULL,   -- denormalized cache of active FormRules for this control (perf)
-    DataSourceId      INT NULL,             -- FK added after FormDataSources exists (below)
-    CreatedDate       DATETIME NOT NULL DEFAULT (GETUTCDATE()),
-    ModifiedDate      DATETIME NULL,
-    CONSTRAINT UQ_FormControls_Key UNIQUE (FormVersionId, ControlKey)
-);
-GO
-
-CREATE TABLE FormLayouts (
-    LayoutId         INT IDENTITY(1,1) PRIMARY KEY,
-    FormVersionId    INT NOT NULL FOREIGN KEY REFERENCES FormVersions(FormVersionId),
-    LayoutType       VARCHAR(20) NOT NULL,  -- Section | Row | Column | Tab | Accordion | Panel | Group
-    ParentLayoutId   INT NULL FOREIGN KEY REFERENCES FormLayouts(LayoutId),
-    Name             NVARCHAR(100) NULL,
-    DisplayOrder     INT NOT NULL DEFAULT (0),
-    PropertiesJson   NVARCHAR(MAX) NULL   -- e.g. {"columnSpan":6,"collapsible":true,"visible":true}
-);
-GO
-
-/* ---------- 3. Rule Validation Engine ---------- */
-
-CREATE TABLE FormRules (
-    RuleId          INT IDENTITY(1,1) PRIMARY KEY,
-    FormVersionId   INT NOT NULL FOREIGN KEY REFERENCES FormVersions(FormVersionId),
-    ControlId       INT NOT NULL FOREIGN KEY REFERENCES FormControls(ControlId),
-    RuleType        VARCHAR(30) NOT NULL,   -- Required|MinLength|MaxLength|Regex|Range|Email|Date|CrossField|Visibility|Custom
-    RuleDetailsJson NVARCHAR(MAX) NULL,     -- type-specific config, see ARCHITECTURE.md
-    ErrorMessage    NVARCHAR(300) NOT NULL,
-    Severity        VARCHAR(10) NOT NULL DEFAULT ('Error'),  -- Error | Warning
-    DisplayOrder    INT NOT NULL DEFAULT (0),
-    IsActive        BIT NOT NULL DEFAULT (1),
-    CreatedDate     DATETIME NOT NULL DEFAULT (GETUTCDATE()),
-    ModifiedDate    DATETIME NULL
-);
-GO
-
-/* ---------- 4. Data sources (for Dropdown/Lookup controls) ---------- */
-
-CREATE TABLE FormDataSources (
-    DataSourceId  INT IDENTITY(1,1) PRIMARY KEY,
-    Name          NVARCHAR(150) NOT NULL,
-    SourceType    VARCHAR(20) NOT NULL DEFAULT ('Static'),  -- Static | Api | Sql
-    ConfigJson    NVARCHAR(MAX) NULL,  -- api url / sql text, when not Static
-    CreatedDate   DATETIME NOT NULL DEFAULT (GETUTCDATE())
-);
-GO
-
-CREATE TABLE FormDataSourceItems (
-    DataSourceItemId  INT IDENTITY(1,1) PRIMARY KEY,
-    DataSourceId      INT NOT NULL FOREIGN KEY REFERENCES FormDataSources(DataSourceId),
-    ItemValue         NVARCHAR(200) NOT NULL,
-    ItemText          NVARCHAR(200) NOT NULL,
-    DisplayOrder      INT NOT NULL DEFAULT (0)
-);
-GO
-
-ALTER TABLE FormControls
-    ADD CONSTRAINT FK_FormControls_DataSource
-    FOREIGN KEY (DataSourceId) REFERENCES FormDataSources(DataSourceId);
-GO
-
-/* ---------- 5. Submissions ---------- */
+/* ---------- 3. Submissions ---------- */
 
 CREATE TABLE FormSubmissions (
     SubmissionId   INT IDENTITY(1,1) PRIMARY KEY,
     FormId         INT NOT NULL FOREIGN KEY REFERENCES Forms(FormId),
     FormVersionId  INT NOT NULL FOREIGN KEY REFERENCES FormVersions(FormVersionId),
     SubmittedOn    DATETIME NOT NULL DEFAULT (GETUTCDATE()),
-    JsonData       NVARCHAR(MAX) NOT NULL   -- full raw snapshot of submitted key/value pairs
+    JsonData       NVARCHAR(MAX) NOT NULL
 );
 GO
 
-CREATE TABLE FormSubmissionValues (
-    SubmissionValueId  INT IDENTITY(1,1) PRIMARY KEY,
-    SubmissionId       INT NOT NULL FOREIGN KEY REFERENCES FormSubmissions(SubmissionId),
-    ControlId          INT NOT NULL FOREIGN KEY REFERENCES FormControls(ControlId),
-    Value              NVARCHAR(MAX) NULL   -- normalized, per-field row (used for reporting/queries)
-);
-GO
-
-CREATE TABLE FormFiles (
-    FileId         INT IDENTITY(1,1) PRIMARY KEY,
-    SubmissionId   INT NOT NULL FOREIGN KEY REFERENCES FormSubmissions(SubmissionId),
-    ControlId      INT NOT NULL FOREIGN KEY REFERENCES FormControls(ControlId),
-    FileName       NVARCHAR(260) NOT NULL,
-    StoragePath    NVARCHAR(500) NOT NULL,  -- files live on disk/blob storage; DB stores metadata only
-    ContentType    NVARCHAR(100) NULL,
-    FileSizeBytes  BIGINT NULL,
-    UploadedOn     DATETIME NOT NULL DEFAULT (GETUTCDATE())
-);
-GO
-
-/* ---------- 6. Publish history / audit ---------- */
+/* ---------- 4. Publish history ---------- */
 
 CREATE TABLE FormPublishHistory (
     PublishHistoryId  INT IDENTITY(1,1) PRIMARY KEY,
@@ -184,21 +88,6 @@ CREATE TABLE FormPublishHistory (
 );
 GO
 
-CREATE TABLE FormAuditLogs (
-    AuditLogId    INT IDENTITY(1,1) PRIMARY KEY,
-    FormId        INT NULL FOREIGN KEY REFERENCES Forms(FormId),
-    Action        NVARCHAR(100) NOT NULL,  -- Created | Updated | Published | Archived | Deleted
-    Details       NVARCHAR(MAX) NULL,
-    CreatedDate   DATETIME NOT NULL DEFAULT (GETUTCDATE())
-);
-GO
-
-/* ---------- Helpful indexes ---------- */
-
-CREATE INDEX IX_FormVersions_FormId          ON FormVersions(FormId);
-CREATE INDEX IX_FormControls_FormVersionId   ON FormControls(FormVersionId);
-CREATE INDEX IX_FormRules_FormVersionId      ON FormRules(FormVersionId);
-CREATE INDEX IX_FormRules_ControlId          ON FormRules(ControlId);
-CREATE INDEX IX_FormSubmissions_FormId       ON FormSubmissions(FormId);
-CREATE INDEX IX_FormSubmissionValues_SubId   ON FormSubmissionValues(SubmissionId);
+CREATE INDEX IX_FormVersions_FormId    ON FormVersions(FormId);
+CREATE INDEX IX_FormSubmissions_FormId ON FormSubmissions(FormId);
 GO

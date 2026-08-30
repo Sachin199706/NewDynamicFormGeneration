@@ -10,21 +10,21 @@ import { SubmissionDetail, SubmissionListItem, SubmitFormRequest } from '../mode
 })
 export class SubmissionService {
 
-  private base = `${environment.apiUrl}`;
+  private istrBase = `${environment.apiUrl}`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private iobjHttp: HttpClient) { }
 
-  submit(formId: number, dto: SubmitFormRequest): Observable<ApiResult<number>> {
-    return this.http.post<ApiResult<number>>(`${this.base}/forms/${formId}/submissions`, dto);
+  submit(aNumFormId: number, aObjFormData: FormData): Observable<ApiResult<number>> {
+    return this.iobjHttp.post<ApiResult<number>>(`${this.istrBase}/forms/${aNumFormId}/submissions`, aObjFormData);
   }
 
-  getSubmissions(formId: number, page = 1, pageSize = 20): Observable<PagedResult<SubmissionListItem>> {
-    const params = new HttpParams().set('page', page).set('pageSize', pageSize);
-    return this.http.get<PagedResult<SubmissionListItem>>(`${this.base}/forms/${formId}/submissions`, { params });
+  getSubmissions(aNumFormId: number, aNumPage = 1, aNumPageSize = 20): Observable<PagedResult<SubmissionListItem>> {
+    const lobjParams = new HttpParams().set('page', aNumPage).set('pageSize', aNumPageSize);
+    return this.iobjHttp.get<PagedResult<SubmissionListItem>>(`${this.istrBase}/forms/${aNumFormId}/submissions`, { params: lobjParams });
   }
 
-  getDetail(submissionId: number): Observable<ApiResult<SubmissionDetail>> {
-    return this.http.get<ApiResult<SubmissionDetail>>(`${this.base}/submissions/${submissionId}`);
+  getDetail(aNumSubmissionId: number): Observable<ApiResult<SubmissionDetail>> {
+    return this.iobjHttp.get<ApiResult<SubmissionDetail>>(`${this.istrBase}/submissions/${aNumSubmissionId}`);
   }
 
 }

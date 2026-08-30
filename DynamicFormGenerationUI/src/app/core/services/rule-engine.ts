@@ -1,18 +1,30 @@
 import { Injectable } from '@angular/core';
-import { CrossFieldDetails, DateRuleDetails, FormRule, MinMaxLengthDetails, RangeDetails, RegexDetails, VisibilityDetails } from '../models/rule.model';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
+import {
+  CrossFieldDetails, DateRuleDetails, FormRule, MinMaxLengthDetails, RangeDetails, RegexDetails,
+  VisibilityDetails
+} from '../models/rule.model';
 
-@Injectable({
-  providedIn: 'root',
-})
+/**
+ * Client-side counterpart of the server's RuleEngineService (C#). Same RuleType +
+ * RuleDetailsJson contract, same semantics per rule — this gives instant inline
+ * feedback in the browser, while the server re-runs the identical logic as the
+ * actual gate before persisting a submission (client checks can always be bypassed).
+ *
+ * Rules are identified by ControlKey now, not a database-assigned ControlId — there's
+ * no FormControls/FormRules table anymore, both live embedded in FormDefinitionJson.
+ *
+ * IMPORTANT: when adding a new RuleType, update BOTH this file and the server's RuleEngineService.cs.
+ */
+@Injectable({ providedIn: 'root' })
 export class RuleEngineService {
+
   /** Builds an Angular ValidatorFn for one rule. Cross-field rules need the whole form group. */
   buildValidator(rule: FormRule, getFieldValue: (controlKey: string) => any): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
       const stringValue = value === null || value === undefined ? '' : String(value);
 
-      // Optional fields: only Required rules fire on empty values (mirrors the server).
       if (rule.ruleType !== 'Required' && stringValue.trim() === '') {
         return null;
       }
@@ -35,14 +47,10 @@ export class RuleEngineService {
    * separate from evaluateAll()/buildValidator(). Returns controlKey -> should-be-visible.
    * Controls with no Visibility rule default to visible.
    */
-  computeVisibility(rules: FormRule[], values: Record<string, any>,
-    controlKeyById: Record<number, string>): Record<string, boolean> {
+  computeVisibility(rules: FormRule[], values: Record<string, any>): Record<string, boolean> {
     const visibility: Record<string, boolean> = {};
 
     for (const rule of rules.filter(r => r.isActive && r.ruleType === 'Visibility')) {
-      const targetKey = controlKeyById[rule.controlId];
-      if (!targetKey) continue;
-
       const d = this.parseDetails<VisibilityDetails>(rule.ruleDetailsJson);
       if (!d?.triggerControlKey) continue;
 
@@ -51,7 +59,7 @@ export class RuleEngineService {
       const conditionMet = this.compareStrings(stringValue, d.triggerValue ?? '', d.operator);
 
       const shouldShow = d.action === 'Hide' ? !conditionMet : conditionMet;
-      visibility[targetKey] = shouldShow;
+      visibility[rule.controlKey] = shouldShow;
     }
 
     return visibility;
@@ -63,7 +71,7 @@ export class RuleEngineService {
     switch (op) {
       case '==': return a === b;
       case '!=': return a !== b;
-      default: return a === b; // <, <=, >, >= on non-numeric strings falls back to equality
+      default:   return a === b;
     }
   }
 
@@ -131,8 +139,8 @@ export class RuleEngineService {
         switch (d.operator) {
           case '<=Today': return cmp.getTime() <= today.getTime();
           case '>=Today': return cmp.getTime() >= today.getTime();
-          case '<Today': return cmp.getTime() < today.getTime();
-          case '>Today': return cmp.getTime() > today.getTime();
+          case '<Today':  return cmp.getTime() <  today.getTime();
+          case '>Today':  return cmp.getTime() >  today.getTime();
           default: return true;
         }
       }
@@ -153,10 +161,10 @@ export class RuleEngineService {
       }
 
       case 'Custom':
-        return true; // opt-in server hook; client treats as pass, server may enforce more
+        return true;
 
       case 'Visibility':
-        return true; // UI-only — handled separately by computeVisibility(), never a validation failure
+        return true;
 
       default:
         return true;
@@ -167,11 +175,11 @@ export class RuleEngineService {
     switch (op) {
       case '==': return a === b;
       case '!=': return a !== b;
-      case '<': return a < b;
+      case '<':  return a < b;
       case '<=': return a <= b;
-      case '>': return a > b;
+      case '>':  return a > b;
       case '>=': return a >= b;
-      default: return true;
+      default:   return true;
     }
   }
 
@@ -180,4 +188,3 @@ export class RuleEngineService {
     try { return JSON.parse(json) as T; } catch { return null; }
   }
 }
-

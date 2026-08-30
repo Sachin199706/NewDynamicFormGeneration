@@ -27,16 +27,13 @@ public interface IRuleEngineService
 {
     Task<List<FormRuleDto>> GetRulesForVersionAsync(int aNumFormVersionId);
     Task<FormRuleDto> AddRuleAsync(int aNumFormVersionId, CreateFormRuleDto aObjDto);
-    Task UpdateRuleAsync(int aNumRuleId, CreateFormRuleDto aObjDto);
-    Task DeleteRuleAsync(int aNumRuleId);
-
-    /// <summary>Evaluates all active rules for a version against submitted values. Pure function, no I/O.</summary>
-    RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules,IReadOnlyDictionary<string, object?> aObjSubmittedValues,IReadOnlyDictionary<int, string> aObjControlKeysById);
+    Task DeleteRuleAsync(int aNumFormVersionId, string aStrControlKey, string aStrRuleType);
+    RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules, IReadOnlyDictionary<string, object?> aObjSubmittedValues);
 }
 
 public interface ISubmissionService
 {
-    Task<Result<int>> SubmitAsync(SubmitFormDto aObjDto);
+    Task<Result<int>> SubmitAsync(SubmitFormDto aObjDto, IFormFileCollection aObjFiles);
     Task<PagedResult<SubmissionListItemDto>> GetSubmissionsAsync(int aNumFormId, int aNumPage, int aNumPageSize);
     Task<Result<SubmissionDetailDto>> GetDetailAsync(int aNumSubmissionId);
 }

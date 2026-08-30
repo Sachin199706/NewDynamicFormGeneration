@@ -1,11 +1,11 @@
-
 namespace NewDynamicFormGenAPI.Models.DTOs.Submissions;
 
 public class SubmitFormDto
 {
     public int FormId { get; set; }
     public int FormVersionId { get; set; }
-    /// <summary>ControlKey -> submitted value (files handled separately via /api/files/upload).</summary>
+    /// <summary>ControlKey -> submitted value. File fields get their stored filename merged
+    /// in here too, alongside the regular values — same request, no separate upload call.</summary>
     public Dictionary<string, object?> Values { get; set; } = new();
 }
 

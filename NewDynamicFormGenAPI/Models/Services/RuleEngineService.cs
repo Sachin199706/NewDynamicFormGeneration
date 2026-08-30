@@ -1,18 +1,19 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using NewDynamicFormGenAPI.Models.Interfaces;
 using NewDynamicFormGenAPI.Models.DTOs.Rules;
 using NewDynamicFormGenAPI.Models.Entities;
 using NewDynamicFormGenAPI.Models.Enums;
 
-
 namespace NewDynamicFormGenAPI.Models.Services;
 
 /// <summary>
-/// Server-side implementation of the Rule Engine described in ARCHITECTURE.md §5.
-/// This is the authoritative validator — it is invoked again by SubmissionService even
-/// though the client already validated, because client-side checks can be bypassed.
+/// Rules now live embedded inside each control's JSON, inside FormVersions.FormDefinitionJson —
+/// there is no FormRules table anymore. Reading/writing a rule means parsing the whole
+/// FormDefinitionJson blob, finding the right control by ControlKey, and mutating its
+/// "rules" array in place.
 /// </summary>
 public class RuleEngineService : IRuleEngineService
 {
@@ -25,93 +26,160 @@ public class RuleEngineService : IRuleEngineService
 
     public async Task<List<FormRuleDto>> GetRulesForVersionAsync(int aNumFormVersionId)
     {
-        var larrRules = _uow.Repository<FormRule>().Query()
-            .Where(r => r.FormVersionId == aNumFormVersionId && r.IsActive)
-            .OrderBy(r => r.DisplayOrder)
-            .ToList();
+        var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(aNumFormVersionId);
+        if (lobjVersion == null) return new List<FormRuleDto>();
 
-        var larrControlIds = larrRules.Select(r => r.ControlId).Distinct().ToList();
-        var lobjControlKeys = _uow.Repository<FormControl>().Query()
-            .Where(c => larrControlIds.Contains(c.ControlId))
-            .ToDictionary(c => c.ControlId, c => c.ControlKey);
-
-        return larrRules.Select(r => Map(r, lobjControlKeys.GetValueOrDefault(r.ControlId, ""))).ToList();
+        return FlattenRules(lobjVersion.FormDefinitionJson);
     }
 
     public async Task<FormRuleDto> AddRuleAsync(int aNumFormVersionId, CreateFormRuleDto aObjDto)
     {
-        var lobjEntity = new FormRule
+        var lobjRepo = _uow.Repository<FormVersion>();
+        var lobjVersion = await lobjRepo.GetByIdAsync(aNumFormVersionId)
+            ?? throw new KeyNotFoundException($"FormVersion {aNumFormVersionId} not found");
+
+        var lobjRoot = JsonNode.Parse(lobjVersion.FormDefinitionJson)!.AsObject();
+        var lobjControlsArr = lobjRoot["controls"]?.AsArray() ?? new JsonArray();
+
+        JsonObject? lobjTargetControl = null;
+        foreach (var lobjNode in lobjControlsArr)
         {
-            FormVersionId = aNumFormVersionId,
-            ControlId = aObjDto.ControlId,
+            if (lobjNode is JsonObject lobjObj &&
+                string.Equals(lobjObj["controlKey"]?.GetValue<string>(), aObjDto.ControlKey, StringComparison.OrdinalIgnoreCase))
+            {
+                lobjTargetControl = lobjObj;
+                break;
+            }
+        }
+
+        if (lobjTargetControl == null)
+            throw new KeyNotFoundException($"Control '{aObjDto.ControlKey}' not found on this version.");
+
+        var lobjRulesArr = lobjTargetControl["rules"]?.AsArray();
+        if (lobjRulesArr == null)
+        {
+            lobjRulesArr = new JsonArray();
+            lobjTargetControl["rules"] = lobjRulesArr;
+        }
+
+        var lstrSeverity = string.IsNullOrWhiteSpace(aObjDto.Severity) ? RuleSeverity.Error : aObjDto.Severity;
+
+        lobjRulesArr.Add(new JsonObject
+        {
+            ["ruleType"] = aObjDto.RuleType,
+            ["ruleDetailsJson"] = aObjDto.RuleDetailsJson,
+            ["errorMessage"] = aObjDto.ErrorMessage,
+            ["severity"] = lstrSeverity,
+            ["displayOrder"] = aObjDto.DisplayOrder,
+            ["isActive"] = true
+        });
+
+        lobjVersion.FormDefinitionJson = lobjRoot.ToJsonString();
+        lobjRepo.Update(lobjVersion);
+        await _uow.SaveChangesAsync();
+
+        return new FormRuleDto
+        {
+            ControlKey = aObjDto.ControlKey,
             RuleType = aObjDto.RuleType,
             RuleDetailsJson = aObjDto.RuleDetailsJson,
             ErrorMessage = aObjDto.ErrorMessage,
-            Severity = string.IsNullOrWhiteSpace(aObjDto.Severity) ? RuleSeverity.Error : aObjDto.Severity,
+            Severity = lstrSeverity,
             DisplayOrder = aObjDto.DisplayOrder,
-            IsActive = true,
-            CreatedDate = DateTime.UtcNow
+            IsActive = true
         };
-        await _uow.Repository<FormRule>().AddAsync(lobjEntity);
-        await _uow.SaveChangesAsync();
-
-        var lobjControl = await _uow.Repository<FormControl>().GetByIdAsync(aObjDto.ControlId);
-        return Map(lobjEntity, lobjControl?.ControlKey ?? "");
     }
 
-    public async Task UpdateRuleAsync(int aNumRuleId, CreateFormRuleDto aObjDto)
+    public async Task DeleteRuleAsync(int aNumFormVersionId, string aStrControlKey, string aStrRuleType)
     {
-        var lobjRepo = _uow.Repository<FormRule>();
-        var lobjEntity = await lobjRepo.GetByIdAsync(aNumRuleId)
-            ?? throw new KeyNotFoundException($"Rule {aNumRuleId} not found");
+        var lobjRepo = _uow.Repository<FormVersion>();
+        var lobjVersion = await lobjRepo.GetByIdAsync(aNumFormVersionId);
+        if (lobjVersion == null) return;
 
-        lobjEntity.ControlId = aObjDto.ControlId;
-        lobjEntity.RuleType = aObjDto.RuleType;
-        lobjEntity.RuleDetailsJson = aObjDto.RuleDetailsJson;
-        lobjEntity.ErrorMessage = aObjDto.ErrorMessage;
-        lobjEntity.Severity = aObjDto.Severity;
-        lobjEntity.DisplayOrder = aObjDto.DisplayOrder;
-        lobjEntity.ModifiedDate = DateTime.UtcNow;
+        var lobjRoot = JsonNode.Parse(lobjVersion.FormDefinitionJson)!.AsObject();
+        var lobjControlsArr = lobjRoot["controls"]?.AsArray();
+        if (lobjControlsArr == null) return;
 
-        lobjRepo.Update(lobjEntity);
+        foreach (var lobjNode in lobjControlsArr)
+        {
+            if (lobjNode is not JsonObject lobjObj) continue;
+            if (!string.Equals(lobjObj["controlKey"]?.GetValue<string>(), aStrControlKey, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var lobjRulesArr = lobjObj["rules"]?.AsArray();
+            if (lobjRulesArr == null) break;
+
+            for (int i = lobjRulesArr.Count - 1; i >= 0; i--)
+            {
+                if (lobjRulesArr[i] is JsonObject lobjRuleObj &&
+                    string.Equals(lobjRuleObj["ruleType"]?.GetValue<string>(), aStrRuleType, StringComparison.OrdinalIgnoreCase))
+                {
+                    lobjRulesArr.RemoveAt(i);
+                }
+            }
+            break;
+        }
+
+        lobjVersion.FormDefinitionJson = lobjRoot.ToJsonString();
+        lobjRepo.Update(lobjVersion);
         await _uow.SaveChangesAsync();
     }
 
-    public async Task DeleteRuleAsync(int aNumRuleId)
+    /// <summary>Flattens every control's embedded rules array into one flat list, tagging each with its ControlKey.</summary>
+    private static List<FormRuleDto> FlattenRules(string aStrFormDefinitionJson)
     {
-        var lobjRepo = _uow.Repository<FormRule>();
-        var lobjEntity = await lobjRepo.GetByIdAsync(aNumRuleId);
-        if (lobjEntity == null) return;
-        lobjRepo.Remove(lobjEntity);
-        await _uow.SaveChangesAsync();
+        var larrResult = new List<FormRuleDto>();
+        if (string.IsNullOrWhiteSpace(aStrFormDefinitionJson)) return larrResult;
+
+        try
+        {
+            using var lobjDoc = JsonDocument.Parse(aStrFormDefinitionJson);
+            if (!lobjDoc.RootElement.TryGetProperty("controls", out var lobjControlsEl)) return larrResult;
+
+            foreach (var lobjControlEl in lobjControlsEl.EnumerateArray())
+            {
+                if (!lobjControlEl.TryGetProperty("controlKey", out var lobjKeyEl)) continue;
+                var lstrControlKey = lobjKeyEl.GetString() ?? "";
+
+                if (!lobjControlEl.TryGetProperty("rules", out var lobjRulesEl)) continue;
+
+                foreach (var lobjRuleEl in lobjRulesEl.EnumerateArray())
+                {
+                    larrResult.Add(new FormRuleDto
+                    {
+                        ControlKey = lstrControlKey,
+                        RuleType = lobjRuleEl.TryGetProperty("ruleType", out var t) ? t.GetString() ?? "" : "",
+                        RuleDetailsJson = lobjRuleEl.TryGetProperty("ruleDetailsJson", out var d) ? d.GetString() : null,
+                        ErrorMessage = lobjRuleEl.TryGetProperty("errorMessage", out var e) ? e.GetString() ?? "" : "",
+                        Severity = lobjRuleEl.TryGetProperty("severity", out var s) ? s.GetString() ?? "Error" : "Error",
+                        DisplayOrder = lobjRuleEl.TryGetProperty("displayOrder", out var o) && o.TryGetInt32(out var ov) ? ov : 0,
+                        IsActive = !lobjRuleEl.TryGetProperty("isActive", out var a) || a.GetBoolean()
+                    });
+                }
+            }
+        }
+        catch { /* malformed JSON — return whatever was parsed so far */ }
+
+        return larrResult.OrderBy(r => r.DisplayOrder).ToList();
     }
 
     /// <summary>
     /// Pure evaluation — same semantics as the Angular RuleEngineService's ValidatorFns.
     /// Keep both implementations' switch cases in lockstep when adding a new RuleType.
     /// </summary>
-    public RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules, IReadOnlyDictionary<string, object?> aObjSubmittedValues,
-        IReadOnlyDictionary<int, string> aObjControlKeysById)
+    public RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules, IReadOnlyDictionary<string, object?> aObjSubmittedValues)
     {
         var lobjResult = new RuleEvaluationResultDto { IsValid = true };
         var lobjVisibility = ComputeVisibility(aArrRules, aObjSubmittedValues);
 
         foreach (var rule in aArrRules.Where(r => r.IsActive).OrderBy(r => r.DisplayOrder))
         {
-            // Visibility rules are UI-only (show/hide) — they never gate submission.
-            // The client is the source of truth for what was actually visible when submitted.
             if (rule.RuleType == RuleType.Visibility)
                 continue;
 
-            // A field currently hidden by a Visibility rule is exempt from every other
-            // rule too (Required, MinLength, etc.) — the user had no way to fill it in.
-            // A field with NO Visibility rule is never in this dictionary, so it's
-            // completely unaffected and behaves exactly as before.
-            if (lobjVisibility.TryGetValue(rule.ControlId, out var lboolVisible) && !lboolVisible)
+            if (lobjVisibility.TryGetValue(rule.ControlKey, out var lboolVisible) && !lboolVisible)
                 continue;
 
-            var lstrKey = rule.ControlKey;
-            aObjSubmittedValues.TryGetValue(lstrKey, out var lobjRawValue);
+            aObjSubmittedValues.TryGetValue(rule.ControlKey, out var lobjRawValue);
             var lstrStringValue = lobjRawValue?.ToString() ?? string.Empty;
 
             bool lboolPassed = rule.RuleType switch
@@ -135,8 +203,7 @@ public class RuleEngineService : IRuleEngineService
             {
                 lobjResult.Failures.Add(new RuleFailureDto
                 {
-                    ControlId = rule.ControlId,
-                    ControlKey = lstrKey,
+                    ControlKey = rule.ControlKey,
                     RuleType = rule.RuleType,
                     ErrorMessage = rule.ErrorMessage,
                     Severity = rule.Severity
@@ -150,16 +217,9 @@ public class RuleEngineService : IRuleEngineService
         return lobjResult;
     }
 
-    // ---- individual rule evaluators ----
-
-    /// <summary>
-    /// Server-side mirror of the client's computeVisibility() — evaluates every active
-    /// Visibility rule against the submitted values, returns ControlId -> should-be-visible.
-    /// A control with no Visibility rule simply isn't in this dictionary at all.
-    /// </summary>
-    private static Dictionary<int, bool> ComputeVisibility(List<FormRuleDto> aArrRules,IReadOnlyDictionary<string, object?> aObjSubmittedValues)
+    private static Dictionary<string, bool> ComputeVisibility(List<FormRuleDto> aArrRules, IReadOnlyDictionary<string, object?> aObjSubmittedValues)
     {
-        var lobjVisibility = new Dictionary<int, bool>();
+        var lobjVisibility = new Dictionary<string, bool>();
 
         foreach (var rule in aArrRules.Where(r => r.IsActive && r.RuleType == RuleType.Visibility))
         {
@@ -179,8 +239,7 @@ public class RuleEngineService : IRuleEngineService
             else
                 lboolConditionMet = lstrOperator == "!=" ? lstrActual != lstrTriggerValue : lstrActual == lstrTriggerValue;
 
-            var lboolShouldShow = lstrAction == "Hide" ? !lboolConditionMet : lboolConditionMet;
-            lobjVisibility[rule.ControlId] = lboolShouldShow;
+            lobjVisibility[rule.ControlKey] = lstrAction == "Hide" ? !lboolConditionMet : lboolConditionMet;
         }
 
         return lobjVisibility;
@@ -225,7 +284,7 @@ public class RuleEngineService : IRuleEngineService
         if (!DateTime.TryParse(aStrValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var lobjDate))
             return false;
 
-        var lstrOperator = GetString(aObjRule.RuleDetailsJson, "operator"); // e.g. "<=Today", ">=Today"
+        var lstrOperator = GetString(aObjRule.RuleDetailsJson, "operator");
         if (string.IsNullOrEmpty(lstrOperator)) return true;
 
         return lstrOperator switch
@@ -238,8 +297,7 @@ public class RuleEngineService : IRuleEngineService
         };
     }
 
-    private static bool EvaluateCrossField(FormRuleDto aObjRule, string aStrValue,
-        IReadOnlyDictionary<string, object?> aObjSubmittedValues)
+    private static bool EvaluateCrossField(FormRuleDto aObjRule, string aStrValue, IReadOnlyDictionary<string, object?> aObjSubmittedValues)
     {
         var lstrCompareKey = GetString(aObjRule.RuleDetailsJson, "compareControlKey");
         var lstrOp = GetString(aObjRule.RuleDetailsJson, "operator") ?? "==";
@@ -248,7 +306,6 @@ public class RuleEngineService : IRuleEngineService
         aObjSubmittedValues.TryGetValue(lstrCompareKey, out var lobjCompareRaw);
         var lstrCompareValue = lobjCompareRaw?.ToString() ?? string.Empty;
 
-        // try numeric compare first, fall back to string/date compare
         if (double.TryParse(aStrValue, out var lnumA) && double.TryParse(lstrCompareValue, out var lnumB))
         {
             return lstrOp switch
@@ -280,8 +337,6 @@ public class RuleEngineService : IRuleEngineService
         return lstrOp == "==" ? aStrValue == lstrCompareValue : aStrValue != lstrCompareValue;
     }
 
-    // ---- RuleDetailsJson helpers ----
-
     private static string? GetString(string? aStrJson, string aStrProp)
     {
         if (string.IsNullOrWhiteSpace(aStrJson)) return null;
@@ -302,18 +357,4 @@ public class RuleEngineService : IRuleEngineService
         using var lobjDoc = JsonDocument.Parse(aStrJson);
         return lobjDoc.RootElement.TryGetProperty(aStrProp, out var lobjEl) && lobjEl.TryGetDouble(out var lnumV) ? lnumV : null;
     }
-
-    private static FormRuleDto Map(FormRule aObjR, string aStrControlKey) => new()
-    {
-        RuleId = aObjR.RuleId,
-        FormVersionId = aObjR.FormVersionId,
-        ControlId = aObjR.ControlId,
-        ControlKey = aStrControlKey,
-        RuleType = aObjR.RuleType,
-        RuleDetailsJson = aObjR.RuleDetailsJson,
-        ErrorMessage = aObjR.ErrorMessage,
-        Severity = aObjR.Severity,
-        DisplayOrder = aObjR.DisplayOrder,
-        IsActive = aObjR.IsActive
-    };
 }

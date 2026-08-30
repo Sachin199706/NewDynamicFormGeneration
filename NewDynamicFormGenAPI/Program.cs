@@ -17,6 +17,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IFormService, FormService>();
 builder.Services.AddScoped<IRuleEngineService, RuleEngineService>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 // ---- CORS for the Angular dev server ----
 builder.Services.AddCors(options =>

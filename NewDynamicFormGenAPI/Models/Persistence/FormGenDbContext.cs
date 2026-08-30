@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using NewDynamicFormGenAPI.Models.Entities;
-using FormFile = NewDynamicFormGenAPI.Models.Entities.FormFile;
 
 namespace FormGen.Infrastructure.Persistence
 {
@@ -17,19 +16,9 @@ namespace FormGen.Infrastructure.Persistence
         public DbSet<FormVersion> FormVersions => Set<FormVersion>();
 
         public DbSet<ControlType> ControlTypes => Set<ControlType>();
-        public DbSet<FormControl> FormControls => Set<FormControl>();
-        public DbSet<FormLayout> FormLayouts => Set<FormLayout>();
-        public DbSet<FormRule> FormRules => Set<FormRule>();
-
-        public DbSet<FormDataSource> FormDataSources => Set<FormDataSource>();
-        public DbSet<FormDataSourceItem> FormDataSourceItems => Set<FormDataSourceItem>();
-
         public DbSet<FormSubmission> FormSubmissions => Set<FormSubmission>();
-        public DbSet<FormSubmissionValue> FormSubmissionValues => Set<FormSubmissionValue>();
-        public DbSet<FormFile> FormFiles => Set<FormFile>();
 
         public DbSet<FormPublishHistory> FormPublishHistories => Set<FormPublishHistory>();
-        public DbSet<FormAuditLog> FormAuditLogs => Set<FormAuditLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
