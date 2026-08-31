@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using NewDynamicFormGenAPI.Models.Common;
 using NewDynamicFormGenAPI.Models.DTOs.Forms;
 using NewDynamicFormGenAPI.Models.DTOs.Rules;
@@ -7,7 +8,8 @@ namespace NewDynamicFormGenAPI.Models.Interfaces;
 
 public interface IFormService
 {
-    Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch);
+    Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate);
+    Task<Result<FormListItemDto>> CreateFormAsync(CreateFormDto aObjDto);
     Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto);
     Task<Result<FormVersionDto>> GetLatestVersionAsync(int aNumFormId);
     Task<Result<FormRenderDto>> GetRenderPayloadAsync(int aNumFormId, int aNumFormVersionId);

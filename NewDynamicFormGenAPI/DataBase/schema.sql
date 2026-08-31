@@ -25,9 +25,6 @@ CREATE TABLE Forms (
     FormCode          NVARCHAR(50)  NOT NULL UNIQUE,
     FormName          NVARCHAR(150) NOT NULL,
     Description       NVARCHAR(500) NULL,
-    Status            VARCHAR(20)   NOT NULL DEFAULT ('Draft'),
-    CurrentVersionId  INT           NULL,
-    IsActive          BIT           NOT NULL DEFAULT (1),
     CreatedDate       DATETIME      NOT NULL DEFAULT (GETUTCDATE()),
     ModifiedDate      DATETIME      NULL
 );
@@ -37,7 +34,7 @@ CREATE TABLE FormVersions (
     FormVersionId        INT IDENTITY(1,1) PRIMARY KEY,
     FormId               INT NOT NULL FOREIGN KEY REFERENCES Forms(FormId),
     VersionNo            INT NOT NULL,
-    VersionName          NVARCHAR(100) NULL,
+    VersionDescription   NVARCHAR(250) NULL,
     Status               VARCHAR(20)   NOT NULL DEFAULT ('Draft'),
     FormDefinitionJson   NVARCHAR(MAX) NOT NULL,   -- controls + rules, fully embedded — source of truth now
     LayoutDefinitionJson NVARCHAR(MAX) NULL,
@@ -47,10 +44,6 @@ CREATE TABLE FormVersions (
 );
 GO
 
-ALTER TABLE Forms
-    ADD CONSTRAINT FK_Forms_CurrentVersion
-    FOREIGN KEY (CurrentVersionId) REFERENCES FormVersions(FormVersionId);
-GO
 
 /* ---------- 2. Control catalog (toolbox only — NOT per-form controls) ---------- */
 

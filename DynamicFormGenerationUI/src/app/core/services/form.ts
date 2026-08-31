@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { DashboardItems, FormListItem, FormPublishHistoryItem, FormRenderPayload, FormVersion, FormVersionListItem, SaveFormVersionRequest } from '../models/form.model';
+import { CreateFormTemplateRequest, DashboardItems, FormListItem, FormPublishHistoryItem, FormRenderPayload, FormVersion, FormVersionListItem, SaveFormVersionRequest } from '../models/form.model';
 import { environment } from '../../../environments/environment';
 import { ApiResult, PagedResult } from '../models/api-result.model';
 
@@ -13,9 +13,21 @@ export class FormService {
 
   constructor(private iobjHttp: HttpClient) { }
 
-  getForms(aNumPage = 1, aNumPageSize = 10, aStrSearch?: string): Observable<PagedResult<FormListItem>> {
-    let lobjParams = new HttpParams().set('page', aNumPage).set('pageSize', aNumPageSize);
-    if (aStrSearch) lobjParams = lobjParams.set('search', aStrSearch);
+  getForms(aNumPage = 1, aNumPageSize = 10, aStrSearch?: string, aFromDate?: string | null, aToDate?: string | null): Observable<PagedResult<FormListItem>> {
+    let lobjParams = new HttpParams().set('page', aNumPage);
+    lobjParams = lobjParams.set('pageSize', aNumPageSize);
+    if (aStrSearch) 
+    {
+      lobjParams = lobjParams.set('search', aStrSearch);
+    }
+    if (aFromDate) 
+    {
+      lobjParams = lobjParams.set('fromDate', aFromDate);
+    }
+    if (aToDate) 
+    {
+      lobjParams = lobjParams.set('toDate', aToDate);
+    } 
     return this.iobjHttp.get<PagedResult<FormListItem>>(this.istrBase, { params: lobjParams });
   }
 
@@ -46,8 +58,10 @@ export class FormService {
     return this.iobjHttp.get<ApiResult<FormVersion>>(`${this.istrBase}/versions/${aNumVersionId}`);
   }
 
-    getDashboardCount(): Observable<DashboardItems> {
+  getDashboardCount(): Observable<DashboardItems> {
       return this.iobjHttp.get<DashboardItems>(`${this.istrBase}/versions/dashboardcount`);
-    }
-
+  }
+  createTemplate(aObjTemplate: CreateFormTemplateRequest): Observable<ApiResult<FormListItem>> {
+    return this.iobjHttp.post<ApiResult<FormListItem>>(this.istrBase, aObjTemplate);
+  }
 }

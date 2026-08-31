@@ -12,7 +12,7 @@ INSERT  INTO ControlTypes (
     ComponentName,
     DisplayOrder
 )
-VALUES                   ('TextBox', 'Text', 'Basic', 'dfg-textbox', 1),
+VALUES ('TextBox', 'Text', 'Basic', 'dfg-textbox', 1),
 ('Number', 'Number', 'Basic', 'dfg-number', 2),
 ('Date', 'Date', 'Basic', 'dfg-date', 3),
 ('Dropdown', 'Dropdown', 'Choice', 'dfg-dropdown', 4),

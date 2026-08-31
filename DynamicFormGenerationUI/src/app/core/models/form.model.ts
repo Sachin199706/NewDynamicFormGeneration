@@ -11,6 +11,12 @@ export interface FormListItem {
     currentVersionId?: number;
 }
 
+export interface CreateFormTemplateRequest {
+    formName: string;
+    formCode: string;
+    description?: string;
+}
+
 export interface FormControlDef {
     controlId?: number;
     controlKey: string;

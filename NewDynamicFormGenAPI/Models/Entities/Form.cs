@@ -6,10 +6,6 @@ public class Form
     public string FormCode { get; set; } = null!;
     public string FormName { get; set; } = null!;
     public string? Description { get; set; }
-    public string Status { get; set; } = "Draft";
-    public int? CurrentVersionId { get; set; }
-    public FormVersion? CurrentVersion { get; set; }
-    public bool IsActive { get; set; } = true;
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     public DateTime? ModifiedDate { get; set; }
 
@@ -23,7 +19,7 @@ public class FormVersion
     public int FormId { get; set; }
     public Form Form { get; set; } = null!;
     public int VersionNo { get; set; }
-    public string? VersionName { get; set; }
+    public string? VersionDesciption { get; set; }
     public string Status { get; set; } = "Draft";
 
     /// <summary>Full snapshot: every control on the canvas, each with its own embedded

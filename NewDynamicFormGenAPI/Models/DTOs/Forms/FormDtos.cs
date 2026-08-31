@@ -7,15 +7,14 @@ public class FormListItemDto
     public string FormCode { get; set; } = null!;
     public string FormName { get; set; } = null!;
     public string? Description { get; set; }
-    public string Status { get; set; } = null!;
-    public int? CurrentVersionId { get; set; }
-    public int? CurrentVersionNo { get; set; }
+    public DateTime CreatedDate { get; set; }
     public DateTime ModifiedDate { get; set; }
 }
 
 public class CreateFormDto
 {
     public string FormName { get; set; } = null!;
+    public string FormCode { get; set; } = null!;
     public string? Description { get; set; }
 }
 
