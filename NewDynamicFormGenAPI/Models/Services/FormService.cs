@@ -1,9 +1,10 @@
-using System.Text.Json;
-using NewDynamicFormGenAPI.Models.Entities;
+using Microsoft.AspNetCore.Mvc;
 using NewDynamicFormGenAPI.Models.Common;
 using NewDynamicFormGenAPI.Models.DTOs.Forms;
+using NewDynamicFormGenAPI.Models.Entities;
 using NewDynamicFormGenAPI.Models.Enums;
 using NewDynamicFormGenAPI.Models.Interfaces;
+using System.Text.Json;
 
 namespace NewDynamicFormGenAPI.Models.Services;
 
@@ -20,12 +21,20 @@ public class FormService : IFormService
         _ruleEngine = ruleEngine;
     }
 
-    public async Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch)
+    public async Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate)
     {
-        var lobjQuery = _uow.Repository<Form>().Query().Where(f => f.IsActive);
+        var lobjQuery = _uow.Repository<Form>().Query();
 
         if (!string.IsNullOrWhiteSpace(aStrSearch))
-            lobjQuery = lobjQuery.Where(f => f.FormName.Contains(aStrSearch));
+            lobjQuery = lobjQuery.Where(f => f.FormName.Contains(aStrSearch) || 
+            (!string.IsNullOrEmpty(f.Description) && f.Description.Contains(aStrSearch))
+            || f.FormCode.Contains(aStrSearch));
+
+        if (fromDate.HasValue)
+            lobjQuery = lobjQuery.Where(f => f.CreatedDate >= fromDate);
+
+        if (toDate.HasValue)
+            lobjQuery = lobjQuery.Where(f => f.CreatedDate <= toDate);
 
         var lnumTotal = lobjQuery.Count();
         var larrItems = lobjQuery
@@ -37,13 +46,34 @@ public class FormService : IFormService
                 FormCode = f.FormCode,
                 FormName = f.FormName,
                 Description = f.Description,
-                Status = f.Status,
-                CurrentVersionId = f.CurrentVersionId,
-                CurrentVersionNo = f.CurrentVersion != null ? f.CurrentVersion.VersionNo : (int?)null,
                 ModifiedDate = f.ModifiedDate ?? f.CreatedDate
             }).ToList();
 
         return new PagedResult<FormListItemDto> { Items = larrItems, Page = aNumPage, PageSize = aNumPageSize, TotalCount = lnumTotal };
+    }
+
+    public async Task<Result<FormListItemDto>> CreateFormAsync(CreateFormDto aObjDto)
+    {
+        var lobjForm = new Form
+        {
+            FormName = aObjDto.FormName,
+            FormCode = aObjDto.FormCode,
+            Description = aObjDto.Description,
+            CreatedDate = DateTime.UtcNow
+        };
+
+        await _uow.Repository<Form>().AddAsync(lobjForm);
+        await _uow.SaveChangesAsync();
+
+        return Result<FormListItemDto>.Ok(new FormListItemDto
+        {
+            FormId = lobjForm.FormId,
+            FormName = lobjForm.FormName,
+            FormCode = lobjForm.FormCode,
+            Description = lobjForm.Description,
+            CreatedDate = lobjForm.CreatedDate,
+            ModifiedDate = lobjForm.ModifiedDate ?? lobjForm.CreatedDate
+        });
     }
 
     public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto)
@@ -55,7 +85,6 @@ public class FormService : IFormService
             {
                 FormCode = Guid.NewGuid().ToString("N")[..12],
                 FormName = aObjDto.FormName ?? "Untitled Form",
-                Status = FormStatus.Draft,
                 CreatedDate = DateTime.UtcNow
             };
             await _uow.Repository<Form>().AddAsync(lobjForm);
@@ -91,10 +120,6 @@ public class FormService : IFormService
         var lobjFormEntity = await _uow.Repository<Form>().GetByIdAsync(lnumFormId);
         if (lobjFormEntity != null)
         {
-            if (lobjFormEntity.Status != FormStatus.Published)
-            {
-                lobjFormEntity.CurrentVersionId = lobjVersion.FormVersionId;
-            }
             lobjFormEntity.ModifiedDate = DateTime.UtcNow;
             _uow.Repository<Form>().Update(lobjFormEntity);
             await _uow.SaveChangesAsync();
@@ -154,8 +179,6 @@ public class FormService : IFormService
         var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
         if (lobjForm != null)
         {
-            lobjForm.Status = FormStatus.Published;
-            lobjForm.CurrentVersionId = aNumFormVersionId;
             _uow.Repository<Form>().Update(lobjForm);
         }
 

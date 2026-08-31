@@ -19,10 +19,17 @@ public class FormsController : ControllerBase
     // GET api/forms?page=1&pageSize=10&search=employee
     [HttpGet]
     public async Task<IActionResult> GetForms([FromQuery] int aNumPage = 1, [FromQuery] int aNumPageSize = 10,
-        [FromQuery] string? aStrSearch = null)
+        [FromQuery] string? search = null, [FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate=null)
     {
-        var lobjResult = await _formService.GetFormsAsync(aNumPage, aNumPageSize, aStrSearch);
+        var lobjResult = await _formService.GetFormsAsync(aNumPage, aNumPageSize, search, fromDate, toDate);
         return Ok(lobjResult);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateForm([FromBody] CreateFormDto aObjDto)
+    {
+        var lobjResult = await _formService.CreateFormAsync(aObjDto);
+        return lobjResult.Success ? Ok(lobjResult) : BadRequest(lobjResult);
     }
 
     // GET api/forms/{aNumFormId}/versions/latest
