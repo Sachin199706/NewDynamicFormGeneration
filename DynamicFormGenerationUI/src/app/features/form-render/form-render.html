@@ -1,3 +1,6 @@
+<div class="alert alert-info" *ngIf="iboolReadOnly">
+    Viewing a submitted response you cannot be submited.
+</div>
 <div class="p-4" style="max-width:700px; margin:0 auto;" *ngIf="payload">
     <h4 class="mb-3">{{ payload.formName }}</h4>
 
@@ -75,6 +78,6 @@
         </div>
         <div class="alert alert-success" *ngIf="submitted">Submitted successfully.</div>
 
-        <button type="submit" class="btn btn-primary" [disabled]="form.invalid">Submit</button>
+        <button type="submit" class="btn btn-primary" [disabled]="form.invalid" *ngIf="!iboolReadOnly">Submit</button>
     </form>
 </div>
