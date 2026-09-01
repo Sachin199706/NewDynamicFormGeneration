@@ -30,18 +30,37 @@ public class FormSubmissionsController : ControllerBase
         var lobjResult = await _submissionService.SubmitAsync(lobjDto, Request.Form.Files);
         return lobjResult.Success ? Ok(lobjResult) : BadRequest(lobjResult);
     }
-
-    [HttpGet("forms/{formId:int}/submissions")]
-    public async Task<IActionResult> GetSubmissions(int formId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
-    {
-        var result = await _submissionService.GetSubmissionsAsync(formId, page, pageSize);
-        return Ok(result);
-    }
-
     [HttpGet("submissions/{submissionId:int}")]
     public async Task<IActionResult> GetDetail(int submissionId)
     {
         var result = await _submissionService.GetDetailAsync(submissionId);
         return result.Success ? Ok(result) : NotFound(result);
+    }
+
+    [HttpPut("submissions/{aNumSubmissionId:int}/mark-read")]
+    public async Task<IActionResult> MarkAsRead(int aNumSubmissionId)
+    {
+        var lobjResult = await _submissionService.MarkAsReadAsync(aNumSubmissionId);
+        return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
+    }
+
+    [HttpGet("submissions")]
+    public async Task<IActionResult> GetAllSubmissions([FromQuery] SubmissionFilterDto aObjFilter)
+    {
+        var lobjResult = await _submissionService.GetAllSubmissionsAsync(aObjFilter);
+        return Ok(lobjResult);
+    }
+
+    [HttpGet("submissions/stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var lobjResult = await _submissionService.GetStatsAsync();
+        return Ok(lobjResult);
+    }
+    [HttpGet("submissions/stats/{inumID:int}")]
+    public async Task<IActionResult> GetStats( int inumID)
+    {
+        var lobjResult = await _submissionService.GetStatsAsync(inumID);
+        return Ok(lobjResult);
     }
 }

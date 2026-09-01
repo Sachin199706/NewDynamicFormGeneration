@@ -1,0 +1,19 @@
+<nav *ngIf="inumTotalPages > 0">
+    <ul class="pagination pagination-sm mb-0">
+        <li class="page-item" [class.disabled]="inumCurrentPage === 1">
+            <a class="page-link" (click)="goToPage(1)">&laquo;</a>
+        </li>
+        <li class="page-item" [class.disabled]="inumCurrentPage === 1">
+            <a class="page-link" (click)="goToPage(inumCurrentPage - 1)">&lsaquo;</a>
+        </li>
+        <li class="page-item" *ngFor="let p of iarrPageNumbers" [class.active]="inumCurrentPage === p">
+            <a class="page-link" (click)="goToPage(p)">{{ p }}</a>
+        </li>
+        <li class="page-item" [class.disabled]="inumCurrentPage === inumTotalPages">
+            <a class="page-link" (click)="goToPage(inumCurrentPage + 1)">&rsaquo;</a>
+        </li>
+        <li class="page-item" [class.disabled]="inumCurrentPage === inumTotalPages">
+            <a class="page-link" (click)="goToPage(inumTotalPages)">&raquo;</a>
+        </li>
+    </ul>
+</nav>

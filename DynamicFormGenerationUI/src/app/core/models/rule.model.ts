@@ -50,12 +50,6 @@ export interface SubmitFormRequest {
     values: Record<string, any>;
 }
 
-export interface SubmissionListItem {
-    submissionId: number;
-    formId: number;
-    submittedOn: string;
-}
-
 export interface SubmissionDetail {
     submissionId: number;
     formId: number;
@@ -63,4 +57,30 @@ export interface SubmissionDetail {
     versionNo: number;
     submittedOn: string;
     values: Record<string, any>;
+}
+
+export interface SubmissionOverviewItem {
+  submissionId: number;
+  submissionCode: string;
+  formId: number;
+  formName: string;
+  versionNo: number;
+  submittedOn: string;
+  isRead: boolean;
+}
+
+export interface SubmissionStats {
+  totalSubmissions: number;
+  unreadSubmissions: number;
+  readSubmissions: number;
+}
+
+export interface SubmissionFilter {
+  search?: string;
+  formId?: number | null;
+  isRead?: boolean | null;
+  fromDate?: string;
+  toDate?: string;
+  page: number;
+  pageSize: number;
 }

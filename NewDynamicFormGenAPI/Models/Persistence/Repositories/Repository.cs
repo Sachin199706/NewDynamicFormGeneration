@@ -1,7 +1,8 @@
-using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using NewDynamicFormGenAPI.Models.Interfaces;
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
 
 namespace FormGen.Infrastructure.Persistence.Repositories
 {
@@ -20,6 +21,8 @@ namespace FormGen.Infrastructure.Persistence.Repositories
 
         public async Task<List<T>> GetAllAsync() => await _set.ToListAsync();
 
+        public async Task<List<T>> GetAllAsync(Expression<Func<T, bool>> predicate)=> await _set.Where(predicate).ToListAsync();
+        
         public IQueryable<T> Query() => _set.AsQueryable();
 
         public async Task AddAsync(T entity) => await _set.AddAsync(entity);

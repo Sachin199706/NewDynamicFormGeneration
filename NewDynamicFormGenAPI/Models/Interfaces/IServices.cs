@@ -36,6 +36,9 @@ public interface IRuleEngineService
 public interface ISubmissionService
 {
     Task<Result<int>> SubmitAsync(SubmitFormDto aObjDto, IFormFileCollection aObjFiles);
-    Task<PagedResult<SubmissionListItemDto>> GetSubmissionsAsync(int aNumFormId, int aNumPage, int aNumPageSize);
     Task<Result<SubmissionDetailDto>> GetDetailAsync(int aNumSubmissionId);
+    Task<Result<bool>> MarkAsReadAsync(int aNumSubmissionId);
+    Task<PagedResult<SubmissionOverviewItemDto>> GetAllSubmissionsAsync(SubmissionFilterDto aObjFilter);
+    Task<SubmissionStatsDto> GetStatsAsync();
+    Task<SubmissionStatsDto> GetStatsAsync(int anumID);
 }

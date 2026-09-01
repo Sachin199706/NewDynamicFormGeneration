@@ -10,5 +10,10 @@ public class FormSubmission
 
     /// <summary>Full raw snapshot of submitted key/value pairs, for quick re-display.</summary>
     public string JsonData { get; set; } = "{}";
+
+    public bool IsRead { get; set; } = false;
+
+    /// <summary>{FormCode}-v{VersionNo}-{SubmissionId} — built after insert, once SubmissionId exists.</summary>
+    public string SubmissionCode { get; set; } = null!;
 }
 

@@ -35,16 +35,71 @@ export class FormRender implements OnInit {
   }
 
   ngOnInit(): void {
-    this.formId = Number(this.route.snapshot.paramMap.get('formId'));
-    this.versionId = Number(this.route.snapshot.paramMap.get('versionId'));
+  this.formId = Number(this.route.snapshot.paramMap.get('formId'));
+  this.versionId = Number(this.route.snapshot.paramMap.get('versionId'));
+  const lStrSubmissionIdParam = this.route.snapshot.queryParamMap.get('submissionId');
 
-    this.formService.getRenderPayload(this.formId, this.versionId).subscribe(res => {
-      if (!res.success || !res.data) return;
-      this.payload = res.data;
-      this.buildForm(res.data);
-    });
-  }
+  this.formService.getRenderPayload(this.formId, this.versionId).subscribe(res => {
+    if (!res.success || !res.data) return;
+    this.payload = res.data;
+    this.buildForm(res.data);
 
+    if (lStrSubmissionIdParam) {
+      this.loadSubmissionForViewing(Number(lStrSubmissionIdParam));
+    }
+  });
+}
+
+iboolReadOnly = false;
+
+private loadSubmissionForViewing(aNumSubmissionId: number): void {
+  this.submissionService.getDetail(aNumSubmissionId).subscribe(res => {
+    if (!res.success || !res.data) return;
+
+    this.form.patchValue(res.data.values);
+
+    console.log('FORM VALUES:', this.form.getRawValue());
+
+    const dropdown = this.payload?.controls.find(
+      c => c.controlTypeCode === 'Dropdown'
+    );
+
+    const radio = this.payload?.controls.find(
+      c => c.controlTypeCode === 'Radio'
+    );
+
+    const checkbox = this.payload?.controls.find(
+      c => c.controlTypeCode === 'CheckboxList'
+    );
+
+    console.log('Dropdown value:',
+      dropdown ? this.form.get(dropdown.controlKey)?.value : null
+    );
+
+    console.log('Dropdown options:',
+      dropdown ? this.seedOptions(dropdown) : []
+    );
+
+    console.log('Radio value:',
+      radio ? this.form.get(radio.controlKey)?.value : null
+    );
+
+    console.log('Radio options:',
+      radio ? this.seedOptions(radio) : []
+    );
+
+    console.log('Checkbox value:',
+      checkbox ? this.form.get(checkbox.controlKey)?.value : null
+    );
+
+    console.log('Checkbox options:',
+      checkbox ? this.seedOptions(checkbox) : []
+    );
+
+    this.form.disable();
+    this.iboolReadOnly = true;
+  });
+}
   private buildForm(payload: FormRenderPayload): void {
     const group: Record<string, any> = {};
 

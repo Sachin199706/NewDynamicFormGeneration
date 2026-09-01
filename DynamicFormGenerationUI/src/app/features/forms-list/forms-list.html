@@ -20,7 +20,7 @@
                 <td class="d-flex gap-2">
                     <a [routerLink]="['/forms/builder', f.formId]" [queryParams]="{ version: f.formVersionId }">Edit</a>
                     <a [routerLink]="['/forms', f.formId, 'versions', f.formVersionId, 'fill']" target="_blank">View</a>
-                    <a [routerLink]="['/forms', f.formId, 'submissions']">Submissions</a>
+                  <a [routerLink]="['/submissions']" [queryParams]="{ formId: f.formId }">Submissions</a>
                 </td>
             </tr>
             <tr *ngIf="iarrForms.length === 0">
