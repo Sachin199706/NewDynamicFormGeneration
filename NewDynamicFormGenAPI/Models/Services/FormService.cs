@@ -76,6 +76,30 @@ public class FormService : IFormService
         });
     }
 
+    public async Task<Result<FormListItemDto>> UpdateFormAsync(int aNumFormId, CreateFormDto aObjDto)
+    {
+        var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
+        if (lobjForm is null)
+            return Result<FormListItemDto>.Fail("Form template not found.");
+
+        lobjForm.FormName = aObjDto.FormName;
+        lobjForm.FormCode = aObjDto.FormCode;
+        lobjForm.Description = aObjDto.Description;
+        lobjForm.ModifiedDate = DateTime.UtcNow;
+        _uow.Repository<Form>().Update(lobjForm);
+        await _uow.SaveChangesAsync();
+
+        return Result<FormListItemDto>.Ok(new FormListItemDto
+        {
+            FormId = lobjForm.FormId,
+            FormName = lobjForm.FormName,
+            FormCode = lobjForm.FormCode,
+            Description = lobjForm.Description,
+            CreatedDate = lobjForm.CreatedDate,
+            ModifiedDate = lobjForm.ModifiedDate.Value
+        });
+    }
+
     public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto)
     {
         int lnumFormId;
@@ -212,6 +236,55 @@ public class FormService : IFormService
             Status = v.Status,
             ModifiedDate = v.CreatedDate
         }).ToList();
+    }
+
+    public async Task<PagedResult<FormVersionListItemDto>> GetVersionsAsync(int aNumFormId, int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate, string? status)
+    {
+        var lobjQuery = _uow.Repository<FormVersion>().Query()
+            .Where(v => v.FormId == aNumFormId);
+
+        if (!string.IsNullOrWhiteSpace(aStrSearch))
+            lobjQuery = lobjQuery.Where(v => v.Form.FormName.Contains(aStrSearch)
+                || v.FormVersionId.ToString().Contains(aStrSearch)
+                || v.FormId.ToString().Contains(aStrSearch)
+                || v.VersionNo.ToString().Contains(aStrSearch)
+                || v.Status.Contains(aStrSearch));
+
+        if (!string.IsNullOrWhiteSpace(status) && !status.Equals("All", StringComparison.OrdinalIgnoreCase))
+            lobjQuery = lobjQuery.Where(v => v.Status == status);
+
+        if (fromDate.HasValue)
+            lobjQuery = lobjQuery.Where(v => v.CreatedDate >= fromDate.Value);
+
+        if (toDate.HasValue)
+            lobjQuery = lobjQuery.Where(v => v.CreatedDate < toDate.Value.AddDays(1));
+
+        var lnumTotal = lobjQuery.Count();
+        var larrVersions = lobjQuery
+            .OrderByDescending(v => v.CreatedDate)
+            .Skip((aNumPage - 1) * aNumPageSize)
+            .Take(aNumPageSize)
+            .ToList();
+        var lstrFormName = _uow.Repository<Form>().Query()
+            .Where(f => f.FormId == aNumFormId)
+            .Select(f => f.FormName)
+            .FirstOrDefault() ?? "Unknown";
+
+        return new PagedResult<FormVersionListItemDto>
+        {
+            Items = larrVersions.Select(v => new FormVersionListItemDto
+            {
+                FormId = v.FormId,
+                FormVersionId = v.FormVersionId,
+                FormName = lstrFormName,
+                VersionNo = v.VersionNo,
+                Status = v.Status,
+                ModifiedDate = v.CreatedDate
+            }).ToList(),
+            Page = aNumPage,
+            PageSize = aNumPageSize,
+            TotalCount = lnumTotal
+        };
     }
 
     public async Task<List<FormPublishHistoryItemDto>> GetPublishHistoryAsync()

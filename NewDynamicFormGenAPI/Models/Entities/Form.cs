@@ -19,7 +19,7 @@ public class FormVersion
     public int FormId { get; set; }
     public Form Form { get; set; } = null!;
     public int VersionNo { get; set; }
-    public string? VersionDesciption { get; set; }
+    public string? VersionDescription { get; set; }
     public string Status { get; set; } = "Draft";
 
     /// <summary>Full snapshot: every control on the canvas, each with its own embedded

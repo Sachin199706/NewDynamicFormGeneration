@@ -5,7 +5,7 @@
             <!-- Header -->
             <div class="modal-header">
                 <h5 class="modal-title">
-                    Create Form Template
+                    {{ template ? 'Edit Form Template' : 'Create Form Template' }}
                 </h5>
                 <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
             </div>
@@ -98,7 +98,7 @@
                     [disabled]="templateForm.invalid"
                     (click)="createTemplate()">
 
-                    Create Template
+                    {{ template ? 'Update Template' : 'Create Template' }}
 
                 </button>
 

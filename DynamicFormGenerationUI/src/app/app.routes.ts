@@ -30,10 +30,17 @@ export const routes: Routes = [{ path: '', redirectTo: 'dashboard', pathMatch: '
   loadComponent: () => import('./features/submissions-overview/submissions-overview').then(m => m.SubmissionsOverview)
 },
 {
+    path:'formtemplates/:formTemplateId/versions',
+    loadComponent: () => import('./features/form-version/form-version').then(m => m.FormsVersion)
+},
+{
     path: 'formtemplates',
     loadComponent: () => import('./features/form-template/form-template').then(m => m.FormTemplate)
 },
-{ path: '**', redirectTo: 'dashboard' }
+{ 
+    path: '**', 
+    redirectTo: 'dashboard'
+}
 ];
 
 

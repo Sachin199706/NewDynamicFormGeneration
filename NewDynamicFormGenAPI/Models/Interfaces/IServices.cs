@@ -10,6 +10,8 @@ public interface IFormService
 {
     Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate);
     Task<Result<FormListItemDto>> CreateFormAsync(CreateFormDto aObjDto);
+    Task<Result<FormListItemDto>> UpdateFormAsync(int aNumFormId, CreateFormDto aObjDto);
+    Task<PagedResult<FormVersionListItemDto>> GetVersionsAsync(int aNumFormId, int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate, string? status);
     Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto);
     Task<Result<FormVersionDto>> GetLatestVersionAsync(int aNumFormId);
     Task<Result<FormRenderDto>> GetRenderPayloadAsync(int aNumFormId, int aNumFormVersionId);
