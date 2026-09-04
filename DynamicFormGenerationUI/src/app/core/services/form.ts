@@ -50,6 +50,15 @@ export class FormService {
   getAllVersions(): Observable<FormVersionListItem[]> {
     return this.iobjHttp.get<FormVersionListItem[]>(`${this.istrBase}/versions/all`);
   }
+
+  getVersions(aNumFormId: number, aNumPage = 1, aNumPageSize = 10, aStrSearch?: string, aFromDate?: string | null, aToDate?: string | null, aStrStatus?: string): Observable<PagedResult<FormVersionListItem>> {
+    let lobjParams = new HttpParams().set('page', aNumPage).set('pageSize', aNumPageSize);
+    if (aStrSearch) lobjParams = lobjParams.set('search', aStrSearch);
+    if (aFromDate) lobjParams = lobjParams.set('fromDate', aFromDate);
+    if (aToDate) lobjParams = lobjParams.set('toDate', aToDate);
+    if (aStrStatus && aStrStatus !== 'All') lobjParams = lobjParams.set('status', aStrStatus);
+    return this.iobjHttp.get<PagedResult<FormVersionListItem>>(`${this.istrBase}/${aNumFormId}/versions`, { params: lobjParams });
+  }
   getPublishHistory(): Observable<FormPublishHistoryItem[]> {
     return this.iobjHttp.get<FormPublishHistoryItem[]>(`${this.istrBase}/publish-history`);
   }
@@ -63,5 +72,9 @@ export class FormService {
   }
   createTemplate(aObjTemplate: CreateFormTemplateRequest): Observable<ApiResult<FormListItem>> {
     return this.iobjHttp.post<ApiResult<FormListItem>>(this.istrBase, aObjTemplate);
+  }
+
+  updateTemplate(aNumFormId: number, aObjTemplate: CreateFormTemplateRequest): Observable<ApiResult<FormListItem>> {
+    return this.iobjHttp.put<ApiResult<FormListItem>>(`${this.istrBase}/${aNumFormId}`, aObjTemplate);
   }
 }

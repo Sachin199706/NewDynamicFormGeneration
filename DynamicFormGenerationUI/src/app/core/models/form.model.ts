@@ -17,6 +17,10 @@ export interface CreateFormTemplateRequest {
     description?: string;
 }
 
+export interface UpdateFormTemplateRequest extends CreateFormTemplateRequest {
+    formId: number;
+}
+
 export interface FormControlDef {
     controlId?: number;
     controlKey: string;

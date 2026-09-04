@@ -2,32 +2,46 @@
     <h3 class="mb-4">Dashboard</h3>
     <p>Overview of your forms and recent activity</p>
     <div class="row g-3 mb-4">
-        <div class="col-3">
+        <div class="col-2">
+            <div class="card p-3">
+                <div class="text-muted small">Form Templates</div>
+                <div class="fs-3 fw-bold">{{ inumTotal }}</div>
+                <div class="text-muted small">Form Templates</div>
+            </div>
+        </div>
+        <div class="col-2">
             <div class="card p-3">
                 <div class="text-muted small">Total Forms</div>
-                <div class="fs-3 fw-bold">{{ inumTotal }}</div>
+                <div class="fs-3 fw-bold">{{ inumTotalVersions }}</div>
                 <div class="text-muted small">All forms</div>
             </div>
         </div>
-        <div class="col-3">
+        <div class="col-2">
             <div class="card p-3">
                 <div class="text-muted small">Published</div>
                 <div class="fs-3 fw-bold">{{ inumPublished }}</div>
                 <div class="text-muted small">Currently Active</div>
             </div>
         </div>
-        <div class="col-3">
+        <div class="col-2">
             <div class="card p-3">
                 <div class="text-muted small">Draft</div>
                 <div class="fs-3 fw-bold">{{ inumDraft }}</div>
                 <div class="text-muted small">Forms in progress</div>
             </div>
         </div>
-        <div class="col-3">
+        <div class="col-2">
             <div class="card p-3">
                 <div class="text-muted small">Archived</div>
                 <div class="fs-3 fw-bold">{{ inumArchived }}</div>
                 <div class="text-muted small">Forms Inactive</div>
+            </div>
+        </div>
+        <div class="col-2">
+            <div class="card p-3">
+                <div class="text-muted small">Submissions</div>
+                <div class="fs-3 fw-bold">{{ inumSubmissions }}</div>
+                <div class="text-muted small">Total Submissions</div>
             </div>
         </div>
     </div>

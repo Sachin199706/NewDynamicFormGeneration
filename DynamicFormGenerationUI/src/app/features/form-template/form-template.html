@@ -95,12 +95,14 @@
                         <div class="d-flex justify-content-end gap-3">
                             <a
                                 [routerLink]="['/forms', f.formId]">
-                                Open
+                                Add New Version
                             </a>
-                            <a
-                                [routerLink]="['/forms', f.formId, 'versions']">
+                            <button type="button" class="btn btn-link p-0" (click)="editFormTemplate(f)">
+                                Edit
+                            </button>
+                            <button type="button" class="btn btn-link p-0" (click)="openVersions(f)">
                                 Versions
-                            </a>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -127,7 +129,9 @@
     <!-- Create Form Template -->
     <app-create-form-template
         *ngIf="isCreateTemplateVisible"
+        [template]="editingTemplate"
         (templateCreated)="onTemplateCreated($event)"
+        (templateUpdated)="onTemplateUpdated($event)"
         (closed)="closeCreateTemplate()">
     </app-create-form-template>
 

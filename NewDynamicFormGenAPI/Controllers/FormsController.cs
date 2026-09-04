@@ -32,12 +32,28 @@ public class FormsController : ControllerBase
         return lobjResult.Success ? Ok(lobjResult) : BadRequest(lobjResult);
     }
 
+    [HttpPut("{aNumFormId:int}")]
+    public async Task<IActionResult> UpdateForm(int aNumFormId, [FromBody] CreateFormDto aObjDto)
+    {
+        var lobjResult = await _formService.UpdateFormAsync(aNumFormId, aObjDto);
+        return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
+    }
+
     // GET api/forms/{aNumFormId}/versions/latest
     [HttpGet("{aNumFormId:int}/versions/latest")]
     public async Task<IActionResult> GetLatestVersion(int aNumFormId)
     {
         var lobjResult = await _formService.GetLatestVersionAsync(aNumFormId);
         return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
+    }
+
+    [HttpGet("{aNumFormId:int}/versions")]
+    public async Task<IActionResult> GetVersions(int aNumFormId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null, [FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null,
+        [FromQuery] string? status = null)
+    {
+        var lobjResult = await _formService.GetVersionsAsync(aNumFormId, page, pageSize, search, fromDate, toDate, status);
+        return Ok(lobjResult);
     }
 
     // POST api/forms/versions   — save a new design version (create or update)

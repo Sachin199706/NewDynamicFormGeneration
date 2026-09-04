@@ -13,9 +13,11 @@ import { CommonModule } from '@angular/common';
 export class Dashboard implements OnInit {
   iarrForms: FormListItem[] = [];
   inumTotal: number = 0;
+  inumTotalVersions: number = 0;
   inumPublished: number = 0;
   inumDraft: number = 0;
   inumArchived: number = 0;
+  inumSubmissions: number = 0;
   iarrDraftVersions: FormVersionListItem[] = [];
   
 
