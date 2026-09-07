@@ -10,11 +10,7 @@ export const routes: Routes = [{ path: '', redirectTo: 'dashboard', pathMatch: '
     loadComponent: () => import('./features/forms-list/forms-list').then(m => m.FormsList)
 },
 {
-    path: 'forms/builder',
-    loadComponent: () => import('./features/form-builder/form-builder').then(m => m.FormBuilder)
-},
-{
-    path: 'forms/builder/:formId',
+    path: 'forms/builder/:tid',
     loadComponent: () => import('./features/form-builder/form-builder').then(m => m.FormBuilder)
 },
 {

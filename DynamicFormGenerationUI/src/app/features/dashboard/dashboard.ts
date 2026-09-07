@@ -33,6 +33,7 @@ export class Dashboard implements OnInit {
         this.inumDraft = dashboardCounts.draftForms;
         this.inumPublished = dashboardCounts.publishedForms;
         this.inumTotal = dashboardCounts.totalForms;
+        this.inumTotalVersions = dashboardCounts.totalVersions;
     });  
 }
 }

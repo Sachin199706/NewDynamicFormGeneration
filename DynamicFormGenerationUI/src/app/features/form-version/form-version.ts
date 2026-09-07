@@ -26,7 +26,7 @@ export class FormsVersion implements OnInit {
   }
   ngOnInit():void
   {
-      this.inumFormTemplateId = Number(this.route.snapshot.paramMap.get('inumFormTemplateId'));
+      this.inumFormTemplateId = Number(this.route.snapshot.paramMap.get('formTemplateId'));
       this.strTemplateName = String(this.route.snapshot.queryParamMap.get('tname'));
       this.search();
 }
