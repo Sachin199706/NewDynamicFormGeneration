@@ -42,5 +42,18 @@ namespace NewDynamicFormGenAPI.Models.Services
                 File.Delete(lstrFullPath);
             }
         }
+
+        public string? GetFilePath(string aStrStoredFileName)
+        {
+            if (string.IsNullOrWhiteSpace(aStrStoredFileName)) return null;
+
+            var lstrSafeName = Path.GetFileName(aStrStoredFileName);
+            if (!string.Equals(lstrSafeName, aStrStoredFileName, StringComparison.Ordinal)) return null;
+
+            var lstrFullPath = Path.Combine(GetUploadsRoot(), lstrSafeName);
+            return File.Exists(lstrFullPath) ? lstrFullPath : null;
+        }
+
+        private string GetUploadsRoot() => Path.Combine(_env.ContentRootPath, "App_Data", "Uploads");
     }
 }

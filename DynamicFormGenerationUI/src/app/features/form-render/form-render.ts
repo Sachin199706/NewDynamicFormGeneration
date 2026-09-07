@@ -7,6 +7,7 @@ import { FormService } from '../../core/services/form';
 import { SubmissionService } from '../../core/services/submission';
 import { FormRule } from '../../core/models/rule.model';
 import { RuleEngineService } from '../../core/services/rule-engine';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-form-render',
@@ -228,4 +229,35 @@ private loadSubmissionForViewing(aNumSubmissionId: number): void {
       }
     });
   }
+
+  /** Stored filename held by a File/Image control, or '' when nothing was uploaded. */
+storedFileName(aStrControlKey: string): string {
+  const lobjValue = this.form.get(aStrControlKey)?.value;
+  return typeof lobjValue === 'string' ? lobjValue : '';
+}
+
+/** Inline URL — what <img src> points at. */
+fileUrl(aStrStoredFileName: string): string {
+  return `${environment.apiUrl}/files/${encodeURIComponent(aStrStoredFileName)}`;
+}
+
+/** Attachment URL — what the Download link points at. */
+downloadUrl(aStrStoredFileName: string): string {
+  return `${this.fileUrl(aStrStoredFileName)}?download=true`;
+}
+
+/** Stored names are "{Guid}_{originalName}" — show the user only the original part. */
+displayFileName(aStrStoredFileName: string): string {
+  if (!aStrStoredFileName) return '';
+
+  const lnumIndex = aStrStoredFileName.indexOf('_');
+  if (lnumIndex <= 0) return aStrStoredFileName;
+
+  const lstrPrefix = aStrStoredFileName.substring(0, lnumIndex);
+  const lobjGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  return lobjGuidPattern.test(lstrPrefix)
+    ? aStrStoredFileName.substring(lnumIndex + 1)
+    : aStrStoredFileName;
+}
 }

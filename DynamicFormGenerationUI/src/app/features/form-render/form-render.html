@@ -48,15 +48,49 @@
                         </div>
                     </div>
 
+                    <!-- A file input can never be given a stored filename by script (browser security),
+     so read-only mode renders the name and a download link instead of the input. -->
                     <div *ngSwitchCase="'File'">
-                        <input type="file" class="form-control" (change)="onFileSelected(c.controlKey, $event)" />
+                        <input *ngIf="!iboolReadOnly" type="file" class="form-control"
+                            (change)="onFileSelected(c.controlKey, $event)" />
+
+                        <div *ngIf="iboolReadOnly && storedFileName(c.controlKey)"
+                            class="d-flex align-items-center gap-2">
+                            <input type="text" class="form-control"
+                                [value]="displayFileName(storedFileName(c.controlKey))" disabled />
+                            <a class="btn btn-outline-primary btn-sm text-nowrap"
+                                [href]="downloadUrl(storedFileName(c.controlKey))" target="_blank"
+                                rel="noopener">Download</a>
+                        </div>
+
+                        <div *ngIf="iboolReadOnly && !storedFileName(c.controlKey)"
+                            class="form-control bg-light text-muted">No file uploaded</div>
                     </div>
 
                     <div *ngSwitchCase="'Image'">
-                        <input type="file" accept="image/*" class="form-control"
+                        <input *ngIf="!iboolReadOnly" type="file" accept="image/*" class="form-control"
                             (change)="onFileSelected(c.controlKey, $event)" />
-                        <img *ngIf="imagePreviewUrls[c.controlKey]" [src]="imagePreviewUrls[c.controlKey]"
+
+                        <img *ngIf="!iboolReadOnly && imagePreviewUrls[c.controlKey]"
+                            [src]="imagePreviewUrls[c.controlKey]"
                             style="max-width:150px; max-height:150px; margin-top:8px; border-radius:6px; display:block;" />
+
+                        <ng-container *ngIf="iboolReadOnly">
+                            <div *ngIf="storedFileName(c.controlKey)">
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="text" class="form-control"
+                                        [value]="displayFileName(storedFileName(c.controlKey))" disabled />
+                                    <a class="btn btn-outline-primary btn-sm text-nowrap"
+                                        [href]="downloadUrl(storedFileName(c.controlKey))" target="_blank"
+                                        rel="noopener">Download</a>
+                                </div>
+                                <img [src]="fileUrl(storedFileName(c.controlKey))"
+                                    style="max-width:150px; max-height:150px; margin-top:8px; border-radius:6px; display:block;" />
+                            </div>
+
+                            <div *ngIf="!storedFileName(c.controlKey)" class="form-control bg-light text-muted">No image
+                                uploaded</div>
+                        </ng-container>
                     </div>
 
 

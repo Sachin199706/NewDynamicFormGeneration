@@ -4,4 +4,5 @@ public interface IFileStorageService
 {
     Task<string> SaveFileAsync(IFormFile aObjFile);
     void DeleteFile(string aStrStoredFileName);
+    string? GetFilePath(string aStrStoredFileName);
 }

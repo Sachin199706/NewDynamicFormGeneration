@@ -14,13 +14,16 @@ namespace FormGen.Application.Services
         private readonly IRuleEngineService _ruleEngine;
         private readonly IFileStorageService _fileStorage;
         private readonly IMapper _mapper;
+        private readonly IWebHostEnvironment _env;
 
-        public SubmissionService(IUnitOfWork uow, IRuleEngineService ruleEngine, IFileStorageService fileStorage, IMapper mapper)
+        public SubmissionService(IUnitOfWork uow, IRuleEngineService ruleEngine, IFileStorageService fileStorage, IMapper mapper, IWebHostEnvironment env)
         {
             _uow = uow;
             _ruleEngine = ruleEngine;
             _fileStorage = fileStorage;
             _mapper = mapper;
+            _env = env;
+
         }
 
         public async Task<Result<int>> SubmitAsync(SubmitFormDto aobjDto, IFormFileCollection aObjFiles)
