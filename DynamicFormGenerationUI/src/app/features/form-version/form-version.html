@@ -24,7 +24,8 @@
 
         <div class="d-flex gap-2">
             <a
-                routerLink="/forms/builder"
+                [routerLink]="['/forms/builder']"
+                [queryParams]="{ tid: inumFormTemplateId, tname: strTemplateName }"
                 class="btn btn-primary">
                 + Create Version
             </a>

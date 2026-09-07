@@ -22,7 +22,6 @@
                 </label>
                 <input type="date" class="form-control" [(ngModel)]="dtFromDate" />
             </div>
-
             <!-- To Date -->
             <div class="col-md-2">
                 <label class="form-label">
@@ -32,22 +31,15 @@
                     type="date"
                     class="form-control"
                     [(ngModel)]="dtToDate">
-
             </div>
-
-
             <!-- Buttons -->
             <div class="col-md-3 d-flex align-items-end gap-2">
-
                 <button
                     type="button"
                     class="btn btn-primary"
                     (click)="search()">
-
                     Search
-
                 </button>
-
                 <button
                     type="button"
                     class="btn btn-outline-secondary"
@@ -79,13 +71,13 @@
             <tbody>
                 <tr *ngFor="let f of iarrForms">
                     <td>
-                            {{ f.formName }}
+                        {{ f.formName }}
                     </td>
                     <td>
                         {{ f.formCode }}
                     </td>
                     <td> <div class="text-truncate" style="max-width: 300px;" title="{{f.description}}">
-                         {{ f.description }}
+                        {{ f.description }}
                     </div>
                     </td>
                     <td>
@@ -94,7 +86,7 @@
                     <td class="text-end">
                         <div class="d-flex justify-content-end gap-3">
                             <a
-                                [routerLink]="['/forms', f.formId]">
+                                [routerLink]="['/forms/builder',f.formId]" [queryParams]="{ tname: f.formName }">
                                 Add New Version
                             </a>
                             <button type="button" class="btn btn-link p-0" (click)="editFormTemplate(f)">
@@ -108,24 +100,15 @@
                 </tr>
                 <!-- Empty -->
                 <tr *ngIf="iarrForms.length === 0">
-
                     <td
                         colspan="6"
                         class="text-muted text-center py-4">
-
                         No form templates found.
-
                     </td>
-
                 </tr>
-
             </tbody>
-
         </table>
-
     </div>
-
-
     <!-- Create Form Template -->
     <app-create-form-template
         *ngIf="isCreateTemplateVisible"
@@ -134,5 +117,4 @@
         (templateUpdated)="onTemplateUpdated($event)"
         (closed)="closeCreateTemplate()">
     </app-create-form-template>
-
 </div>

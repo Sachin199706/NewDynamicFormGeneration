@@ -83,6 +83,7 @@ export interface FormVersionListItem {
   versionNo: number;
   status: string;
   modifiedDate: string;
+  versionDescription:string;
 }
 
 export interface FormPublishHistoryItem {
@@ -95,6 +96,7 @@ export interface FormPublishHistoryItem {
 
 export interface DashboardItems {
     totalForms: number;
+    totalVersions: number;
     draftForms: number;
     publishedForms: number;
     archivedForms: number;

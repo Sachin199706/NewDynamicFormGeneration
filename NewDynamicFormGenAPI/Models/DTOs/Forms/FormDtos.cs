@@ -73,6 +73,7 @@ public class FormVersionListItemDto
     public int FormVersionId { get; set; }
     public string FormName { get; set; } = null!;
     public int VersionNo { get; set; }
+    public string VersionDescription { get; set; }
     public string Status { get; set; } = null!;
     public DateTime ModifiedDate { get; set; }
 }
@@ -95,6 +96,11 @@ public class DashboardDTO
     /// </summary>
     public int TotalForms { get; set; }
 
+    /// <summary>
+    /// Gets or sets the total number of forms versions.
+    /// </summary>
+    public int TotalVersions { get; set; }
+    
     /// <summary>
     /// Gets or sets the total number of Archived forms.
     /// </summary>

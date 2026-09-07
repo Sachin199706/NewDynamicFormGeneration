@@ -371,6 +371,7 @@ public class FormService : IFormService
         var lobjDashboard = new DashboardDTO
         {
             TotalForms = lobjForms.Count(),
+            TotalVersions = lobjVersions.Count(),
             DraftForms = lobjVersions.Where(v => v.Status == FormStatus.Draft).Select(v => v.FormId).Distinct().Count(),
             PublishedForms = lobjVersions.Where(v => v.Status == FormStatus.Published).Select(v => v.FormId).Distinct().Count(),
             ArchivedForms = lobjVersions.Where(v => v.Status == FormStatus.Archived).Select(v => v.FormId).Distinct().Count(),
@@ -385,7 +386,8 @@ public class FormService : IFormService
                     FormName = f.FormName,
                     VersionNo = v.VersionNo,
                     Status = v.Status,
-                    ModifiedDate = v.CreatedDate
+                    ModifiedDate = v.CreatedDate,
+                    VersionDescription = v.VersionDescription
                 }
             ).Take(5).ToList()
         };

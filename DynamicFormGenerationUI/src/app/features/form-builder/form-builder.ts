@@ -22,10 +22,10 @@ interface CanvasControl extends FormControlDef {
   styleUrl: './form-builder.scss',
 })
 export class FormBuilder implements OnInit {
-
-  inumFormId: number | null = null;
+  inumTemplateId: number | null = null;
   inumVersionId: number | null = null;
   istrFormName = '';
+  istrTemplateName = "";
   iarrControlTypes: ControlType[] = [];
   iarrCanvasControls: CanvasControl[] = [];
   iobjSelected: CanvasControl | null = null;
@@ -38,7 +38,6 @@ export class FormBuilder implements OnInit {
   iobjPreviewErrors: Record<string, string> = {};
   iobjSelectedFiles: Record<string, File> = {};
   iobjPreviewImageUrls: Record<string, string> = {};
-
   iboolPublished = false;
   istrPublishError = '';
 
@@ -49,15 +48,16 @@ export class FormBuilder implements OnInit {
   ngOnInit(): void {
     this.iobjControlTypeService.getAll().subscribe(types => this.iarrControlTypes = types);
 
-    const lStrIdParam = this.iobjRoute.snapshot.paramMap.get('formId');
+    const lStrIdParam = this.iobjRoute.snapshot.paramMap.get('tid');
+    const lStrTemplateName = this.iobjRoute.snapshot.queryParamMap.get('tname');
     const lStrVersionParam = this.iobjRoute.snapshot.queryParamMap.get('version');
 
     if (lStrIdParam) {
-      this.inumFormId = Number(lStrIdParam);
-
-      const lobjVersionLoad$ = lStrVersionParam
-        ? this.iobjFormService.getVersionById(Number(lStrVersionParam))
-        : this.iobjFormService.getLatestVersion(this.inumFormId);
+      this.inumTemplateId = Number(lStrIdParam);
+    if(lStrTemplateName)
+      this.istrTemplateName = String(lStrTemplateName);
+    
+      const lobjVersionLoad$ = this.iobjFormService.getVersionById(Number(lStrVersionParam));
 
       lobjVersionLoad$.subscribe(res => {
         if (res.success && res.data) {
@@ -235,7 +235,7 @@ export class FormBuilder implements OnInit {
 
   save(): void {
     const lobjDto = {
-      formId: this.inumFormId,
+      formId: this.inumTemplateId,
       formName: this.istrFormName || 'Untitled Form',
       formDefinitionJson: JSON.stringify({ controls: this.iarrCanvasControls }),
       layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
@@ -293,10 +293,10 @@ export class FormBuilder implements OnInit {
   }
 
   publish(): void {
-    if (!this.inumFormId || !this.inumVersionId) return;
+    if (!this.inumTemplateId || !this.inumVersionId) return;
     this.istrPublishError = '';
 
-    this.iobjFormService.publish(this.inumFormId, this.inumVersionId).subscribe({
+    this.iobjFormService.publish(this.inumTemplateId, this.inumVersionId).subscribe({
       next: (res) => {
         if (res.success) {
           this.iobjRouter.navigate(['/forms']);
