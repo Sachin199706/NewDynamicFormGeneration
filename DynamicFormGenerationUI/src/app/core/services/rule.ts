@@ -23,5 +23,4 @@ export class RuleService {
   deleteRule(aNumFormVersionId: number, aStrControlKey: string, aStrRuleType: string): Observable<void> {
     return this.iobjHttp.delete<void>(`${this.istrBase}/${aNumFormVersionId}/rules/${aStrControlKey}/${aStrRuleType}`);
   }
-
 }

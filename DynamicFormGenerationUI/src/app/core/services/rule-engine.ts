@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import {
-  CrossFieldDetails, DateRuleDetails, FormRule, MinMaxLengthDetails, RangeDetails, RegexDetails,
-  VisibilityDetails
+  CompareFieldsDetails, DateRuleDetails, FormatDetails, FormatKind, FormRule, LengthDetails,
+  PatternDetails, RangeDetails, RuleType, VisibilityDetails
 } from '../models/rule.model';
 
 /**
@@ -18,6 +18,32 @@ import {
  */
 @Injectable({ providedIn: 'root' })
 export class RuleEngineService {
+
+  /** Must stay identical to the pattern constants in the C# RuleEngineService, or a value
+   *  passes in the browser and then fails on submit. */
+  private static readonly FormatPatterns: Record<FormatKind, RegExp> = {
+    'Email': /^[^@\s]+@[^@\s]+\.[^@\s]+$/,
+    'Phone': /^\+?[0-9\s\-()]{7,15}$/,
+    'URL': /^https?:\/\/[^\s/$.?#].[^\s]*$/,
+    'Number': /^-?\d+(\.\d+)?$/,
+    'Alphanumeric': /^[A-Za-z0-9]+$/
+  };
+
+  /**
+   * Maps a stored rule name onto its current equivalent — mirrors NormalizeRuleType in
+   * the C# engine. Rules saved before issue #10 still carry the old names, so they are
+   * normalised on read rather than migrated.
+   */
+  private normalizeRuleType(aStrRuleType: RuleType): RuleType {
+    switch (aStrRuleType) {
+      case 'MinLength':
+      case 'MaxLength': return 'Length';
+      case 'Regex': return 'Pattern';
+      case 'Email': return 'Format';
+      case 'CrossField': return 'CompareFields';
+      default: return aStrRuleType;
+    }
+  }
 
   /** Builds an Angular ValidatorFn for one rule. Cross-field rules need the whole form group. */
   buildValidator(rule: FormRule, getFieldValue: (controlKey: string) => any): ValidatorFn {
@@ -97,24 +123,15 @@ export class RuleEngineService {
   }
 
   private evaluateOne(rule: FormRule, value: string, getFieldValue: (controlKey: string) => any): boolean {
-    switch (rule.ruleType) {
+    switch (this.normalizeRuleType(rule.ruleType)) {
       case 'Required':
         return value.trim().length > 0;
 
-      case 'MinLength': {
-        const d = this.parseDetails<MinMaxLengthDetails>(rule.ruleDetailsJson);
-        return value.length >= (d?.min ?? 0);
-      }
-
-      case 'MaxLength': {
-        const d = this.parseDetails<MinMaxLengthDetails>(rule.ruleDetailsJson);
-        return value.length <= (d?.max ?? Number.MAX_SAFE_INTEGER);
-      }
-
-      case 'Regex': {
-        const d = this.parseDetails<RegexDetails>(rule.ruleDetailsJson);
-        if (!d?.pattern) return true;
-        try { return new RegExp(d.pattern).test(value); } catch { return true; }
+      case 'Length': {
+        const d = this.parseDetails<LengthDetails>(rule.ruleDetailsJson);
+        const min = d?.min ?? 0;
+        const max = d?.max ?? Number.MAX_SAFE_INTEGER;
+        return value.length >= min && value.length <= max;
       }
 
       case 'Range': {
@@ -126,8 +143,19 @@ export class RuleEngineService {
         return num >= min && num <= max;
       }
 
-      case 'Email':
-        return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+      case 'Pattern': {
+        const d = this.parseDetails<PatternDetails>(rule.ruleDetailsJson);
+        if (!d?.pattern) return true;
+        // A malformed pattern is ignored rather than failing the field — the server does the same.
+        try { return new RegExp(d.pattern).test(value); } catch { return true; }
+      }
+
+      case 'Format': {
+        const d = this.parseDetails<FormatDetails>(rule.ruleDetailsJson);
+        // Legacy Email rules carry no `format` key, so Email is the default.
+        const pattern = RuleEngineService.FormatPatterns[d?.format ?? 'Email'];
+        return pattern ? pattern.test(value) : true;
+      }
 
       case 'Date': {
         const date = new Date(value);
@@ -145,8 +173,8 @@ export class RuleEngineService {
         }
       }
 
-      case 'CrossField': {
-        const d = this.parseDetails<CrossFieldDetails>(rule.ruleDetailsJson);
+      case 'CompareFields': {
+        const d = this.parseDetails<CompareFieldsDetails>(rule.ruleDetailsJson);
         if (!d?.compareControlKey) return true;
         const compareRaw = getFieldValue(d.compareControlKey);
         const compareValue = compareRaw === null || compareRaw === undefined ? '' : String(compareRaw);
@@ -160,6 +188,11 @@ export class RuleEngineService {
         return d.operator === '==' ? value === compareValue : value !== compareValue;
       }
 
+      // Needs the uploaded file's size, which the browser has but the value map does not.
+      // Enforced server-side in SubmissionService, before the file is written to disk.
+      case 'File':
+        return true;
+
       case 'Custom':
         return true;
 
@@ -171,7 +204,7 @@ export class RuleEngineService {
     }
   }
 
-  private compare(a: number, b: number, op: CrossFieldDetails['operator']): boolean {
+  private compare(a: number, b: number, op: CompareFieldsDetails['operator']): boolean {
     switch (op) {
       case '==': return a === b;
       case '!=': return a !== b;

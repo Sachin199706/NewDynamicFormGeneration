@@ -8,8 +8,8 @@ public class CreateFormRuleDtoValidator : AbstractValidator<CreateFormRuleDto>
 {
     private static readonly string[] ValidTypes =
     {
-        RuleType.Required, RuleType.MinLength, RuleType.MaxLength, RuleType.Regex,
-        RuleType.Range, RuleType.Email, RuleType.Date, RuleType.CrossField, RuleType.Custom, RuleType.Visibility
+        RuleType.Required, RuleType.Length, RuleType.Pattern,
+        RuleType.Range, RuleType.Format, RuleType.Date, RuleType.CompareFields, RuleType.Custom, RuleType.Visibility
     };
 
     public CreateFormRuleDtoValidator()

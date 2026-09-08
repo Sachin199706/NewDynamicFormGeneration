@@ -2,14 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { ControlType, FormControlDef } from '../../core/models/form.model';
 import { ControlTypeService } from '../../core/services/control-type';
 import { FormService } from '../../core/services/form';
-import { FormRule } from '../../core/models/rule.model';
+import { FormRule, RuleType } from '../../core/models/rule.model';
 import { RuleService } from '../../core/services/rule';
 import { RuleEngineService } from '../../core/services/rule-engine';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { Observable, forkJoin, of } from 'rxjs';
+import { FormRules } from '../form-rules/form-rules';
 
 interface CanvasControl extends FormControlDef {
   tempId: string;
@@ -212,86 +212,106 @@ export class FormBuilder implements OnInit {
   }
 
   /// Rules are keyed directly by controlKey now — no more controlId lookup needed.
-  private loadExistingRulesIntoPanel(aNumVersionId: number): void {
-    this.iobjRuleService.getRules(aNumVersionId).subscribe(rules => {
-      for (const rule of rules) {
-        if (!rule.isActive) continue;
+ /// Rules are keyed directly by controlKey now — no more controlId lookup needed.
+private loadExistingRulesIntoPanel(aNumVersionId: number): void {
+  this.iobjRuleService.getRules(aNumVersionId).subscribe(rules => {
+    for (const rule of rules) {
+      if (!rule.isActive) continue;
 
-        let lobjDetails: any = {};
-        try { lobjDetails = rule.ruleDetailsJson ? JSON.parse(rule.ruleDetailsJson) : {}; } catch { lobjDetails = {}; }
+      let lobjDetails: any = {};
+      try { lobjDetails = rule.ruleDetailsJson ? JSON.parse(rule.ruleDetailsJson) : {}; } catch { lobjDetails = {}; }
 
-        switch (rule.ruleType) {
-          case 'MinLength': this.setRuleValue(rule.controlKey, 'minLength', lobjDetails.min); break;
-          case 'MaxLength': this.setRuleValue(rule.controlKey, 'maxLength', lobjDetails.max); break;
-          case 'Range':
-            this.setRuleValue(rule.controlKey, 'rangeMin', lobjDetails.min);
-            this.setRuleValue(rule.controlKey, 'rangeMax', lobjDetails.max);
-            break;
-          case 'Date': this.setRuleValue(rule.controlKey, 'dateOperator', lobjDetails.operator); break;
-        }
+      switch (rule.ruleType) {
+        // Length carries both bounds; legacy MinLength/MaxLength each carried only one.
+        case 'Length':
+          this.setRuleValue(rule.controlKey, 'minLength', lobjDetails.min);
+          this.setRuleValue(rule.controlKey, 'maxLength', lobjDetails.max);
+          break;
+        case 'MinLength': this.setRuleValue(rule.controlKey, 'minLength', lobjDetails.min); break;
+        case 'MaxLength': this.setRuleValue(rule.controlKey, 'maxLength', lobjDetails.max); break;
+        case 'Range':
+          this.setRuleValue(rule.controlKey, 'rangeMin', lobjDetails.min);
+          this.setRuleValue(rule.controlKey, 'rangeMax', lobjDetails.max);
+          break;
+        case 'Date': this.setRuleValue(rule.controlKey, 'dateOperator', lobjDetails.operator); break;
       }
-    });
-  }
+    }
+  });
+}
 
   save(): void {
+    const larrControlsWithRules = this.iarrCanvasControls.map(({ tempId, ...rest }) => ({
+      ...rest,
+      rules: this.mergeRulesForControl(rest as FormControlDef)
+    }));
+
     const lobjDto = {
       formId: this.inumTemplateId,
       formName: this.istrFormName || 'Untitled Form',
-      formDefinitionJson: JSON.stringify({ controls: this.iarrCanvasControls }),
+      formDefinitionJson: JSON.stringify({ controls: larrControlsWithRules }),
       layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
-      controls: this.iarrCanvasControls.map(({ tempId, ...rest }) => rest)
+      controls: larrControlsWithRules
     };
 
     this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
       if (res.success && res.data) {
-        this.saveInlineRules(res.data.formVersionId).subscribe(() => {
-          this.iobjRouter.navigate(['/dashboard']);
-        });
+        this.iobjRouter.navigate(['/dashboard']);
       }
     });
   }
+/// Rules from the inline Properties panel are merged into the control's own rules array
+/// rather than POSTed separately after the save. The panel-owned types are replaced
+/// wholesale; every other type (Pattern, Format, File, CompareFields, Visibility — set up
+/// in the Rule Builder) is carried through untouched, which is what stops a save from
+/// wiping them.
+private mergeRulesForControl(aObjControl: FormControlDef): FormRule[] {
+  // Legacy MinLength/MaxLength are stripped too — the panel loaded them in, and they
+  // are rewritten below as a single Length rule. Leaving them would duplicate.
+  const larrPanelOwnedTypes: RuleType[] = ['Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
 
-  /// controlKey is already known client-side and is stable — no need to wait for a
-  /// database-assigned ControlId anymore, so rules can be created directly.
-  private saveInlineRules(aNumVersionId: number): Observable<any> {
-    const larrRequests: Observable<any>[] = [];
+  const larrPreserved = (aObjControl.rules ?? []).filter(
+    r => !larrPanelOwnedTypes.includes(r.ruleType)
+  );
 
-    for (const lstrKey of Object.keys(this.iobjControlRuleValues)) {
-      const lobjValues = this.iobjControlRuleValues[lstrKey];
+  const lobjValues = this.iobjControlRuleValues[aObjControl.controlKey];
+  if (!lobjValues) return larrPreserved;
 
-      if (lobjValues.minLength != null) {
-        larrRequests.push(this.iobjRuleService.addRule(aNumVersionId, {
-          controlKey: lstrKey, ruleType: 'MinLength',
-          ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength }),
-          errorMessage: `Minimum length is ${lobjValues.minLength}.`, severity: 'Error', displayOrder: 0
-        }));
-      }
-      if (lobjValues.maxLength != null) {
-        larrRequests.push(this.iobjRuleService.addRule(aNumVersionId, {
-          controlKey: lstrKey, ruleType: 'MaxLength',
-          ruleDetailsJson: JSON.stringify({ max: lobjValues.maxLength }),
-          errorMessage: `Maximum length is ${lobjValues.maxLength}.`, severity: 'Error', displayOrder: 0
-        }));
-      }
-      if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-        larrRequests.push(this.iobjRuleService.addRule(aNumVersionId, {
-          controlKey: lstrKey, ruleType: 'Range',
-          ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
-          errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`, severity: 'Error', displayOrder: 0
-        }));
-      }
-      if (lobjValues.dateOperator) {
-        larrRequests.push(this.iobjRuleService.addRule(aNumVersionId, {
-          controlKey: lstrKey, ruleType: 'Date',
-          ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
-          errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0
-        }));
-      }
-    }
+  const larrPanelRules: FormRule[] = [];
 
-    return larrRequests.length ? forkJoin(larrRequests) : of(null);
+  if (lobjValues.minLength != null || lobjValues.maxLength != null) {
+    larrPanelRules.push({
+      controlKey: aObjControl.controlKey, ruleType: 'Length',
+      ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
+      errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
+      severity: 'Error', displayOrder: 0, isActive: true
+    });
+  }
+  if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
+    larrPanelRules.push({
+      controlKey: aObjControl.controlKey, ruleType: 'Range',
+      ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
+      errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
+      severity: 'Error', displayOrder: 0, isActive: true
+    });
+  }
+  if (lobjValues.dateOperator) {
+    larrPanelRules.push({
+      controlKey: aObjControl.controlKey, ruleType: 'Date',
+      ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
+      errorMessage: `Date is invalid.`,
+      severity: 'Error', displayOrder: 0, isActive: true
+    });
   }
 
+  return [...larrPreserved, ...larrPanelRules];
+}
+
+/** One rule, two optional bounds — the message has to cover either or both. */
+private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
+  if (aNumMin != null && aNumMax != null) return `Length must be between ${aNumMin} and ${aNumMax}.`;
+  if (aNumMin != null) return `Minimum length is ${aNumMin}.`;
+  return `Maximum length is ${aNumMax}.`;
+}
   publish(): void {
     if (!this.inumTemplateId || !this.inumVersionId) return;
     this.istrPublishError = '';
@@ -381,52 +401,51 @@ export class FormBuilder implements OnInit {
     return this.iarrPreviewRules.some(r => r.isActive && r.controlKey === aObjC.controlKey && r.ruleType === 'Required');
   }
 
-  /// Required (from the checkbox) + MinLength/MaxLength/Range/Date (from the inline
-  /// Properties panel) — client-side only, no round trip, so Preview works even on
-  /// a form that's never been saved. Visibility/CrossField still only appear once
-  /// the form has been saved at least once (configured via the Rule Builder screen).
-  private buildInMemoryRules(): FormRule[] {
-    const larrRules: FormRule[] = [];
+ /// Required (from the checkbox) + Length/Range/Date (from the inline Properties panel)
+/// — client-side only, no round trip, so Preview works even on a form that's never been
+/// saved. Pattern/Format/File/CompareFields/Visibility still only appear once the form
+/// has been saved at least once (configured via the Rule Builder screen).
+private buildInMemoryRules(): FormRule[] {
+  const larrRules: FormRule[] = [];
 
-    for (const c of this.iarrCanvasControls) {
-      if (c.isRequired) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
-          errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
-
-      const lobjValues = this.iobjControlRuleValues[c.controlKey];
-      if (!lobjValues) continue;
-
-      if (lobjValues.minLength != null) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'MinLength', ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength }),
-          errorMessage: `Minimum length is ${lobjValues.minLength}.`, severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
-      if (lobjValues.maxLength != null) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'MaxLength', ruleDetailsJson: JSON.stringify({ max: lobjValues.maxLength }),
-          errorMessage: `Maximum length is ${lobjValues.maxLength}.`, severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
-      if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'Range', ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
-          errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`, severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
-      if (lobjValues.dateOperator) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'Date', ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
-          errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
+  for (const c of this.iarrCanvasControls) {
+    if (c.isRequired) {
+      larrRules.push({
+        controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
+        errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
+      });
     }
 
-    return larrRules;
+    const lobjValues = this.iobjControlRuleValues[c.controlKey];
+    if (!lobjValues) continue;
+
+    if (lobjValues.minLength != null || lobjValues.maxLength != null) {
+      larrRules.push({
+        controlKey: c.controlKey, ruleType: 'Length',
+        ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
+        errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
+        severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
+    if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
+      larrRules.push({
+        controlKey: c.controlKey, ruleType: 'Range',
+        ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
+        errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
+        severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
+    if (lobjValues.dateOperator) {
+      larrRules.push({
+        controlKey: c.controlKey, ruleType: 'Date',
+        ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
+        errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
   }
+
+  return larrRules;
+}
 
   seedOptions(aObjC: CanvasControl): string[] {
     if (!aObjC.propertiesJson) return [];

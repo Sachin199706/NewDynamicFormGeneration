@@ -33,6 +33,8 @@ public interface IRuleEngineService
     Task<FormRuleDto> AddRuleAsync(int aNumFormVersionId, CreateFormRuleDto aObjDto);
     Task DeleteRuleAsync(int aNumFormVersionId, string aStrControlKey, string aStrRuleType);
     RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules, IReadOnlyDictionary<string, object?> aObjSubmittedValues);
+
+    List<RuleFailureDto> EvaluateFileRules(List<FormRuleDto> aArrRules, IFormFileCollection aObjFiles);
 }
 
 public interface ISubmissionService
