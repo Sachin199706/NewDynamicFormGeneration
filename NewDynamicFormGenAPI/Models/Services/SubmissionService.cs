@@ -2,6 +2,7 @@ using AutoMapper;
 using NewDynamicFormGenAPI.Models.Common;
 using NewDynamicFormGenAPI.Models.DTOs.Submissions;
 using NewDynamicFormGenAPI.Models.Entities;
+using NewDynamicFormGenAPI.Models.Enums;
 using NewDynamicFormGenAPI.Models.Interfaces;
 using System.Text.Json;
 
@@ -28,6 +29,19 @@ namespace FormGen.Application.Services
 
         public async Task<Result<int>> SubmitAsync(SubmitFormDto aobjDto, IFormFileCollection aObjFiles)
         {
+            var larrRules = await _ruleEngine.GetRulesForVersionAsync(aobjDto.FormVersionId);
+
+            // File rules run before anything touches disk — a rejected upload should never be
+            // written and then deleted, and the size check needs the IFormFile itself, which
+            // is gone by the time Values holds only the stored filename.
+            var larrFileFailures = _ruleEngine.EvaluateFileRules(larrRules, aObjFiles);
+            if (larrFileFailures.Any(f => f.Severity == RuleSeverity.Error))
+            {
+                return Result<int>.Fail(
+                    "Validation failed.",
+                    larrFileFailures.Select(f => $"{f.ControlKey}: {f.ErrorMessage}").ToList());
+            }
+
             var larrStoredFileNames = new List<string>();
 
             foreach (var lobjFile in aObjFiles)
@@ -37,8 +51,7 @@ namespace FormGen.Application.Services
                 aobjDto.Values[lobjFile.Name] = lstrStoredFileName;
             }
 
-            var rules = await _ruleEngine.GetRulesForVersionAsync(aobjDto.FormVersionId);
-            var evaluation = _ruleEngine.Evaluate(rules, aobjDto.Values);
+            var evaluation = _ruleEngine.Evaluate(larrRules, aobjDto.Values);
 
             if (!evaluation.IsValid)
             {
@@ -183,5 +196,7 @@ namespace FormGen.Application.Services
                 ReadSubmissions = lobjQuery.Count(s => s.IsRead)
             };
         }
+
+
     }
 }

@@ -25,7 +25,7 @@ public class FormService : IFormService
         var lobjQuery = _uow.Repository<Form>().Query();
 
         if (!string.IsNullOrWhiteSpace(aStrSearch))
-            lobjQuery = lobjQuery.Where(f => f.FormName.Contains(aStrSearch) || 
+            lobjQuery = lobjQuery.Where(f => f.FormName.Contains(aStrSearch) ||
             (!string.IsNullOrEmpty(f.Description) && f.Description.Contains(aStrSearch))
             || f.FormCode.Contains(aStrSearch));
 
@@ -355,14 +355,21 @@ public class FormService : IFormService
             var larrControls = JsonSerializer.Deserialize<List<FormControlDto>>(lobjControlsEl.GetRawText(), JsonOpts)
                 ?? new List<FormControlDto>();
 
-            return larrControls.OrderBy(c => c.DisplayOrder).ToList();
+            foreach (var lobjControl in larrControls)
+            {
+                foreach (var lobjRule in lobjControl.Rules)
+                {
+                    lobjRule.ControlKey = lobjControl.ControlKey;
+                }
+            }
+
+            return larrControls;
         }
         catch
         {
             return new List<FormControlDto>();
         }
     }
-
     public async Task<DashboardDTO> GetDashboardCountAsync()
     {
         var lobjForms = _uow.Repository<Form>().Query();
@@ -394,4 +401,5 @@ public class FormService : IFormService
 
         return await Task.FromResult(lobjDashboard);
     }
+
 }

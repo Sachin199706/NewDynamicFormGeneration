@@ -1,4 +1,6 @@
 
+using NewDynamicFormGenAPI.Models.DTOs.Rules;
+
 namespace NewDynamicFormGenAPI.Models.DTOs.Forms;
 
 public class FormListItemDto
@@ -32,6 +34,7 @@ public class FormControlDto
     public int DisplayOrder { get; set; }
     public int? ParentControlId { get; set; }
     public string? PropertiesJson { get; set; }
+    public List<FormRuleDto> Rules { get; set; } = new();
 }
 
 public class SaveFormVersionDto

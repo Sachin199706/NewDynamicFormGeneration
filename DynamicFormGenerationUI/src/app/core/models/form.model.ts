@@ -34,6 +34,7 @@ export interface FormControlDef {
     displayOrder: number;
     parentControlId?: number | null;
     propertiesJson?: string;
+    rules?: FormRule[];
 }
 
 

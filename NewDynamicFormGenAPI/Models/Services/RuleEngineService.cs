@@ -19,10 +19,33 @@ public class RuleEngineService : IRuleEngineService
 {
     private readonly IUnitOfWork _uow;
 
+    private const string EmailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+    private const string PhonePattern = @"^\+?[0-9\s\-()]{7,15}$";
+    private const string UrlPattern = @"^https?://[^\s/$.?#].[^\s]*$";
+    private const string NumberPattern = @"^-?\d+(\.\d+)?$";
+    private const string AlphanumericPattern = @"^[A-Za-z0-9]+$";
+
     public RuleEngineService(IUnitOfWork uow)
     {
         _uow = uow;
     }
+
+    /// <summary>
+    /// Maps a stored rule name onto its current equivalent. Rules written before issue #10
+    /// still carry the old names inside FormDefinitionJson — normalising on read means no
+    /// data migration, and old forms keep validating exactly as they did.
+    /// MinLength/MaxLength both become Length; their details JSON already carries only
+    /// the half they set, and EvaluateLength treats a missing bound as unbounded.
+    /// </summary>
+    private static string NormalizeRuleType(string aStrRuleType) => aStrRuleType switch
+    {
+        RuleType.Legacy.MinLength => RuleType.Length,
+        RuleType.Legacy.MaxLength => RuleType.Length,
+        RuleType.Legacy.Regex => RuleType.Pattern,
+        RuleType.Legacy.Email => RuleType.Format,
+        RuleType.Legacy.CrossField => RuleType.CompareFields,
+        _ => aStrRuleType
+    };
 
     public async Task<List<FormRuleDto>> GetRulesForVersionAsync(int aNumFormVersionId)
     {
@@ -90,6 +113,66 @@ public class RuleEngineService : IRuleEngineService
         };
     }
 
+    public List<RuleFailureDto> EvaluateFileRules(List<FormRuleDto> aArrRules, IFormFileCollection aObjFiles)
+    {
+        var larrFailures = new List<RuleFailureDto>();
+
+        foreach (var rule in aArrRules.Where(r => r.IsActive && NormalizeRuleType(r.RuleType) == RuleType.File))
+        {
+            // FormData appends each file under its controlKey, so that is what matches here.
+            var lobjFile = aObjFiles.FirstOrDefault(f =>
+                string.Equals(f.Name, rule.ControlKey, StringComparison.OrdinalIgnoreCase));
+
+            // Nothing uploaded — that is Required's job to complain about, not this rule's.
+            if (lobjFile == null) continue;
+
+            var larrAllowed = GetStringArray(rule.RuleDetailsJson, "allowedExtensions");
+            var lnumMaxSizeKb = GetInt(rule.RuleDetailsJson, "maxSizeKb");
+
+            var lboolPassed = true;
+
+            if (larrAllowed.Count > 0)
+            {
+                var lstrExtension = Path.GetExtension(lobjFile.FileName).TrimStart('.');
+                lboolPassed = larrAllowed.Any(e =>
+                    string.Equals(e.TrimStart('.'), lstrExtension, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (lboolPassed && lnumMaxSizeKb.HasValue && lobjFile.Length > (long)lnumMaxSizeKb.Value * 1024)
+                lboolPassed = false;
+
+            if (!lboolPassed)
+            {
+                larrFailures.Add(new RuleFailureDto
+                {
+                    ControlKey = rule.ControlKey,
+                    RuleType = rule.RuleType,
+                    ErrorMessage = rule.ErrorMessage,
+                    Severity = rule.Severity
+                });
+            }
+        }
+
+        return larrFailures;
+    }
+
+    private static List<string> GetStringArray(string? aStrJson, string aStrProp)
+    {
+        var larrResult = new List<string>();
+        if (string.IsNullOrWhiteSpace(aStrJson)) return larrResult;
+
+        using var lobjDoc = JsonDocument.Parse(aStrJson);
+        if (!lobjDoc.RootElement.TryGetProperty(aStrProp, out var lobjEl) || lobjEl.ValueKind != JsonValueKind.Array)
+            return larrResult;
+
+        foreach (var lobjItem in lobjEl.EnumerateArray())
+        {
+            var lstrValue = lobjItem.GetString();
+            if (!string.IsNullOrWhiteSpace(lstrValue)) larrResult.Add(lstrValue);
+        }
+
+        return larrResult;
+    }
     public async Task DeleteRuleAsync(int aNumFormVersionId, string aStrControlKey, string aStrRuleType)
     {
         var lobjRepo = _uow.Repository<FormVersion>();
@@ -182,22 +265,26 @@ public class RuleEngineService : IRuleEngineService
             aObjSubmittedValues.TryGetValue(rule.ControlKey, out var lobjRawValue);
             var lstrStringValue = lobjRawValue?.ToString() ?? string.Empty;
 
-            bool lboolPassed = rule.RuleType switch
+            var lstrRuleType = NormalizeRuleType(rule.RuleType);
+
+            // Only Required cares about an empty value — everything else is skipped, so a blank
+            // optional field never trips a pattern or range check. This must come BEFORE evaluation.
+            if (lstrRuleType != RuleType.Required && string.IsNullOrWhiteSpace(lstrStringValue))
+                continue;
+
+            bool lboolPassed = lstrRuleType switch
             {
                 RuleType.Required => !string.IsNullOrWhiteSpace(lstrStringValue),
-                RuleType.MinLength => EvaluateMinLength(rule, lstrStringValue),
-                RuleType.MaxLength => EvaluateMaxLength(rule, lstrStringValue),
-                RuleType.Regex => EvaluateRegex(rule, lstrStringValue),
+                RuleType.Length => EvaluateLength(rule, lstrStringValue),
                 RuleType.Range => EvaluateRange(rule, lstrStringValue),
-                RuleType.Email => EvaluateEmail(lstrStringValue),
+                RuleType.Pattern => EvaluatePattern(rule, lstrStringValue),
+                RuleType.Format => EvaluateFormat(rule, lstrStringValue),
                 RuleType.Date => EvaluateDate(rule, lstrStringValue),
-                RuleType.CrossField => EvaluateCrossField(rule, lstrStringValue, aObjSubmittedValues),
+                RuleType.CompareFields => EvaluateCompareFields(rule, lstrStringValue, aObjSubmittedValues),
+                RuleType.File => true,   // enforced in SubmissionService, before the file reaches disk
                 RuleType.Custom => true,
                 _ => true
             };
-
-            if (rule.RuleType != RuleType.Required && string.IsNullOrWhiteSpace(lstrStringValue))
-                continue;
 
             if (!lboolPassed)
             {
@@ -245,23 +332,13 @@ public class RuleEngineService : IRuleEngineService
         return lobjVisibility;
     }
 
-    private static bool EvaluateMinLength(FormRuleDto aObjRule, string aStrValue)
+    /// <summary>One rule covering both bounds. A missing bound means unbounded, which is
+    /// also how legacy MinLength/MaxLength rules land here — each set only its own half.</summary>
+    private static bool EvaluateLength(FormRuleDto aObjRule, string aStrValue)
     {
         var lnumMin = GetInt(aObjRule.RuleDetailsJson, "min") ?? 0;
-        return aStrValue.Length >= lnumMin;
-    }
-
-    private static bool EvaluateMaxLength(FormRuleDto aObjRule, string aStrValue)
-    {
         var lnumMax = GetInt(aObjRule.RuleDetailsJson, "max") ?? int.MaxValue;
-        return aStrValue.Length <= lnumMax;
-    }
-
-    private static bool EvaluateRegex(FormRuleDto aObjRule, string aStrValue)
-    {
-        var lstrPattern = GetString(aObjRule.RuleDetailsJson, "pattern");
-        if (string.IsNullOrEmpty(lstrPattern)) return true;
-        return Regex.IsMatch(aStrValue, lstrPattern);
+        return aStrValue.Length >= lnumMin && aStrValue.Length <= lnumMax;
     }
 
     private static bool EvaluateRange(FormRuleDto aObjRule, string aStrValue)
@@ -273,12 +350,56 @@ public class RuleEngineService : IRuleEngineService
         return lnumNum >= lnumMin && lnumNum <= lnumMax;
     }
 
-    private static bool EvaluateEmail(string aStrValue)
+    /// <summary>
+    /// The pattern is free text typed into the Rule Builder, so it is never trusted:
+    /// an invalid pattern throws and a pathological one can backtrack indefinitely.
+    /// Both are contained here rather than surfacing as a 500 on submit.
+    /// </summary>
+    private static bool EvaluatePattern(FormRuleDto aObjRule, string aStrValue)
     {
-        const string lstrPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
-        return Regex.IsMatch(aStrValue, lstrPattern);
+        var lstrPattern = GetString(aObjRule.RuleDetailsJson, "pattern");
+        if (string.IsNullOrEmpty(lstrPattern)) return true;
+
+        try
+        {
+            return Regex.IsMatch(aStrValue, lstrPattern, RegexOptions.None, TimeSpan.FromMilliseconds(250));
+        }
+        catch (ArgumentException)
+        {
+            return true;   // malformed pattern — matches the client, which also passes
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return true;
+        }
     }
 
+    /// <summary>Generalises the old Email rule — legacy Email rules have no "format" key
+    /// in their details, so Email is the default.</summary>
+    private static bool EvaluateFormat(FormRuleDto aObjRule, string aStrValue)
+    {
+        var lstrFormat = GetString(aObjRule.RuleDetailsJson, "format") ?? FormatType.Email;
+
+        var lstrPattern = lstrFormat switch
+        {
+            FormatType.Email => EmailPattern,
+            FormatType.Phone => PhonePattern,
+            FormatType.Url => UrlPattern,
+            FormatType.Number => NumberPattern,
+            FormatType.Alphanumeric => AlphanumericPattern,
+            _ => null
+        };
+
+        if (lstrPattern is null) return true;
+
+        return Regex.IsMatch(aStrValue, lstrPattern, RegexOptions.None, TimeSpan.FromMilliseconds(250));
+    }
+
+    /// <summary>
+    /// "Today" is the user's today, not the server's. DateTime.UtcNow.Date put the two
+    /// out of step for anyone east of UTC — in IST the server's date lags local until
+    /// 05:30, so a >=Today rule passed in the browser and failed on submit.
+    /// </summary>
     private static bool EvaluateDate(FormRuleDto aObjRule, string aStrValue)
     {
         if (!DateTime.TryParse(aStrValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var lobjDate))
@@ -287,17 +408,19 @@ public class RuleEngineService : IRuleEngineService
         var lstrOperator = GetString(aObjRule.RuleDetailsJson, "operator");
         if (string.IsNullOrEmpty(lstrOperator)) return true;
 
+        var ldtToday = DateTime.Now.Date;
+
         return lstrOperator switch
         {
-            "<=Today" => lobjDate.Date <= DateTime.UtcNow.Date,
-            ">=Today" => lobjDate.Date >= DateTime.UtcNow.Date,
-            "<Today" => lobjDate.Date < DateTime.UtcNow.Date,
-            ">Today" => lobjDate.Date > DateTime.UtcNow.Date,
+            "<=Today" => lobjDate.Date <= ldtToday,
+            ">=Today" => lobjDate.Date >= ldtToday,
+            "<Today" => lobjDate.Date < ldtToday,
+            ">Today" => lobjDate.Date > ldtToday,
             _ => true
         };
     }
 
-    private static bool EvaluateCrossField(FormRuleDto aObjRule, string aStrValue, IReadOnlyDictionary<string, object?> aObjSubmittedValues)
+    private static bool EvaluateCompareFields(FormRuleDto aObjRule, string aStrValue, IReadOnlyDictionary<string, object?> aObjSubmittedValues)
     {
         var lstrCompareKey = GetString(aObjRule.RuleDetailsJson, "compareControlKey");
         var lstrOp = GetString(aObjRule.RuleDetailsJson, "operator") ?? "==";
