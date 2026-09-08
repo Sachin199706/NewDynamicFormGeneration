@@ -48,11 +48,11 @@
             </div>
             <div class="col-4">
                 <label class="form-label small">Rule Type</label>
-                <select class="form-select form-select-sm" [(ngModel)]="iobjDraft.ruleType">
-                    <optgroup *ngFor="let g of iarrRuleGroups" [label]="g.label">
-                        <option *ngFor="let t of g.types" [value]="t">{{ ruleTypeLabel(t) }}</option>
-                    </optgroup>
-                </select>
+               <select class="form-select form-select-sm" [(ngModel)]="iobjDraft.ruleType" (ngModelChange)="onRuleTypeChange()">
+    <optgroup *ngFor="let g of iarrRuleGroups" [label]="g.label">
+        <option *ngFor="let t of g.types" [value]="t">{{ ruleTypeLabel(t) }}</option>
+    </optgroup>
+</select>
             </div>
             <div class="col-4" *ngIf="!isConditional(iobjDraft.ruleType)">
                 <label class="form-label small">Severity</label>
@@ -153,32 +153,33 @@
 
         <!-- Show / Hide is a conditional rule: it changes what the user sees rather than
              failing the submission, so it carries no error message or severity. -->
-        <div class="row g-2 mb-2" *ngIf="iobjDraft.ruleType === 'Visibility'">
-            <div class="col-3">
-                <label class="form-label small">Action</label>
-                <select class="form-select form-select-sm" [(ngModel)]="istrVisibilityAction">
-                    <option value="Show">Show</option>
-                    <option value="Hide">Hide</option>
-                </select>
-            </div>
-            <div class="col-4">
-                <label class="form-label small">When field</label>
-                <select class="form-select form-select-sm" [(ngModel)]="istrVisibilityTriggerKey">
-                    <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
-                </select>
-            </div>
-            <div class="col-2">
-                <label class="form-label small">Is</label>
-                <select class="form-select form-select-sm" [(ngModel)]="istrVisibilityOperator">
-                    <option value="==">=</option>
-                    <option value="!=">≠</option>
-                </select>
-            </div>
-            <div class="col-3">
-                <label class="form-label small">Value</label>
-                <input type="text" class="form-control form-control-sm" [(ngModel)]="istrVisibilityValue" />
-            </div>
-        </div>
+     <!-- Conditional rules change what the user sees or can edit rather than failing the
+     submission, so they carry no error message or severity. -->
+<div class="row g-2 mb-2" *ngIf="isConditional(iobjDraft.ruleType)">
+    <div class="col-3">
+        <label class="form-label small">Action</label>
+        <select class="form-select form-select-sm" [(ngModel)]="istrConditionalAction">
+            <option *ngFor="let a of actionsFor(iobjDraft.ruleType)" [value]="a">{{ a }}</option>
+        </select>
+    </div>
+    <div class="col-4">
+        <label class="form-label small">When field</label>
+        <select class="form-select form-select-sm" [(ngModel)]="istrConditionalTriggerKey">
+            <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
+        </select>
+    </div>
+    <div class="col-2">
+        <label class="form-label small">Is</label>
+        <select class="form-select form-select-sm" [(ngModel)]="istrConditionalOperator">
+            <option value="==">=</option>
+            <option value="!=">≠</option>
+        </select>
+    </div>
+    <div class="col-3">
+        <label class="form-label small">Value</label>
+        <input type="text" class="form-control form-control-sm" [(ngModel)]="istrConditionalValue" />
+    </div>
+</div>
 
         <div class="row g-2 mb-2" *ngIf="!isConditional(iobjDraft.ruleType)">
             <div class="col-12">

@@ -1,9 +1,11 @@
 using AutoMapper;
 using NewDynamicFormGenAPI.Models.Common;
+using NewDynamicFormGenAPI.Models.DTOs.Forms;
 using NewDynamicFormGenAPI.Models.DTOs.Submissions;
 using NewDynamicFormGenAPI.Models.Entities;
 using NewDynamicFormGenAPI.Models.Enums;
 using NewDynamicFormGenAPI.Models.Interfaces;
+using NewDynamicFormGenAPI.Models.Services;
 using System.Text.Json;
 
 
@@ -31,9 +33,13 @@ namespace FormGen.Application.Services
         {
             var larrRules = await _ruleEngine.GetRulesForVersionAsync(aobjDto.FormVersionId);
 
+            var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(aobjDto.FormVersionId);
+            var larrControls = lobjVersion != null
+                ? FormService.ParseControls(lobjVersion.FormDefinitionJson)
+                : new List<FormControlDto>();
+
             // File rules run before anything touches disk — a rejected upload should never be
-            // written and then deleted, and the size check needs the IFormFile itself, which
-            // is gone by the time Values holds only the stored filename.
+            // written and then deleted, and the size check needs the IFormFile itself.
             var larrFileFailures = _ruleEngine.EvaluateFileRules(larrRules, aObjFiles);
             if (larrFileFailures.Any(f => f.Severity == RuleSeverity.Error))
             {
@@ -51,7 +57,7 @@ namespace FormGen.Application.Services
                 aobjDto.Values[lobjFile.Name] = lstrStoredFileName;
             }
 
-            var evaluation = _ruleEngine.Evaluate(larrRules, aobjDto.Values);
+            var evaluation = _ruleEngine.Evaluate(larrRules, aobjDto.Values, larrControls);
 
             if (!evaluation.IsValid)
             {
@@ -65,14 +71,22 @@ namespace FormGen.Application.Services
                     evaluation.Failures.Select(f => $"{f.ControlKey}: {f.ErrorMessage}").ToList());
             }
 
+            // A control the user could not see or edit must not persist a value, whatever the
+            // client sent — otherwise a disabled field can be populated by posting to the API.
+            var lobjEffects = _ruleEngine.ComputeEffects(larrRules, aobjDto.Values, larrControls);
+            foreach (var lobjPair in lobjEffects.Where(e => !e.Value.Visible || !e.Value.Enabled))
+            {
+                aobjDto.Values.Remove(lobjPair.Key);
+            }
+
             var lobjSubmission = _mapper.Map<FormSubmission>(aobjDto);
+
 
             // First save — need a real, database-assigned SubmissionId before the code can be built.
             await _uow.Repository<FormSubmission>().AddAsync(lobjSubmission);
             await _uow.SaveChangesAsync();
 
             var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aobjDto.FormId);
-            var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(aobjDto.FormVersionId);
 
             // Second save — now SubmissionId actually exists, so the code is correct.
             lobjSubmission.SubmissionCode = $"{lobjForm?.FormCode}-v{lobjVersion?.VersionNo}-{lobjSubmission.SubmissionId}";

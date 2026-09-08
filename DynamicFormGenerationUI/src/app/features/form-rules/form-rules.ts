@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormControlDef } from '../../core/models/form.model';
-import { CreateFormRuleRequest, FormatKind, FormRule, RuleType } from '../../core/models/rule.model';
+import { ConditionalAction, CreateFormRuleRequest, FormatKind, FormRule, RuleType } from '../../core/models/rule.model';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormService } from '../../core/services/form';
 import { RuleService } from '../../core/services/rule';
@@ -22,8 +22,8 @@ export class FormRules implements OnInit {
 
   /**
    * Grouped for the rule-type dropdown, per issue #10. Validation rules fail a
-   * submission; conditional rules change form state instead. Only Show/Hide exists
-   * on the conditional side so far — the other five come in the next phase.
+   * submission; conditional rules change form state instead. Set Value, Calculate
+   * and Filter/Dependency are still to come.
    */
   iarrRuleGroups: { label: string; types: RuleType[] }[] = [
     {
@@ -32,7 +32,7 @@ export class FormRules implements OnInit {
     },
     {
       label: 'CONDITIONAL RULE',
-      types: ['Visibility']
+      types: ['Visibility', 'EnableDisable', 'RequiredOptional']
     }
   ];
 
@@ -52,10 +52,11 @@ export class FormRules implements OnInit {
   istrCompareFieldKey = '';
   istrCompareFieldOperator: '==' | '!=' | '<' | '<=' | '>' | '>=' = '==';
 
-  istrVisibilityAction: 'Show' | 'Hide' = 'Show';
-  istrVisibilityTriggerKey = '';
-  istrVisibilityOperator: '==' | '!=' = '==';
-  istrVisibilityValue = '';
+  // Shared by all three conditional rule types — only the action pair differs.
+  istrConditionalAction: ConditionalAction = 'Show';
+  istrConditionalTriggerKey = '';
+  istrConditionalOperator: '==' | '!=' = '==';
+  istrConditionalValue = '';
 
   constructor(private iobjRoute: ActivatedRoute, private iobjRuleService: RuleService, private iobjFormService: FormService) { }
 
@@ -83,6 +84,8 @@ export class FormRules implements OnInit {
     switch (aStrRuleType) {
       case 'CompareFields': case 'CrossField': return 'Compare Fields';
       case 'Visibility': return 'Show / Hide';
+      case 'EnableDisable': return 'Enable / Disable';
+      case 'RequiredOptional': return 'Required / Optional';
       case 'MinLength': return 'Length (min)';
       case 'MaxLength': return 'Length (max)';
       case 'Regex': return 'Pattern';
@@ -93,10 +96,38 @@ export class FormRules implements OnInit {
 
   /** Conditional rules describe their own effect, so they take no error message. */
   isConditional(aStrRuleType?: RuleType): boolean {
-    return aStrRuleType === 'Visibility';
+    return aStrRuleType === 'Visibility'
+      || aStrRuleType === 'EnableDisable'
+      || aStrRuleType === 'RequiredOptional';
+  }
+
+  /** Each conditional rule offers its own action pair. */
+  actionsFor(aStrRuleType?: RuleType): ConditionalAction[] {
+    switch (aStrRuleType) {
+      case 'EnableDisable': return ['Enable', 'Disable'];
+      case 'RequiredOptional': return ['Required', 'Optional'];
+      default: return ['Show', 'Hide'];
+    }
+  }
+
+  /** The action list changes with the rule type, so the current pick may no longer be valid. */
+  onRuleTypeChange(): void {
+    const larrActions = this.actionsFor(this.iobjDraft.ruleType);
+    if (!larrActions.includes(this.istrConditionalAction)) {
+      this.istrConditionalAction = larrActions[0];
+    }
   }
 
   private buildDetailsJson(): string | undefined {
+    if (this.isConditional(this.iobjDraft.ruleType)) {
+      return JSON.stringify({
+        triggerControlKey: this.istrConditionalTriggerKey,
+        operator: this.istrConditionalOperator,
+        triggerValue: this.istrConditionalValue,
+        action: this.istrConditionalAction
+      });
+    }
+
     switch (this.iobjDraft.ruleType) {
       case 'Length':
         return JSON.stringify({ min: this.inumLengthMin, max: this.inumLengthMax });
@@ -115,13 +146,6 @@ export class FormRules implements OnInit {
         return JSON.stringify({ operator: this.istrDateOperator });
       case 'CompareFields':
         return JSON.stringify({ compareControlKey: this.istrCompareFieldKey, operator: this.istrCompareFieldOperator });
-      case 'Visibility':
-        return JSON.stringify({
-          triggerControlKey: this.istrVisibilityTriggerKey,
-          operator: this.istrVisibilityOperator,
-          triggerValue: this.istrVisibilityValue,
-          action: this.istrVisibilityAction
-        });
       default:
         return undefined;
     }
@@ -139,7 +163,7 @@ export class FormRules implements OnInit {
     const lboolIsConditional = this.isConditional(this.iobjDraft.ruleType);
     if (!this.iobjDraft.controlKey || !this.iobjDraft.ruleType) return;
     if (!lboolIsConditional && !this.iobjDraft.errorMessage) return;
-    if (lboolIsConditional && (!this.istrVisibilityTriggerKey || !this.istrVisibilityValue)) return;
+    if (lboolIsConditional && (!this.istrConditionalTriggerKey || !this.istrConditionalValue)) return;
 
     // A File rule with neither bound set would silently allow everything.
     if (this.iobjDraft.ruleType === 'File'
@@ -151,7 +175,7 @@ export class FormRules implements OnInit {
       ruleType: this.iobjDraft.ruleType,
       ruleDetailsJson: this.buildDetailsJson(),
       errorMessage: lboolIsConditional
-        ? `${this.istrVisibilityAction} when ${this.istrVisibilityTriggerKey} ${this.istrVisibilityOperator} ${this.istrVisibilityValue}`
+        ? `${this.istrConditionalAction} when ${this.istrConditionalTriggerKey} ${this.istrConditionalOperator} ${this.istrConditionalValue}`
         : this.iobjDraft.errorMessage!,
       severity: lboolIsConditional ? 'Warning' : (this.iobjDraft.severity ?? 'Error'),
       displayOrder: this.iarrRules.length
@@ -174,8 +198,9 @@ export class FormRules implements OnInit {
     this.istrFileExtensions = '';
     this.inumFileMaxSizeKb = undefined;
     this.istrCompareFieldKey = '';
-    this.istrVisibilityTriggerKey = '';
-    this.istrVisibilityValue = '';
+    this.istrConditionalAction = 'Show';
+    this.istrConditionalTriggerKey = '';
+    this.istrConditionalValue = '';
   }
 
   deleteRule(aObjR: FormRule): void {

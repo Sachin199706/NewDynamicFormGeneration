@@ -2,14 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { ControlType, FormControlDef } from '../../core/models/form.model';
 import { ControlTypeService } from '../../core/services/control-type';
 import { FormService } from '../../core/services/form';
-import { FormRule, RuleType } from '../../core/models/rule.model';
+import { ControlEffects, FormRule, RuleType } from '../../core/models/rule.model';
 import { RuleService } from '../../core/services/rule';
 import { RuleEngineService } from '../../core/services/rule-engine';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { FormRules } from '../form-rules/form-rules';
 
 interface CanvasControl extends FormControlDef {
   tempId: string;
@@ -25,7 +24,7 @@ export class FormBuilder implements OnInit {
   inumTemplateId: number | null = null;
   inumVersionId: number | null = null;
   istrFormName = '';
-  istrTemplateName = "";
+  istrTemplateName = '';
   iarrControlTypes: ControlType[] = [];
   iarrCanvasControls: CanvasControl[] = [];
   iobjSelected: CanvasControl | null = null;
@@ -34,16 +33,25 @@ export class FormBuilder implements OnInit {
   iboolPreviewOpen = false;
   iarrPreviewRules: FormRule[] = [];
   iobjPreviewValues: Record<string, any> = {};
-  iobjPreviewVisibility: Record<string, boolean> = {};
+  /** Per-control state after all conditional rules have run. Replaces the old visibility map. */
+  iobjPreviewEffects: Record<string, ControlEffects> = {};
   iobjPreviewErrors: Record<string, string> = {};
   iobjSelectedFiles: Record<string, File> = {};
   iobjPreviewImageUrls: Record<string, string> = {};
+
   iboolPublished = false;
   istrPublishError = '';
 
   iobjControlRuleValues: Record<string, any> = {};
 
-  constructor(private iobjControlTypeService: ControlTypeService, private iobjFormService: FormService, private iobjRuleService: RuleService, private iobjRuleEngine: RuleEngineService, private iobjRoute: ActivatedRoute, private iobjRouter: Router) { }
+  constructor(
+    private iobjControlTypeService: ControlTypeService,
+    private iobjFormService: FormService,
+    private iobjRuleService: RuleService,
+    private iobjRuleEngine: RuleEngineService,
+    private iobjRoute: ActivatedRoute,
+    private iobjRouter: Router
+  ) { }
 
   ngOnInit(): void {
     this.iobjControlTypeService.getAll().subscribe(types => this.iarrControlTypes = types);
@@ -54,9 +62,8 @@ export class FormBuilder implements OnInit {
 
     if (lStrIdParam) {
       this.inumTemplateId = Number(lStrIdParam);
-    if(lStrTemplateName)
-      this.istrTemplateName = String(lStrTemplateName);
-    
+      if (lStrTemplateName) this.istrTemplateName = String(lStrTemplateName);
+
       const lobjVersionLoad$ = this.iobjFormService.getVersionById(Number(lStrVersionParam));
 
       lobjVersionLoad$.subscribe(res => {
@@ -212,32 +219,38 @@ export class FormBuilder implements OnInit {
   }
 
   /// Rules are keyed directly by controlKey now — no more controlId lookup needed.
- /// Rules are keyed directly by controlKey now — no more controlId lookup needed.
-private loadExistingRulesIntoPanel(aNumVersionId: number): void {
-  this.iobjRuleService.getRules(aNumVersionId).subscribe(rules => {
-    for (const rule of rules) {
-      if (!rule.isActive) continue;
+  private loadExistingRulesIntoPanel(aNumVersionId: number): void {
+    this.iobjRuleService.getRules(aNumVersionId).subscribe(rules => {
+      // Kept so Preview can apply conditional rules configured in the Rule Builder,
+      // which buildInMemoryRules() cannot produce on its own.
+      this.iarrSavedRules = rules;
 
-      let lobjDetails: any = {};
-      try { lobjDetails = rule.ruleDetailsJson ? JSON.parse(rule.ruleDetailsJson) : {}; } catch { lobjDetails = {}; }
+      for (const rule of rules) {
+        if (!rule.isActive) continue;
 
-      switch (rule.ruleType) {
-        // Length carries both bounds; legacy MinLength/MaxLength each carried only one.
-        case 'Length':
-          this.setRuleValue(rule.controlKey, 'minLength', lobjDetails.min);
-          this.setRuleValue(rule.controlKey, 'maxLength', lobjDetails.max);
-          break;
-        case 'MinLength': this.setRuleValue(rule.controlKey, 'minLength', lobjDetails.min); break;
-        case 'MaxLength': this.setRuleValue(rule.controlKey, 'maxLength', lobjDetails.max); break;
-        case 'Range':
-          this.setRuleValue(rule.controlKey, 'rangeMin', lobjDetails.min);
-          this.setRuleValue(rule.controlKey, 'rangeMax', lobjDetails.max);
-          break;
-        case 'Date': this.setRuleValue(rule.controlKey, 'dateOperator', lobjDetails.operator); break;
+        let lobjDetails: any = {};
+        try { lobjDetails = rule.ruleDetailsJson ? JSON.parse(rule.ruleDetailsJson) : {}; } catch { lobjDetails = {}; }
+
+        switch (rule.ruleType) {
+          // Length carries both bounds; legacy MinLength/MaxLength each carried only one.
+          case 'Length':
+            this.setRuleValue(rule.controlKey, 'minLength', lobjDetails.min);
+            this.setRuleValue(rule.controlKey, 'maxLength', lobjDetails.max);
+            break;
+          case 'MinLength': this.setRuleValue(rule.controlKey, 'minLength', lobjDetails.min); break;
+          case 'MaxLength': this.setRuleValue(rule.controlKey, 'maxLength', lobjDetails.max); break;
+          case 'Range':
+            this.setRuleValue(rule.controlKey, 'rangeMin', lobjDetails.min);
+            this.setRuleValue(rule.controlKey, 'rangeMax', lobjDetails.max);
+            break;
+          case 'Date': this.setRuleValue(rule.controlKey, 'dateOperator', lobjDetails.operator); break;
+        }
       }
-    }
-  });
-}
+    });
+  }
+
+  /** Rules loaded from the saved version — conditional ones are only available from here. */
+  iarrSavedRules: FormRule[] = [];
 
   save(): void {
     const larrControlsWithRules = this.iarrCanvasControls.map(({ tempId, ...rest }) => ({
@@ -259,59 +272,61 @@ private loadExistingRulesIntoPanel(aNumVersionId: number): void {
       }
     });
   }
-/// Rules from the inline Properties panel are merged into the control's own rules array
-/// rather than POSTed separately after the save. The panel-owned types are replaced
-/// wholesale; every other type (Pattern, Format, File, CompareFields, Visibility — set up
-/// in the Rule Builder) is carried through untouched, which is what stops a save from
-/// wiping them.
-private mergeRulesForControl(aObjControl: FormControlDef): FormRule[] {
-  // Legacy MinLength/MaxLength are stripped too — the panel loaded them in, and they
-  // are rewritten below as a single Length rule. Leaving them would duplicate.
-  const larrPanelOwnedTypes: RuleType[] = ['Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
 
-  const larrPreserved = (aObjControl.rules ?? []).filter(
-    r => !larrPanelOwnedTypes.includes(r.ruleType)
-  );
+  /// Rules from the inline Properties panel are merged into the control's own rules array
+  /// rather than POSTed separately after the save. The panel-owned types are replaced
+  /// wholesale; every other type (Pattern, Format, File, CompareFields, and the conditional
+  /// rules — set up in the Rule Builder) is carried through untouched, which is what stops
+  /// a save from wiping them.
+  private mergeRulesForControl(aObjControl: FormControlDef): FormRule[] {
+    // Legacy MinLength/MaxLength are stripped too — the panel loaded them in, and they
+    // are rewritten below as a single Length rule. Leaving them would duplicate.
+    const larrPanelOwnedTypes: RuleType[] = ['Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
 
-  const lobjValues = this.iobjControlRuleValues[aObjControl.controlKey];
-  if (!lobjValues) return larrPreserved;
+    const larrPreserved = (aObjControl.rules ?? []).filter(
+      r => !larrPanelOwnedTypes.includes(r.ruleType)
+    );
 
-  const larrPanelRules: FormRule[] = [];
+    const lobjValues = this.iobjControlRuleValues[aObjControl.controlKey];
+    if (!lobjValues) return larrPreserved;
 
-  if (lobjValues.minLength != null || lobjValues.maxLength != null) {
-    larrPanelRules.push({
-      controlKey: aObjControl.controlKey, ruleType: 'Length',
-      ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
-      errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
-      severity: 'Error', displayOrder: 0, isActive: true
-    });
+    const larrPanelRules: FormRule[] = [];
+
+    if (lobjValues.minLength != null || lobjValues.maxLength != null) {
+      larrPanelRules.push({
+        controlKey: aObjControl.controlKey, ruleType: 'Length',
+        ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
+        errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
+        severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
+    if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
+      larrPanelRules.push({
+        controlKey: aObjControl.controlKey, ruleType: 'Range',
+        ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
+        errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
+        severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
+    if (lobjValues.dateOperator) {
+      larrPanelRules.push({
+        controlKey: aObjControl.controlKey, ruleType: 'Date',
+        ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
+        errorMessage: `Date is invalid.`,
+        severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
+
+    return [...larrPreserved, ...larrPanelRules];
   }
-  if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-    larrPanelRules.push({
-      controlKey: aObjControl.controlKey, ruleType: 'Range',
-      ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
-      errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
-      severity: 'Error', displayOrder: 0, isActive: true
-    });
-  }
-  if (lobjValues.dateOperator) {
-    larrPanelRules.push({
-      controlKey: aObjControl.controlKey, ruleType: 'Date',
-      ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
-      errorMessage: `Date is invalid.`,
-      severity: 'Error', displayOrder: 0, isActive: true
-    });
+
+  /** One rule, two optional bounds — the message has to cover either or both. */
+  private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
+    if (aNumMin != null && aNumMax != null) return `Length must be between ${aNumMin} and ${aNumMax}.`;
+    if (aNumMin != null) return `Minimum length is ${aNumMin}.`;
+    return `Maximum length is ${aNumMax}.`;
   }
 
-  return [...larrPreserved, ...larrPanelRules];
-}
-
-/** One rule, two optional bounds — the message has to cover either or both. */
-private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
-  if (aNumMin != null && aNumMax != null) return `Length must be between ${aNumMin} and ${aNumMax}.`;
-  if (aNumMin != null) return `Minimum length is ${aNumMin}.`;
-  return `Maximum length is ${aNumMax}.`;
-}
   publish(): void {
     if (!this.inumTemplateId || !this.inumVersionId) return;
     this.istrPublishError = '';
@@ -333,11 +348,11 @@ private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
 
   openPreview(): void {
     this.iobjPreviewValues = {};
-    this.iobjPreviewVisibility = {};
+    this.iobjPreviewEffects = {};
     this.iarrCanvasControls.forEach(c => this.iobjPreviewValues[c.controlKey] = c.defaultValue ?? '');
 
     this.iarrPreviewRules = this.buildInMemoryRules();
-    this.recomputePreviewVisibility();
+    this.recomputePreviewEffects();
     this.recomputePreviewErrors();
     this.iboolPreviewOpen = true;
   }
@@ -348,7 +363,7 @@ private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
 
   onPreviewChange(aStrControlKey: string, aObjValue: any): void {
     this.iobjPreviewValues[aStrControlKey] = aObjValue;
-    this.recomputePreviewVisibility();
+    this.recomputePreviewEffects();
     this.recomputePreviewErrors();
   }
 
@@ -379,8 +394,18 @@ private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
     }
   }
 
-  private recomputePreviewVisibility(): void {
-    this.iobjPreviewVisibility = this.iobjRuleEngine.computeVisibility(this.iarrPreviewRules, this.iobjPreviewValues);
+  private recomputePreviewEffects(): void {
+    this.iobjPreviewEffects = this.iobjRuleEngine.computeEffects(
+      this.iarrPreviewRules, this.iobjPreviewValues, this.iarrCanvasControls
+    );
+  }
+
+  isPreviewVisible(aStrControlKey: string): boolean {
+    return this.iobjPreviewEffects[aStrControlKey]?.visible !== false;
+  }
+
+  isPreviewEnabled(aStrControlKey: string): boolean {
+    return this.iobjPreviewEffects[aStrControlKey]?.enabled !== false;
   }
 
   private recomputePreviewErrors(): void {
@@ -388,6 +413,11 @@ private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
     const lobjErrors: Record<string, string> = {};
 
     for (const lobjFailure of lobjResult.failures) {
+      // A control the user cannot see or edit is not held to its rules — the server's
+      // Evaluate() skips these too, so Preview must match or it flags phantom errors.
+      const lobjEffect = this.iobjPreviewEffects[lobjFailure.controlKey];
+      if (lobjEffect && (!lobjEffect.visible || !lobjEffect.enabled)) continue;
+
       if (!lobjErrors[lobjFailure.controlKey]) {
         lobjErrors[lobjFailure.controlKey] = lobjFailure.errorMessage;
       }
@@ -397,55 +427,58 @@ private buildLengthMessage(aNumMin?: number, aNumMax?: number): string {
   }
 
   isEffectivelyRequired(aObjC: CanvasControl): boolean {
-    if (aObjC.isRequired) return true;
-    return this.iarrPreviewRules.some(r => r.isActive && r.controlKey === aObjC.controlKey && r.ruleType === 'Required');
+    return this.iobjPreviewEffects[aObjC.controlKey]?.required === true;
   }
 
- /// Required (from the checkbox) + Length/Range/Date (from the inline Properties panel)
-/// — client-side only, no round trip, so Preview works even on a form that's never been
-/// saved. Pattern/Format/File/CompareFields/Visibility still only appear once the form
-/// has been saved at least once (configured via the Rule Builder screen).
-private buildInMemoryRules(): FormRule[] {
-  const larrRules: FormRule[] = [];
+  /// Required (from the checkbox) + Length/Range/Date (from the inline Properties panel),
+  /// built client-side so Preview works on a form that's never been saved. Conditional
+  /// rules and Pattern/Format/File/CompareFields come from the saved version, which is
+  /// why they are merged in from iarrSavedRules rather than rebuilt here.
+  private buildInMemoryRules(): FormRule[] {
+    const larrRules: FormRule[] = [];
 
-  for (const c of this.iarrCanvasControls) {
-    if (c.isRequired) {
-      larrRules.push({
-        controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
-        errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
-      });
+    for (const c of this.iarrCanvasControls) {
+      if (c.isRequired) {
+        larrRules.push({
+          controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
+          errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
+
+      const lobjValues = this.iobjControlRuleValues[c.controlKey];
+      if (!lobjValues) continue;
+
+      if (lobjValues.minLength != null || lobjValues.maxLength != null) {
+        larrRules.push({
+          controlKey: c.controlKey, ruleType: 'Length',
+          ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
+          errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
+          severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
+      if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
+        larrRules.push({
+          controlKey: c.controlKey, ruleType: 'Range',
+          ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
+          errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
+          severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
+      if (lobjValues.dateOperator) {
+        larrRules.push({
+          controlKey: c.controlKey, ruleType: 'Date',
+          ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
+          errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
     }
 
-    const lobjValues = this.iobjControlRuleValues[c.controlKey];
-    if (!lobjValues) continue;
+    // The panel cannot express these, so they come straight from the saved version.
+    const larrPanelOwned: RuleType[] = ['Required', 'Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
+    larrRules.push(...this.iarrSavedRules.filter(r => r.isActive && !larrPanelOwned.includes(r.ruleType)));
 
-    if (lobjValues.minLength != null || lobjValues.maxLength != null) {
-      larrRules.push({
-        controlKey: c.controlKey, ruleType: 'Length',
-        ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
-        errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
-        severity: 'Error', displayOrder: 0, isActive: true
-      });
-    }
-    if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-      larrRules.push({
-        controlKey: c.controlKey, ruleType: 'Range',
-        ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
-        errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
-        severity: 'Error', displayOrder: 0, isActive: true
-      });
-    }
-    if (lobjValues.dateOperator) {
-      larrRules.push({
-        controlKey: c.controlKey, ruleType: 'Date',
-        ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
-        errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
-      });
-    }
+    return larrRules;
   }
-
-  return larrRules;
-}
 
   seedOptions(aObjC: CanvasControl): string[] {
     if (!aObjC.propertiesJson) return [];

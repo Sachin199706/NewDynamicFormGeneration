@@ -34,3 +34,15 @@ public class RuleEvaluationResultDto
     public bool IsValid { get; set; }
     public List<RuleFailureDto> Failures { get; set; } = new();
 }
+
+/// <summary>
+/// The computed state of one control after all conditional rules have run.
+/// Every control gets one of these; controls with no conditional rules keep
+/// their defaults.
+/// </summary>
+public class ControlEffectsDto
+{
+    public bool Visible { get; set; } = true;
+    public bool Enabled { get; set; } = true;
+    public bool Required { get; set; }
+}
