@@ -22,21 +22,17 @@ public interface IFormService
     Task<Result<FormVersionDto>> GetVersionByIdAsync(int aNumFormVersionId);
 }
 
-/// <summary>
-/// The Rule Engine — the shared contract also mirrored client-side in Angular's
-/// RuleEngineService (core/services/rule-engine.service.ts). Both interpret the same
-/// RuleType + RuleDetailsJson pairs so client UX and server enforcement never drift.
-/// </summary>
 public interface IRuleEngineService
 {
     Task<List<FormRuleDto>> GetRulesForVersionAsync(int aNumFormVersionId);
     Task<FormRuleDto> AddRuleAsync(int aNumFormVersionId, CreateFormRuleDto aObjDto);
     Task DeleteRuleAsync(int aNumFormVersionId, string aStrControlKey, string aStrRuleType);
-    RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules, IReadOnlyDictionary<string, object?> aObjSubmittedValues);
 
+    Dictionary<string, ControlEffectsDto> ComputeEffects(List<FormRuleDto> aArrRules,IReadOnlyDictionary<string, object?> aObjSubmittedValues,List<FormControlDto> aArrControls);
+
+    RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules,IReadOnlyDictionary<string, object?> aObjSubmittedValues,List<FormControlDto> aArrControls);
     List<RuleFailureDto> EvaluateFileRules(List<FormRuleDto> aArrRules, IFormFileCollection aObjFiles);
 }
-
 public interface ISubmissionService
 {
     Task<Result<int>> SubmitAsync(SubmitFormDto aObjDto, IFormFileCollection aObjFiles);

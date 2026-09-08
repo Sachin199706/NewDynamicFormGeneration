@@ -5,7 +5,7 @@ import { FormControlDef, FormRenderPayload } from '../../core/models/form.model'
 import { ActivatedRoute } from '@angular/router';
 import { FormService } from '../../core/services/form';
 import { SubmissionService } from '../../core/services/submission';
-import { FormRule } from '../../core/models/rule.model';
+import { ControlEffects, FormRule } from '../../core/models/rule.model';
 import { RuleEngineService } from '../../core/services/rule-engine';
 import { environment } from '../../../environments/environment';
 
@@ -21,7 +21,11 @@ export class FormRender implements OnInit {
   form: FormGroup = this.fb.group({});
   serverErrors: string[] = [];
   submitted = false;
-  visibility: Record<string, boolean> = {};
+  iboolReadOnly = false;
+
+  /** Per-control state after all conditional rules have run. Replaces the old visibility map. */
+  iobjEffects: Record<string, ControlEffects> = {};
+
   inumColumnLayout = 1;
   selectedFiles: Record<string, File> = {};
   imagePreviewUrls: Record<string, string> = {};
@@ -29,78 +33,42 @@ export class FormRender implements OnInit {
   private formId!: number;
   private versionId!: number;
 
-  constructor(private route: ActivatedRoute, private formService: FormService, private submissionService: SubmissionService,
+  constructor(
+    private route: ActivatedRoute,
+    private formService: FormService,
+    private submissionService: SubmissionService,
     private ruleEngine: RuleEngineService
-  ) {
-
-  }
+  ) { }
 
   ngOnInit(): void {
-  this.formId = Number(this.route.snapshot.paramMap.get('formId'));
-  this.versionId = Number(this.route.snapshot.paramMap.get('versionId'));
-  const lStrSubmissionIdParam = this.route.snapshot.queryParamMap.get('submissionId');
+    this.formId = Number(this.route.snapshot.paramMap.get('formId'));
+    this.versionId = Number(this.route.snapshot.paramMap.get('versionId'));
+    const lStrSubmissionIdParam = this.route.snapshot.queryParamMap.get('submissionId');
 
-  this.formService.getRenderPayload(this.formId, this.versionId).subscribe(res => {
-    if (!res.success || !res.data) return;
-    this.payload = res.data;
-    this.buildForm(res.data);
+    this.formService.getRenderPayload(this.formId, this.versionId).subscribe(res => {
+      if (!res.success || !res.data) return;
+      this.payload = res.data;
+      this.buildForm(res.data);
 
-    if (lStrSubmissionIdParam) {
-      this.loadSubmissionForViewing(Number(lStrSubmissionIdParam));
-    }
-  });
-}
+      if (lStrSubmissionIdParam) {
+        this.loadSubmissionForViewing(Number(lStrSubmissionIdParam));
+      }
+    });
+  }
 
-iboolReadOnly = false;
+  private loadSubmissionForViewing(aNumSubmissionId: number): void {
+    this.submissionService.getDetail(aNumSubmissionId).subscribe(res => {
+      if (!res.success || !res.data) return;
 
-private loadSubmissionForViewing(aNumSubmissionId: number): void {
-  this.submissionService.getDetail(aNumSubmissionId).subscribe(res => {
-    if (!res.success || !res.data) return;
+      // Set before patching: patchValue fires valueChanges, which runs recomputeEffects,
+      // and that pass must know the form is read-only or it will re-enable controls.
+      this.iboolReadOnly = true;
 
-    this.form.patchValue(res.data.values);
+      this.form.patchValue(res.data.values);
+      this.form.disable();
+    });
+  }
 
-    console.log('FORM VALUES:', this.form.getRawValue());
-
-    const dropdown = this.payload?.controls.find(
-      c => c.controlTypeCode === 'Dropdown'
-    );
-
-    const radio = this.payload?.controls.find(
-      c => c.controlTypeCode === 'Radio'
-    );
-
-    const checkbox = this.payload?.controls.find(
-      c => c.controlTypeCode === 'CheckboxList'
-    );
-
-    console.log('Dropdown value:',
-      dropdown ? this.form.get(dropdown.controlKey)?.value : null
-    );
-
-    console.log('Dropdown options:',
-      dropdown ? this.seedOptions(dropdown) : []
-    );
-
-    console.log('Radio value:',
-      radio ? this.form.get(radio.controlKey)?.value : null
-    );
-
-    console.log('Radio options:',
-      radio ? this.seedOptions(radio) : []
-    );
-
-    console.log('Checkbox value:',
-      checkbox ? this.form.get(checkbox.controlKey)?.value : null
-    );
-
-    console.log('Checkbox options:',
-      checkbox ? this.seedOptions(checkbox) : []
-    );
-
-    this.form.disable();
-    this.iboolReadOnly = true;
-  });
-}
   private buildForm(payload: FormRenderPayload): void {
     const group: Record<string, any> = {};
 
@@ -115,59 +83,101 @@ private loadSubmissionForViewing(aNumSubmissionId: number): void {
     for (const c of payload.controls) {
       if (c.controlTypeCode === 'Label') continue; // static text, not a real form field
 
-      const rulesForControl = payload.rules.filter(r => r.controlKey === c.controlKey && r.ruleType !== 'Visibility');
-      const validators: ValidatorFn[] = rulesForControl.map(r =>
-        this.ruleEngine.buildValidator(r, key => this.form.get(key)?.value)
-      );
-      if (c.isRequired) validators.push(Validators.required);
-
       const defaultValue = c.controlTypeCode === 'CheckboxList' ? [] : (c.defaultValue ?? '');
-      group[c.controlKey] = [defaultValue, validators];
+      // Validators are applied by recomputeEffects() below, which knows about conditional
+      // overrides — setting them here as well would double up on Required.
+      group[c.controlKey] = [defaultValue, []];
     }
 
     this.form = this.fb.group(group);
-    this.recomputeVisibility(payload);
+    this.recomputeEffects(payload);
 
     this.form.valueChanges.subscribe(() => {
       payload.rules
-        .filter((r: FormRule) => r.ruleType === 'CrossField')
+        .filter((r: FormRule) => r.ruleType === 'CompareFields' || r.ruleType === 'CrossField')
         .forEach(r => this.form.get(r.controlKey)?.updateValueAndValidity({ emitEvent: false }));
 
-      this.recomputeVisibility(payload);
+      this.recomputeEffects(payload);
     });
   }
 
   /**
-   * Recomputes which controls should be visible and keeps validation in sync: a control
-   * that becomes hidden has its validators cleared (so a hidden Required field never blocks
-   * submission), and gets them restored when it becomes visible again.
+   * Conditional rules produce effects, not validators, so they are filtered out here.
+   * `aBoolRequired` comes from the effect map rather than the control, since a
+   * Required/Optional rule can override the control's own isRequired.
    */
-  private recomputeVisibility(payload: FormRenderPayload): void {
-    const newVisibility = this.ruleEngine.computeVisibility(payload.rules, this.form.value);
+  private buildValidatorsFor(
+    aObjControl: FormControlDef,
+    aArrRules: FormRule[],
+    aBoolRequired: boolean
+  ): ValidatorFn[] {
+    const larrConditional: string[] = ['Visibility', 'EnableDisable', 'RequiredOptional'];
+
+    const larrValidators: ValidatorFn[] = aArrRules
+      .filter(r => r.controlKey === aObjControl.controlKey
+        && !larrConditional.includes(r.ruleType)
+        && r.ruleType !== 'Required')
+      .map(r => this.ruleEngine.buildValidator(r, key => this.form.get(key)?.value));
+
+    if (aBoolRequired) larrValidators.push(Validators.required);
+
+    return larrValidators;
+  }
+
+  /**
+   * Applies every conditional effect in one pass: visibility, enabled state and required.
+   *
+   * Every setter passes { emitEvent: false } — enable(), disable() and setValidators all
+   * fire valueChanges, and this method is called *from* a valueChanges subscription, so
+   * without it the form loops until the tab locks up.
+   */
+  private recomputeEffects(payload: FormRenderPayload): void {
+    this.iobjEffects = this.ruleEngine.computeEffects(
+      payload.rules, this.form.getRawValue(), payload.controls
+    );
+
+    // Viewing a submitted response: the whole form is disabled on purpose, so effects are
+    // computed for display only and must not re-enable anything.
+    if (this.iboolReadOnly) return;
 
     for (const c of payload.controls) {
-      const wasVisible = this.visibility[c.controlKey] !== false;
-      const isVisible = newVisibility[c.controlKey] !== false;
-      if (wasVisible === isVisible) continue;
+      if (c.controlTypeCode === 'Label') continue;
 
+      const lobjEffect = this.iobjEffects[c.controlKey];
       const ctrl = this.form.get(c.controlKey);
-      if (!ctrl) continue;
+      if (!lobjEffect || !ctrl) continue;
 
-      if (!isVisible) {
-        ctrl.clearValidators();
-        ctrl.setValue('', { emitEvent: false });
-      } else {
-        const rulesForControl = payload.rules.filter(r => r.controlKey === c.controlKey && r.ruleType !== 'Visibility');
-        const validators: ValidatorFn[] = rulesForControl.map(r =>
-          this.ruleEngine.buildValidator(r, key => this.form.get(key)?.value)
-        );
-        if (c.isRequired) validators.push(Validators.required);
-        ctrl.setValidators(validators);
+      if (lobjEffect.enabled && ctrl.disabled) {
+        ctrl.enable({ emitEvent: false });
+      } else if (!lobjEffect.enabled && ctrl.enabled) {
+        ctrl.disable({ emitEvent: false });
       }
+
+      // A control the user cannot see or edit is not held to its rules, so a hidden
+      // Required field never blocks submission.
+      const lboolActive = lobjEffect.visible && lobjEffect.enabled;
+
+      if (!lboolActive) {
+        ctrl.clearValidators();
+        if (!lobjEffect.visible) ctrl.setValue('', { emitEvent: false });
+      } else {
+        ctrl.setValidators(this.buildValidatorsFor(c, payload.rules, lobjEffect.required));
+      }
+
       ctrl.updateValueAndValidity({ emitEvent: false });
     }
+  }
 
-    this.visibility = newVisibility;
+  isVisible(aStrControlKey: string): boolean {
+    return this.iobjEffects[aStrControlKey]?.visible !== false;
+  }
+
+  isEnabled(aStrControlKey: string): boolean {
+    return this.iobjEffects[aStrControlKey]?.enabled !== false;
+  }
+
+  isRequired(aStrControlKey: string): boolean {
+    return this.iobjEffects[aStrControlKey]?.required === true;
   }
 
   seedOptions(c: FormControlDef): string[] {
@@ -231,33 +241,33 @@ private loadSubmissionForViewing(aNumSubmissionId: number): void {
   }
 
   /** Stored filename held by a File/Image control, or '' when nothing was uploaded. */
-storedFileName(aStrControlKey: string): string {
-  const lobjValue = this.form.get(aStrControlKey)?.value;
-  return typeof lobjValue === 'string' ? lobjValue : '';
-}
+  storedFileName(aStrControlKey: string): string {
+    const lobjValue = this.form.get(aStrControlKey)?.value;
+    return typeof lobjValue === 'string' ? lobjValue : '';
+  }
 
-/** Inline URL — what <img src> points at. */
-fileUrl(aStrStoredFileName: string): string {
-  return `${environment.apiUrl}/files/${encodeURIComponent(aStrStoredFileName)}`;
-}
+  /** Inline URL — what <img src> points at. */
+  fileUrl(aStrStoredFileName: string): string {
+    return `${environment.apiUrl}/files/${encodeURIComponent(aStrStoredFileName)}`;
+  }
 
-/** Attachment URL — what the Download link points at. */
-downloadUrl(aStrStoredFileName: string): string {
-  return `${this.fileUrl(aStrStoredFileName)}?download=true`;
-}
+  /** Attachment URL — what the Download link points at. */
+  downloadUrl(aStrStoredFileName: string): string {
+    return `${this.fileUrl(aStrStoredFileName)}?download=true`;
+  }
 
-/** Stored names are "{Guid}_{originalName}" — show the user only the original part. */
-displayFileName(aStrStoredFileName: string): string {
-  if (!aStrStoredFileName) return '';
+  /** Stored names are "{Guid}_{originalName}" — show the user only the original part. */
+  displayFileName(aStrStoredFileName: string): string {
+    if (!aStrStoredFileName) return '';
 
-  const lnumIndex = aStrStoredFileName.indexOf('_');
-  if (lnumIndex <= 0) return aStrStoredFileName;
+    const lnumIndex = aStrStoredFileName.indexOf('_');
+    if (lnumIndex <= 0) return aStrStoredFileName;
 
-  const lstrPrefix = aStrStoredFileName.substring(0, lnumIndex);
-  const lobjGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const lstrPrefix = aStrStoredFileName.substring(0, lnumIndex);
+    const lobjGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  return lobjGuidPattern.test(lstrPrefix)
-    ? aStrStoredFileName.substring(lnumIndex + 1)
-    : aStrStoredFileName;
-}
+    return lobjGuidPattern.test(lstrPrefix)
+      ? aStrStoredFileName.substring(lnumIndex + 1)
+      : aStrStoredFileName;
+  }
 }

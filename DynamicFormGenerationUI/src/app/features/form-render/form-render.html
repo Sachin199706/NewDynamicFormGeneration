@@ -6,9 +6,12 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()">
         <div style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
-            <div class="mb-3" *ngFor="let c of payload.controls" [hidden]="visibility[c.controlKey] === false"
+            <div class="mb-3" *ngFor="let c of payload.controls" [hidden]="!isVisible(c.controlKey)"
                 [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
-                <label class="form-label">{{ c.label }} <span *ngIf="c.isRequired" class="text-danger">*</span></label>
+                <label class="form-label">
+                    {{ c.label }}
+                    <span class="text-danger" *ngIf="isRequired(c.controlKey)">*</span>
+                </label>
 
                 <ng-container [ngSwitch]="c.controlTypeCode">
                     <textarea *ngSwitchCase="'TextArea'" class="form-control"
@@ -68,8 +71,8 @@
                     </div>
 
                     <div *ngSwitchCase="'Image'">
-                        <input *ngIf="!iboolReadOnly" type="file" accept="image/*" class="form-control"
-                            (change)="onFileSelected(c.controlKey, $event)" />
+                        <input *ngIf="!iboolReadOnly" type="file" class="form-control"
+                            [disabled]="!isEnabled(c.controlKey)" (change)="onFileSelected(c.controlKey, $event)" />
 
                         <img *ngIf="!iboolReadOnly && imagePreviewUrls[c.controlKey]"
                             [src]="imagePreviewUrls[c.controlKey]"

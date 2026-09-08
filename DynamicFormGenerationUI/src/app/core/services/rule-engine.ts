@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import {
-  CompareFieldsDetails, DateRuleDetails, FormatDetails, FormatKind, FormRule, LengthDetails,
-  PatternDetails, RangeDetails, RuleType, VisibilityDetails
+  CompareFieldsDetails, ConditionalDetails, ControlEffects, DateRuleDetails, FormatDetails,
+  FormatKind, FormRule, LengthDetails, PatternDetails, RangeDetails, RuleType, VisibilityDetails
 } from '../models/rule.model';
+import { FormControlDef } from '../models/form.model';
 
 /**
  * Client-side counterpart of the server's RuleEngineService (C#). Same RuleType +
@@ -45,6 +46,13 @@ export class RuleEngineService {
     }
   }
 
+  /** Conditional rules produce effects rather than failures. */
+  private isConditional(aStrRuleType: RuleType): boolean {
+    return aStrRuleType === 'Visibility'
+      || aStrRuleType === 'EnableDisable'
+      || aStrRuleType === 'RequiredOptional';
+  }
+
   /** Builds an Angular ValidatorFn for one rule. Cross-field rules need the whole form group. */
   buildValidator(rule: FormRule, getFieldValue: (controlKey: string) => any): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
@@ -69,34 +77,69 @@ export class RuleEngineService {
   }
 
   /**
-   * Visibility rules are UI-only — they never produce a validation error, so they're kept
-   * separate from evaluateAll()/buildValidator(). Returns controlKey -> should-be-visible.
-   * Controls with no Visibility rule default to visible.
+   * Conditional rules change form state rather than failing a submission, so their output
+   * is a per-control effect map. Mirrors ComputeEffects in the C# engine — the two must
+   * agree, or the browser shows one thing and the server enforces another.
+   *
+   * Replaces the old computeVisibility(): Show/Hide is now one action among six rather
+   * than a mechanism of its own.
    */
-  computeVisibility(rules: FormRule[], values: Record<string, any>): Record<string, boolean> {
-    const visibility: Record<string, boolean> = {};
+  computeEffects(
+    rules: FormRule[],
+    values: Record<string, any>,
+    controls: FormControlDef[]
+  ): Record<string, ControlEffects> {
+    const effects: Record<string, ControlEffects> = {};
 
-    for (const rule of rules.filter(r => r.isActive && r.ruleType === 'Visibility')) {
-      const d = this.parseDetails<VisibilityDetails>(rule.ruleDetailsJson);
+    // Every control starts visible and enabled; required comes from its own definition.
+    for (const c of controls) {
+      effects[c.controlKey] = { visible: true, enabled: true, required: !!c.isRequired };
+    }
+
+    // A stored Required rule is another way of saying the control is required by default,
+    // so it seeds the same flag — a Required/Optional rule below can then override it.
+    for (const rule of rules.filter(r => r.isActive && this.normalizeRuleType(r.ruleType) === 'Required')) {
+      if (effects[rule.controlKey]) effects[rule.controlKey].required = true;
+    }
+
+    for (const rule of rules
+      .filter(r => r.isActive && this.isConditional(r.ruleType))
+      .sort((a, b) => a.displayOrder - b.displayOrder)) {
+
+      const d = this.parseDetails<ConditionalDetails>(rule.ruleDetailsJson);
       if (!d?.triggerControlKey) continue;
 
       const raw = values[d.triggerControlKey];
-      const stringValue = raw === null || raw === undefined ? '' : String(raw);
-      const conditionMet = this.compareStrings(stringValue, d.triggerValue ?? '', d.operator);
+      const actual = raw === null || raw === undefined ? '' : String(raw);
+      const conditionMet = this.compareValues(actual, d.triggerValue ?? '', d.operator ?? '==');
 
-      const shouldShow = d.action === 'Hide' ? !conditionMet : conditionMet;
-      visibility[rule.controlKey] = shouldShow;
+      if (!effects[rule.controlKey]) {
+        effects[rule.controlKey] = { visible: true, enabled: true, required: false };
+      }
+      const e = effects[rule.controlKey];
+
+      switch (d.action) {
+        case 'Show':     e.visible = conditionMet; break;
+        case 'Hide':     e.visible = !conditionMet; break;
+        case 'Enable':   e.enabled = conditionMet; break;
+        case 'Disable':  e.enabled = !conditionMet; break;
+        case 'Required': e.required = conditionMet; break;
+        case 'Optional': e.required = !conditionMet; break;
+      }
     }
 
-    return visibility;
+    return effects;
   }
 
-  private compareStrings(a: string, b: string, op: VisibilityDetails['operator']): boolean {
+  /** Numeric when both sides parse as numbers, string otherwise. All six operators supported. */
+  private compareValues(a: string, b: string, op: ConditionalDetails['operator']): boolean {
     const numA = Number(a), numB = Number(b);
-    if (!Number.isNaN(numA) && !Number.isNaN(numB)) return this.compare(numA, numB, op);
+    if (a.trim() !== '' && b.trim() !== '' && !Number.isNaN(numA) && !Number.isNaN(numB)) {
+      return this.compare(numA, numB, op);
+    }
     switch (op) {
-      case '==': return a === b;
       case '!=': return a !== b;
+      case '==': return a === b;
       default:   return a === b;
     }
   }
@@ -107,6 +150,8 @@ export class RuleEngineService {
     let isValid = true;
 
     for (const rule of rules.filter(r => r.isActive).sort((a, b) => a.displayOrder - b.displayOrder)) {
+      if (this.isConditional(rule.ruleType)) continue;
+
       const raw = values[rule.controlKey];
       const stringValue = raw === null || raw === undefined ? '' : String(raw);
 
@@ -196,7 +241,10 @@ export class RuleEngineService {
       case 'Custom':
         return true;
 
+      // Conditional rules produce effects, not failures — see computeEffects().
       case 'Visibility':
+      case 'EnableDisable':
+      case 'RequiredOptional':
         return true;
 
       default:

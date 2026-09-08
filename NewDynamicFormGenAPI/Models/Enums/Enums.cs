@@ -6,7 +6,20 @@ public static class FormStatus
     public const string Published = "Published";
     public const string Archived = "Archived";
 }
+public static class FormatType
+{
+    public const string Email = "Email";
+    public const string Phone = "Phone";
+    public const string Url = "URL";
+    public const string Number = "Number";
+    public const string Alphanumeric = "Alphanumeric";
+}
 
+public static class RuleSeverity
+{
+    public const string Error = "Error";
+    public const string Warning = "Warning";
+}
 public static class RuleType
 {
     // ---- Validation rules (issue #10 taxonomy) ----
@@ -21,8 +34,16 @@ public static class RuleType
 
     public const string Custom = "Custom";
 
-    /// <summary>Show/hide a control based on another control's value. UI-only — never fails validation.</summary>
+    // ---- Conditional rules: these change form state rather than failing a submission ----
+
+    /// <summary>Show/hide a control based on another control's value.</summary>
     public const string Visibility = "Visibility";
+
+    /// <summary>Enable/disable a control based on another control's value.</summary>
+    public const string EnableDisable = "EnableDisable";
+
+    /// <summary>Make a control required/optional based on another control's value.</summary>
+    public const string RequiredOptional = "RequiredOptional";
 
     /// <summary>
     /// Rule names used before issue #10. Rules are stored as strings inside
@@ -39,17 +60,17 @@ public static class RuleType
     }
 }
 
-public static class FormatType
+/// <summary>
+/// What a conditional rule does when its trigger condition is met. Each pair is
+/// one effect and its inverse, so the rule author can express the condition
+/// whichever way round reads more naturally.
+/// </summary>
+public static class ConditionalAction
 {
-    public const string Email = "Email";
-    public const string Phone = "Phone";
-    public const string Url = "URL";
-    public const string Number = "Number";
-    public const string Alphanumeric = "Alphanumeric";
-}
-
-public static class RuleSeverity
-{
-    public const string Error = "Error";
-    public const string Warning = "Warning";
+    public const string Show = "Show";
+    public const string Hide = "Hide";
+    public const string Enable = "Enable";
+    public const string Disable = "Disable";
+    public const string Required = "Required";
+    public const string Optional = "Optional";
 }
