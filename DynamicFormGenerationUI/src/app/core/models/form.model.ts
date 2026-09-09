@@ -39,8 +39,9 @@ export interface FormControlDef {
 
 
 export interface SaveFormVersionRequest {
-    formId?: number | null;
-    formName?: string;
+    formId: number | null;
+    formVersionId?: number | null;
+    versionDescription?: string;
     formDefinitionJson: string;
     layoutDefinitionJson?: string;
     controls: FormControlDef[];
@@ -49,7 +50,7 @@ export interface SaveFormVersionRequest {
 export interface FormVersion {
     formVersionId: number;
     formId: number;
-    formName: string;
+    versionDescription: string;
     versionNo: number;
     status: string;
     formDefinitionJson: string;
@@ -90,6 +91,7 @@ export interface FormVersionListItem {
 export interface FormPublishHistoryItem {
   formId: number;
   formVersionId: number;
+  versionDescription: string;
   formName: string;
   versionNo: number;
   publishedOn: string;

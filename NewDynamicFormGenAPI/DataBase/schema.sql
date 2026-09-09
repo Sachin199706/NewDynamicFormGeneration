@@ -67,7 +67,7 @@ CREATE TABLE FormSubmissions (
     FormVersionId  INT NOT NULL FOREIGN KEY REFERENCES FormVersions(FormVersionId),
     SubmittedOn    DATETIME NOT NULL DEFAULT (GETUTCDATE()),
     JsonData       NVARCHAR(MAX) NOT NULL,
-      IsRead          BIT NOT NULL DEFAULT (0),
+    IsRead          BIT NOT NULL DEFAULT (0),
     SubmissionCode  NVARCHAR(150) not null unique
 );
 GO

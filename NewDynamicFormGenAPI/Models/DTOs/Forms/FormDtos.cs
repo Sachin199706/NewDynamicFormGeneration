@@ -39,8 +39,9 @@ public class FormControlDto
 
 public class SaveFormVersionDto
 {
-    public int? FormId { get; set; }         // null => create new Form + v1
-    public string? FormName { get; set; }
+    public int FormId { get; set; }        
+    public int? FormVersionId { get; set; }         // null => create new Form + v1
+    public string? VersionDescription { get; set; }
     public string FormDefinitionJson { get; set; } = "{}";
     public string? LayoutDefinitionJson { get; set; }
     public List<FormControlDto> Controls { get; set; } = new();
@@ -51,6 +52,7 @@ public class FormVersionDto
     public int FormVersionId { get; set; }
     public int FormId { get; set; }
     public string FormName { get; set; }
+    public string VersionDescription { get; set; }
     public int VersionNo { get; set; }
     public string Status { get; set; } = null!;
     public string FormDefinitionJson { get; set; } = null!;
@@ -85,6 +87,7 @@ public class FormPublishHistoryItemDto
     public int FormId { get; set; }
     public int FormVersionId { get; set; }
     public string FormName { get; set; } = null!;
+    public string VersionDescription { get; set; } = null!;
     public int VersionNo { get; set; }
     public DateTime PublishedOn { get; set; }
 }
