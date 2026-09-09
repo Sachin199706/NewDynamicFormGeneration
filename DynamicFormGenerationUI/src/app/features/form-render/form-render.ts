@@ -33,12 +33,7 @@ export class FormRender implements OnInit {
   private formId!: number;
   private versionId!: number;
 
-  constructor(
-    private route: ActivatedRoute,
-    private formService: FormService,
-    private submissionService: SubmissionService,
-    private ruleEngine: RuleEngineService
-  ) { }
+  constructor(private route: ActivatedRoute, private formService: FormService, private submissionService: SubmissionService, private ruleEngine: RuleEngineService) { }
 
   ngOnInit(): void {
     this.formId = Number(this.route.snapshot.paramMap.get('formId'));
@@ -81,11 +76,8 @@ export class FormRender implements OnInit {
     }
 
     for (const c of payload.controls) {
-      if (c.controlTypeCode === 'Label') continue; // static text, not a real form field
-
+      if (c.controlTypeCode === 'Label') continue;
       const defaultValue = c.controlTypeCode === 'CheckboxList' ? [] : (c.defaultValue ?? '');
-      // Validators are applied by recomputeEffects() below, which knows about conditional
-      // overrides — setting them here as well would double up on Required.
       group[c.controlKey] = [defaultValue, []];
     }
 
@@ -101,27 +93,30 @@ export class FormRender implements OnInit {
     });
   }
 
-  /**
-   * Conditional rules produce effects, not validators, so they are filtered out here.
-   * `aBoolRequired` comes from the effect map rather than the control, since a
-   * Required/Optional rule can override the control's own isRequired.
-   */
-  private buildValidatorsFor(
-    aObjControl: FormControlDef,
-    aArrRules: FormRule[],
-    aBoolRequired: boolean
-  ): ValidatorFn[] {
+
+  private buildValidatorsFor(aObjControl: FormControlDef, aArrRules: FormRule[], aBoolRequired: boolean): ValidatorFn[] {
     const larrConditional: string[] = ['Visibility', 'EnableDisable', 'RequiredOptional'];
 
-    const larrValidators: ValidatorFn[] = aArrRules
-      .filter(r => r.controlKey === aObjControl.controlKey
-        && !larrConditional.includes(r.ruleType)
-        && r.ruleType !== 'Required')
-      .map(r => this.ruleEngine.buildValidator(r, key => this.form.get(key)?.value));
+    const larrValidators: ValidatorFn[] = aArrRules.filter(r => r.controlKey === aObjControl.controlKey &&
+      !larrConditional.includes(r.ruleType) && r.ruleType !== 'Required').map(r => this.ruleEngine.buildValidator(
+        r, key => this.form.get(key)?.value));
 
-    if (aBoolRequired) larrValidators.push(Validators.required);
+    if (aBoolRequired) {
+      const lobjRequiredRule = aArrRules.find(r => r.controlKey === aObjControl.controlKey && r.isActive);
+      larrValidators.push(control => {
+        const empty =control.value === null ||control.value === undefined ||(typeof control.value === 'string' && control.value.trim() === '');
+        if (empty) {
+          return {
+            ruleFailure: {
+              message: lobjRequiredRule?.errorMessage || 'This field is required.'
+            }
+          };
+        }
 
-    return larrValidators;
+        return null;
+      });
+    }
+      return larrValidators;
   }
 
   /**
@@ -132,142 +127,140 @@ export class FormRender implements OnInit {
    * without it the form loops until the tab locks up.
    */
   private recomputeEffects(payload: FormRenderPayload): void {
-    this.iobjEffects = this.ruleEngine.computeEffects(
-      payload.rules, this.form.getRawValue(), payload.controls
-    );
+  this.iobjEffects = this.ruleEngine.computeEffects(payload.rules, this.form.getRawValue(), payload.controls);
 
-    // Viewing a submitted response: the whole form is disabled on purpose, so effects are
-    // computed for display only and must not re-enable anything.
-    if (this.iboolReadOnly) return;
+  // Viewing a submitted response: the whole form is disabled on purpose, so effects are
+  // computed for display only and must not re-enable anything.
+  if(this.iboolReadOnly) return;
 
-    for (const c of payload.controls) {
-      if (c.controlTypeCode === 'Label') continue;
+  for(const c of payload.controls) {
+  if (c.controlTypeCode === 'Label') continue;
 
-      const lobjEffect = this.iobjEffects[c.controlKey];
-      const ctrl = this.form.get(c.controlKey);
-      if (!lobjEffect || !ctrl) continue;
+  const lobjEffect = this.iobjEffects[c.controlKey];
+  const ctrl = this.form.get(c.controlKey);
+  if (!lobjEffect || !ctrl) continue;
 
-      if (lobjEffect.enabled && ctrl.disabled) {
-        ctrl.enable({ emitEvent: false });
-      } else if (!lobjEffect.enabled && ctrl.enabled) {
-        ctrl.disable({ emitEvent: false });
-      }
-
-      // A control the user cannot see or edit is not held to its rules, so a hidden
-      // Required field never blocks submission.
-      const lboolActive = lobjEffect.visible && lobjEffect.enabled;
-
-      if (!lboolActive) {
-        ctrl.clearValidators();
-        if (!lobjEffect.visible) ctrl.setValue('', { emitEvent: false });
-      } else {
-        ctrl.setValidators(this.buildValidatorsFor(c, payload.rules, lobjEffect.required));
-      }
-
-      ctrl.updateValueAndValidity({ emitEvent: false });
-    }
+  if (lobjEffect.enabled && ctrl.disabled) {
+    ctrl.enable({ emitEvent: false });
+  } else if (!lobjEffect.enabled && ctrl.enabled) {
+    ctrl.disable({ emitEvent: false });
   }
 
-  isVisible(aStrControlKey: string): boolean {
-    return this.iobjEffects[aStrControlKey]?.visible !== false;
+  // A control the user cannot see or edit is not held to its rules, so a hidden
+  // Required field never blocks submission.
+  const lboolActive = lobjEffect.visible && lobjEffect.enabled;
+
+  if (!lboolActive) {
+    ctrl.clearValidators();
+    if (!lobjEffect.visible) ctrl.setValue('', { emitEvent: false });
+  } else {
+    ctrl.setValidators(this.buildValidatorsFor(c, payload.rules, lobjEffect.required));
   }
 
-  isEnabled(aStrControlKey: string): boolean {
-    return this.iobjEffects[aStrControlKey]?.enabled !== false;
+  ctrl.updateValueAndValidity({ emitEvent: false });
+}
   }
 
-  isRequired(aStrControlKey: string): boolean {
-    return this.iobjEffects[aStrControlKey]?.required === true;
+isVisible(aStrControlKey: string): boolean {
+  return this.iobjEffects[aStrControlKey]?.visible !== false;
+}
+
+isEnabled(aStrControlKey: string): boolean {
+  return this.iobjEffects[aStrControlKey]?.enabled !== false;
+}
+
+isRequired(aStrControlKey: string): boolean {
+  return this.iobjEffects[aStrControlKey]?.required === true;
+}
+
+seedOptions(c: FormControlDef): string[] {
+  if (!c.propertiesJson) return [];
+  try {
+    const props = JSON.parse(c.propertiesJson);
+    return typeof props.SeedData === 'string' ? props.SeedData.split(',') : [];
+  } catch { return []; }
+}
+
+isCheckboxListOptionSelected(controlKey: string, opt: string): boolean {
+  const current: string[] = this.form.get(controlKey)?.value ?? [];
+  return current.includes(opt);
+}
+
+toggleCheckboxListOption(controlKey: string, opt: string): void {
+  const ctrl = this.form.get(controlKey);
+  if(!ctrl) return;
+  const current: string[] = ctrl.value ?? [];
+  const next = current.includes(opt) ? current.filter(v => v !== opt) : [...current, opt];
+  ctrl.setValue(next);
+}
+
+onFileSelected(controlKey: string, event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if(!file) return;
+
+  this.selectedFiles[controlKey] = file;
+  this.form.get(controlKey)?.setValue(file.name);
+
+  if(file.type.startsWith('image/')) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    this.imagePreviewUrls[controlKey] = reader.result as string;
+  };
+  reader.readAsDataURL(file);
+}
   }
 
-  seedOptions(c: FormControlDef): string[] {
-    if (!c.propertiesJson) return [];
-    try {
-      const props = JSON.parse(c.propertiesJson);
-      return typeof props.SeedData === 'string' ? props.SeedData.split(',') : [];
-    } catch { return []; }
+submit(): void {
+  this.serverErrors = [];
+  this.form.markAllAsTouched();
+  if(this.form.invalid) return;
+
+  const lobjFormData = new FormData();
+  lobjFormData.append('formVersionId', this.versionId.toString());
+  lobjFormData.append('values', JSON.stringify(this.form.value));
+
+  for(const controlKey of Object.keys(this.selectedFiles)) {
+  lobjFormData.append(controlKey, this.selectedFiles[controlKey]);
+}
+
+this.submissionService.submit(this.formId, lobjFormData).subscribe(res => {
+  if (res.success) {
+    this.submitted = true;
+  } else {
+    this.serverErrors = res.errors ?? [res.message ?? 'Submission failed.'];
+  }
+});
   }
 
-  isCheckboxListOptionSelected(controlKey: string, opt: string): boolean {
-    const current: string[] = this.form.get(controlKey)?.value ?? [];
-    return current.includes(opt);
-  }
+/** Stored filename held by a File/Image control, or '' when nothing was uploaded. */
+storedFileName(aStrControlKey: string): string {
+  const lobjValue = this.form.get(aStrControlKey)?.value;
+  return typeof lobjValue === 'string' ? lobjValue : '';
+}
 
-  toggleCheckboxListOption(controlKey: string, opt: string): void {
-    const ctrl = this.form.get(controlKey);
-    if (!ctrl) return;
-    const current: string[] = ctrl.value ?? [];
-    const next = current.includes(opt) ? current.filter(v => v !== opt) : [...current, opt];
-    ctrl.setValue(next);
-  }
+/** Inline URL — what <img src> points at. */
+fileUrl(aStrStoredFileName: string): string {
+  return `${environment.apiUrl}/files/${encodeURIComponent(aStrStoredFileName)}`;
+}
 
-  onFileSelected(controlKey: string, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
+/** Attachment URL — what the Download link points at. */
+downloadUrl(aStrStoredFileName: string): string {
+  return `${this.fileUrl(aStrStoredFileName)}?download=true`;
+}
 
-    this.selectedFiles[controlKey] = file;
-    this.form.get(controlKey)?.setValue(file.name);
+/** Stored names are "{Guid}_{originalName}" — show the user only the original part. */
+displayFileName(aStrStoredFileName: string): string {
+  if (!aStrStoredFileName) return '';
 
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.imagePreviewUrls[controlKey] = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-    }
-  }
+  const lnumIndex = aStrStoredFileName.indexOf('_');
+  if (lnumIndex <= 0) return aStrStoredFileName;
 
-  submit(): void {
-    this.serverErrors = [];
-    this.form.markAllAsTouched();
-    if (this.form.invalid) return;
+  const lstrPrefix = aStrStoredFileName.substring(0, lnumIndex);
+  const lobjGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    const lobjFormData = new FormData();
-    lobjFormData.append('formVersionId', this.versionId.toString());
-    lobjFormData.append('values', JSON.stringify(this.form.value));
-
-    for (const controlKey of Object.keys(this.selectedFiles)) {
-      lobjFormData.append(controlKey, this.selectedFiles[controlKey]);
-    }
-
-    this.submissionService.submit(this.formId, lobjFormData).subscribe(res => {
-      if (res.success) {
-        this.submitted = true;
-      } else {
-        this.serverErrors = res.errors ?? [res.message ?? 'Submission failed.'];
-      }
-    });
-  }
-
-  /** Stored filename held by a File/Image control, or '' when nothing was uploaded. */
-  storedFileName(aStrControlKey: string): string {
-    const lobjValue = this.form.get(aStrControlKey)?.value;
-    return typeof lobjValue === 'string' ? lobjValue : '';
-  }
-
-  /** Inline URL — what <img src> points at. */
-  fileUrl(aStrStoredFileName: string): string {
-    return `${environment.apiUrl}/files/${encodeURIComponent(aStrStoredFileName)}`;
-  }
-
-  /** Attachment URL — what the Download link points at. */
-  downloadUrl(aStrStoredFileName: string): string {
-    return `${this.fileUrl(aStrStoredFileName)}?download=true`;
-  }
-
-  /** Stored names are "{Guid}_{originalName}" — show the user only the original part. */
-  displayFileName(aStrStoredFileName: string): string {
-    if (!aStrStoredFileName) return '';
-
-    const lnumIndex = aStrStoredFileName.indexOf('_');
-    if (lnumIndex <= 0) return aStrStoredFileName;
-
-    const lstrPrefix = aStrStoredFileName.substring(0, lnumIndex);
-    const lobjGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    return lobjGuidPattern.test(lstrPrefix)
-      ? aStrStoredFileName.substring(lnumIndex + 1)
-      : aStrStoredFileName;
-  }
+  return lobjGuidPattern.test(lstrPrefix)
+    ? aStrStoredFileName.substring(lnumIndex + 1)
+    : aStrStoredFileName;
+}
 }

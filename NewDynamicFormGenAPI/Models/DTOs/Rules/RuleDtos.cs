@@ -2,10 +2,12 @@ namespace NewDynamicFormGenAPI.Models.DTOs.Rules;
 
 public class FormRuleDto
 {
+    public string RuleId { get; set; } = "";
+
     public string ControlKey { get; set; } = null!;
     public string RuleType { get; set; } = null!;
     public string? RuleDetailsJson { get; set; }
-    public string ErrorMessage { get; set; } = null!;
+    public string ErrorMessage { get; set; } = "";
     public string Severity { get; set; } = "Error";
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; } = true;
@@ -45,4 +47,18 @@ public class ControlEffectsDto
     public bool Visible { get; set; } = true;
     public bool Enabled { get; set; } = true;
     public bool Required { get; set; }
+}
+
+/// <summary>One clause of a conditional rule's trigger.</summary>
+public class RuleConditionDto
+{
+    public string ControlKey { get; set; } = "";
+    public string Operator { get; set; } = "==";
+    public string Value { get; set; } = "";
+}
+/// <summary>How multiple conditions on one rule combine.</summary>
+public static class ConditionLogic
+{
+    public const string And = "AND";
+    public const string Or = "OR";
 }

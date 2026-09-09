@@ -20,7 +20,11 @@ export class RuleService {
     return this.iobjHttp.post<FormRule>(`${this.istrBase}/${aNumFormVersionId}/rules`, aObjDto);
   }
 
-  deleteRule(aNumFormVersionId: number, aStrControlKey: string, aStrRuleType: string): Observable<void> {
-    return this.iobjHttp.delete<void>(`${this.istrBase}/${aNumFormVersionId}/rules/${aStrControlKey}/${aStrRuleType}`);
-  }
+ updateRule(aNumFormVersionId: number, aStrRuleId: string, aObjDto: CreateFormRuleRequest): Observable<FormRule> {
+  return this.iobjHttp.put<FormRule>(`${this.istrBase}/${aNumFormVersionId}/rules/${aStrRuleId}`, aObjDto);
+}
+
+deleteRule(aNumFormVersionId: number, aStrRuleId: string): Observable<void> {
+  return this.iobjHttp.delete<void>(`${this.istrBase}/${aNumFormVersionId}/rules/${encodeURIComponent(aStrRuleId)}`);
+}
 }

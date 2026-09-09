@@ -35,6 +35,7 @@ export type ConditionalAction =
     | 'Required' | 'Optional';
 
 export interface FormRule {
+    ruleId: string;
     controlKey: string;
     ruleType: RuleType;
     ruleDetailsJson?: string;
@@ -80,10 +81,16 @@ export interface CompareFieldsDetails {
  * Show/Hide, Enable/Disable and Required/Optional differ only in that field.
  */
 export interface ConditionalDetails {
-    triggerControlKey: string;
-    operator: '==' | '!=' | '<' | '<=' | '>' | '>=';
-    triggerValue: string;
+      conditions: RuleCondition[];
+    logic: ConditionLogic;
     action: ConditionalAction;
+
+    /** @deprecated Pre-multi-condition shape. Read-only. */
+    triggerControlKey?: string;
+    /** @deprecated */
+    operator?: ConditionOperator;
+    /** @deprecated */
+    triggerValue?: string;
 }
 
 /** Kept as an alias so existing references to VisibilityDetails still compile. */
@@ -138,4 +145,28 @@ export interface SubmissionFilter {
     toDate?: string;
     page: number;
     pageSize: number;
+}
+
+export type ConditionOperator = '==' | '!=' | '<' | '<=' | '>' | '>=';
+export type ConditionLogic = 'AND' | 'OR';
+
+/** One clause of a conditional rule's trigger. */
+export interface RuleCondition {
+    controlKey: string;
+    operator: ConditionOperator;
+    value: string;
+}
+
+/**
+ * All conditional rules share this shape — the target is the rule's own controlKey,
+ * and `action` decides which effect the conditions drive.
+ *
+ * The legacy single-trigger fields are still read from stored rules but never written;
+ * see normaliseConditions() in the rule engine.
+ */
+export interface ConditionalDetails {
+   
+
+
+    
 }

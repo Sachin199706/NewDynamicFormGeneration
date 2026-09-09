@@ -26,9 +26,9 @@ public interface IRuleEngineService
 {
     Task<List<FormRuleDto>> GetRulesForVersionAsync(int aNumFormVersionId);
     Task<FormRuleDto> AddRuleAsync(int aNumFormVersionId, CreateFormRuleDto aObjDto);
-    Task DeleteRuleAsync(int aNumFormVersionId, string aStrControlKey, string aStrRuleType);
-
+    Task DeleteRuleAsync(int aNumFormVersionId, string aStrRuleId);
     Dictionary<string, ControlEffectsDto> ComputeEffects(List<FormRuleDto> aArrRules,IReadOnlyDictionary<string, object?> aObjSubmittedValues,List<FormControlDto> aArrControls);
+    Task<FormRuleDto?> UpdateRuleAsync(int aNumFormVersionId, string aStrRuleId, CreateFormRuleDto aObjDto);
 
     RuleEvaluationResultDto Evaluate(List<FormRuleDto> aArrRules,IReadOnlyDictionary<string, object?> aObjSubmittedValues,List<FormControlDto> aArrControls);
     List<RuleFailureDto> EvaluateFileRules(List<FormRuleDto> aArrRules, IFormFileCollection aObjFiles);

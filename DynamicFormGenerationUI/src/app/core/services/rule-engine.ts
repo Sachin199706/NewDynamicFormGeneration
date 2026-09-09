@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import {
-  CompareFieldsDetails, ConditionalDetails, ControlEffects, DateRuleDetails, FormatDetails,
-  FormatKind, FormRule, LengthDetails, PatternDetails, RangeDetails, RuleType, VisibilityDetails
+  CompareFieldsDetails, ConditionalDetails, ConditionLogic, ControlEffects, DateRuleDetails, FormatDetails,
+  FormatKind, FormRule, LengthDetails, PatternDetails, RangeDetails, RuleCondition, RuleType, VisibilityDetails
 } from '../models/rule.model';
 import { FormControlDef } from '../models/form.model';
 
@@ -24,7 +24,7 @@ export class RuleEngineService {
    *  passes in the browser and then fails on submit. */
   private static readonly FormatPatterns: Record<FormatKind, RegExp> = {
     'Email': /^[^@\s]+@[^@\s]+\.[^@\s]+$/,
-    'Phone': /^\+?[0-9\s\-()]{7,15}$/,
+    'Phone': /^\+?[0-9\s\-()]{10,15}$/,
     'URL': /^https?:\/\/[^\s/$.?#].[^\s]*$/,
     'Number': /^-?\d+(\.\d+)?$/,
     'Alphanumeric': /^[A-Za-z0-9]+$/
@@ -84,11 +84,8 @@ export class RuleEngineService {
    * Replaces the old computeVisibility(): Show/Hide is now one action among six rather
    * than a mechanism of its own.
    */
-  computeEffects(
-    rules: FormRule[],
-    values: Record<string, any>,
-    controls: FormControlDef[]
-  ): Record<string, ControlEffects> {
+  computeEffects(rules: FormRule[], values: Record<string, any>, controls: FormControlDef[]):
+    Record<string, ControlEffects> {
     const effects: Record<string, ControlEffects> = {};
 
     // Every control starts visible and enabled; required comes from its own definition.
@@ -98,7 +95,7 @@ export class RuleEngineService {
 
     // A stored Required rule is another way of saying the control is required by default,
     // so it seeds the same flag — a Required/Optional rule below can then override it.
-    for (const rule of rules.filter(r => r.isActive && this.normalizeRuleType(r.ruleType) === 'Required')) {
+    for (const rule of rules.filter(r => r.isActive && r.severity==='Error')) {
       if (effects[rule.controlKey]) effects[rule.controlKey].required = true;
     }
 
@@ -107,27 +104,25 @@ export class RuleEngineService {
       .sort((a, b) => a.displayOrder - b.displayOrder)) {
 
       const d = this.parseDetails<ConditionalDetails>(rule.ruleDetailsJson);
-      if (!d?.triggerControlKey) continue;
+      const larrConditions = this.normaliseConditions(d);
+      if (larrConditions.length === 0) continue;
 
-      const raw = values[d.triggerControlKey];
-      const actual = raw === null || raw === undefined ? '' : String(raw);
-      const conditionMet = this.compareValues(actual, d.triggerValue ?? '', d.operator ?? '==');
+      const conditionMet = this.evaluateConditions(larrConditions, d?.logic ?? 'AND', values);
 
       if (!effects[rule.controlKey]) {
         effects[rule.controlKey] = { visible: true, enabled: true, required: false };
       }
       const e = effects[rule.controlKey];
 
-      switch (d.action) {
-        case 'Show':     e.visible = conditionMet; break;
-        case 'Hide':     e.visible = !conditionMet; break;
-        case 'Enable':   e.enabled = conditionMet; break;
-        case 'Disable':  e.enabled = !conditionMet; break;
+      switch (d?.action) {
+        case 'Show': e.visible = conditionMet; break;
+        case 'Hide': e.visible = !conditionMet; break;
+        case 'Enable': e.enabled = conditionMet; break;
+        case 'Disable': e.enabled = !conditionMet; break;
         case 'Required': e.required = conditionMet; break;
         case 'Optional': e.required = !conditionMet; break;
       }
     }
-
     return effects;
   }
 
@@ -140,7 +135,7 @@ export class RuleEngineService {
     switch (op) {
       case '!=': return a !== b;
       case '==': return a === b;
-      default:   return a === b;
+      default: return a === b;
     }
   }
 
@@ -212,8 +207,8 @@ export class RuleEngineService {
         switch (d.operator) {
           case '<=Today': return cmp.getTime() <= today.getTime();
           case '>=Today': return cmp.getTime() >= today.getTime();
-          case '<Today':  return cmp.getTime() <  today.getTime();
-          case '>Today':  return cmp.getTime() >  today.getTime();
+          case '<Today': return cmp.getTime() < today.getTime();
+          case '>Today': return cmp.getTime() > today.getTime();
           default: return true;
         }
       }
@@ -252,20 +247,65 @@ export class RuleEngineService {
     }
   }
 
-  private compare(a: number, b: number, op: CompareFieldsDetails['operator']): boolean {
+  private compare(a: number, b: number, op: ConditionalDetails['operator']): boolean {
     switch (op) {
       case '==': return a === b;
       case '!=': return a !== b;
-      case '<':  return a < b;
+      case '<': return a < b;
       case '<=': return a <= b;
-      case '>':  return a > b;
+      case '>': return a > b;
       case '>=': return a >= b;
-      default:   return true;
+      default: return true;
     }
   }
 
   private parseDetails<T>(json?: string): T | null {
     if (!json) return null;
     try { return JSON.parse(json) as T; } catch { return null; }
+  }
+  /**
+ * Reads a conditional rule's trigger, in either shape. Rules written before
+ * multi-condition support carry a single flat trigger; those are wrapped into a
+ * one-element list so the evaluation path is the same for both.
+ */
+  private normaliseConditions(d: ConditionalDetails | null): RuleCondition[] {
+    if (!d) return [];
+
+    if (Array.isArray(d.conditions) && d.conditions.length > 0) {
+      return d.conditions.filter(c => !!c.controlKey);
+    }
+
+    if (d.triggerControlKey) {
+      return [{
+        controlKey: d.triggerControlKey,
+        operator: d.operator ?? '==',
+        value: d.triggerValue ?? ''
+      }];
+    }
+
+    return [];
+  }
+
+  /** A rule with no usable conditions never fires — a half-configured Hide rule
+   *  should not blank out a field. */
+  private evaluateConditions(
+    conditions: RuleCondition[],
+    logic: ConditionLogic,
+    values: Record<string, any>
+  ): boolean {
+    if (conditions.length === 0) return false;
+
+    const isOr = logic === 'OR';
+
+    for (const c of conditions) {
+      const raw = values[c.controlKey];
+      const actual = raw === null || raw === undefined ? '' : String(raw);
+      const met = this.compareValues(actual, c.value ?? '', c.operator ?? '==');
+
+      if (isOr && met) return true;
+      if (!isOr && !met) return false;
+    }
+
+    return !isOr;
   }
 }

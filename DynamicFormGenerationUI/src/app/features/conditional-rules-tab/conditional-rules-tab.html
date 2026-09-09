@@ -1,0 +1,168 @@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0 fw-bold">
+                Existing Conditional Rules
+                <span class="badge bg-light text-dark ms-1">{{ iarrRules.length }}</span>
+            </h6>
+            <button class="btn btn-primary btn-sm" (click)="openAdd()">
+                <i class="bi bi-plus-lg me-1"></i> Add Conditional Rule
+            </button>
+        </div>
+
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:50px;">#</th>
+                    <th>Rule (Summary)</th>
+                    <th>Applies To</th>
+                    <th>Condition</th>
+                    <th>Action</th>
+                    <th style="width:100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let r of iarrRules; let i = index">
+                    <td>{{ i + 1 }}</td>
+                    <td>
+                        <span class="badge me-2" [ngClass]="badgeFor(r).css">{{ badgeFor(r).text }}</span>
+                        <span class="small text-muted">{{ summaryText(r) }}</span>
+                    </td>
+                    <td>{{ controlLabel(r.controlKey) }}</td>
+                    <td class="small text-muted">{{ conditionText(r) }}</td>
+                    <td>{{ actionOf(r) }}</td>
+                    <td>
+                        <button class="btn btn-link btn-sm text-secondary p-1" (click)="openEdit(r)" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-link btn-sm text-danger p-1" (click)="deleteRule(r)" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                <tr *ngIf="iarrRules.length === 0">
+                    <td colspan="6" class="text-center text-muted py-4">No conditional rules yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4" *ngIf="iboolFormOpen">
+    <div class="card-body">
+        <h6 class="fw-bold mb-3">{{ istrEditingRuleId ? 'Edit Conditional Rule' : 'Add Conditional Rule' }}</h6>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <label class="form-label small">Rule Type <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="istrRuleType" (ngModelChange)="onRuleTypeChange()">
+                    <option *ngFor="let t of iarrRuleTypes" [value]="t.type">{{ t.label }}</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Applies To (Field) <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="istrControlKey">
+                    <option value="">Select Field</option>
+                    <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Action <span class="text-danger">*</span></label>
+                <div class="d-flex gap-3 pt-1">
+                    <div class="form-check" *ngFor="let a of selectedMeta?.actions">
+                        <input class="form-check-input" type="radio" [value]="a" [(ngModel)]="istrAction"
+                            [id]="'act_' + a" name="conditionalAction" />
+                        <label class="form-check-label" [for]="'act_' + a">{{ a }}</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="border rounded p-3 bg-light mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="small fw-semibold">When the following condition is met</div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm" (click)="addCondition()">
+                        <i class="bi bi-plus-lg me-1"></i> Add Condition
+                    </button>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn" [class.btn-primary]="istrLogic === 'AND'"
+                            [class.btn-outline-secondary]="istrLogic !== 'AND'" (click)="istrLogic = 'AND'">AND</button>
+                        <button class="btn" [class.btn-primary]="istrLogic === 'OR'"
+                            [class.btn-outline-secondary]="istrLogic !== 'OR'" (click)="istrLogic = 'OR'">OR</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-2 align-items-end" *ngFor="let cond of iarrConditions; let i = index">
+                <div class="col-md-4">
+                    <label class="form-label small" *ngIf="i === 0">Field <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" [(ngModel)]="cond.controlKey"
+                        [ngModelOptions]="{standalone: true}">
+                        <option value="">Select Field</option>
+                        <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small" *ngIf="i === 0">Operator <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" [(ngModel)]="cond.operator"
+                        [ngModelOptions]="{standalone: true}">
+                        <option value="==">Equals ( = )</option>
+                        <option value="!=">Not equals ( &ne; )</option>
+                        <option value="&lt;">Less than</option>
+                        <option value="&lt;=">Less than or equal</option>
+                        <option value="&gt;">Greater than</option>
+                        <option value="&gt;=">Greater than or equal</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" *ngIf="i === 0">Value <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" [(ngModel)]="cond.value"
+                        [ngModelOptions]="{standalone: true}" />
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-danger btn-sm w-100" (click)="removeCondition(i)"
+                        [disabled]="iarrConditions.length === 1" title="Remove condition">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-outline-secondary" (click)="cancel()">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!canSave" (click)="save()">
+                <i class="bi bi-plus-circle me-1"></i>
+                {{ istrEditingRuleId ? 'Save Changes' : 'Add Rule' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-primary d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex gap-2">
+        <i class="bi bi-info-circle mt-1"></i>
+        <div class="small">
+            <div><strong>Conditional Rules</strong> control the behavior of fields or sections based on values entered
+                in other fields.</div>
+            <div>Use Validation Rules to ensure the data entered is correct.</div>
+        </div>
+    </div>
+    <button class="btn btn-outline-primary btn-sm text-nowrap" (click)="igoToValidation.emit()">
+        Go to Validation Rules <i class="bi bi-arrow-right ms-1"></i>
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h6 class="fw-bold mb-3">Common Conditional Rule Examples</h6>
+        <div class="row g-3">
+            <div class="col-md-2" *ngFor="let ex of iarrExamples">
+                <div class="example-tile">
+                    <div class="example-title"><i class="bi me-1" [ngClass]="ex.icon"></i>{{ ex.title }}</div>
+                    <div class="example-sub">{{ ex.sub }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

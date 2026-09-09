@@ -273,11 +273,10 @@ export class FormBuilder implements OnInit {
     });
   }
 
-  /// Rules from the inline Properties panel are merged into the control's own rules array
-  /// rather than POSTed separately after the save. The panel-owned types are replaced
-  /// wholesale; every other type (Pattern, Format, File, CompareFields, and the conditional
-  /// rules — set up in the Rule Builder) is carried through untouched, which is what stops
-  /// a save from wiping them.
+ 
+  private buildPanelRuleId(aStrControlKey: string, aStrRuleType: string): string {
+  return `panel:${aStrControlKey}#${aStrRuleType}`;
+}
   private mergeRulesForControl(aObjControl: FormControlDef): FormRule[] {
     // Legacy MinLength/MaxLength are stripped too — the panel loaded them in, and they
     // are rewritten below as a single Length rule. Leaving them would duplicate.
@@ -293,7 +292,7 @@ export class FormBuilder implements OnInit {
     const larrPanelRules: FormRule[] = [];
 
     if (lobjValues.minLength != null || lobjValues.maxLength != null) {
-      larrPanelRules.push({
+      larrPanelRules.push({ruleId:this.buildPanelRuleId(aObjControl.controlKey,'Length'),
         controlKey: aObjControl.controlKey, ruleType: 'Length',
         ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
         errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
@@ -301,7 +300,7 @@ export class FormBuilder implements OnInit {
       });
     }
     if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-      larrPanelRules.push({
+      larrPanelRules.push({ruleId:this.buildPanelRuleId(aObjControl.controlKey,'Range'),
         controlKey: aObjControl.controlKey, ruleType: 'Range',
         ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
         errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
@@ -309,7 +308,7 @@ export class FormBuilder implements OnInit {
       });
     }
     if (lobjValues.dateOperator) {
-      larrPanelRules.push({
+      larrPanelRules.push({ruleId:this.buildPanelRuleId(aObjControl.controlKey,'Date'),
         controlKey: aObjControl.controlKey, ruleType: 'Date',
         ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
         errorMessage: `Date is invalid.`,
@@ -434,51 +433,59 @@ export class FormBuilder implements OnInit {
   /// built client-side so Preview works on a form that's never been saved. Conditional
   /// rules and Pattern/Format/File/CompareFields come from the saved version, which is
   /// why they are merged in from iarrSavedRules rather than rebuilt here.
-  private buildInMemoryRules(): FormRule[] {
-    const larrRules: FormRule[] = [];
+ /// Required (from the checkbox) + Length/Range/Date (from the inline Properties panel),
+/// built client-side so Preview works on a form that's never been saved. Conditional
+/// rules and Pattern/Format/File/CompareFields come from the saved version, which is
+/// why they are merged in from iarrSavedRules rather than rebuilt here.
+private buildInMemoryRules(): FormRule[] {
+  const larrRules: FormRule[] = [];
 
-    for (const c of this.iarrCanvasControls) {
-      if (c.isRequired) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
-          errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
-
-      const lobjValues = this.iobjControlRuleValues[c.controlKey];
-      if (!lobjValues) continue;
-
-      if (lobjValues.minLength != null || lobjValues.maxLength != null) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'Length',
-          ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
-          errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
-          severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
-      if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'Range',
-          ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
-          errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
-          severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
-      if (lobjValues.dateOperator) {
-        larrRules.push({
-          controlKey: c.controlKey, ruleType: 'Date',
-          ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
-          errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
-        });
-      }
+  for (const c of this.iarrCanvasControls) {
+    if (c.isRequired) {
+      larrRules.push({
+        ruleId: this.buildPanelRuleId(c.controlKey, 'Required'),
+        controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
+        errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
+      });
     }
 
-    // The panel cannot express these, so they come straight from the saved version.
-    const larrPanelOwned: RuleType[] = ['Required', 'Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
-    larrRules.push(...this.iarrSavedRules.filter(r => r.isActive && !larrPanelOwned.includes(r.ruleType)));
+    const lobjValues = this.iobjControlRuleValues[c.controlKey];
+    if (!lobjValues) continue;
 
-    return larrRules;
+    if (lobjValues.minLength != null || lobjValues.maxLength != null) {
+      larrRules.push({
+        ruleId: this.buildPanelRuleId(c.controlKey, 'Length'),
+        controlKey: c.controlKey, ruleType: 'Length',
+        ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
+        errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
+        severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
+    if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
+      larrRules.push({
+        ruleId: this.buildPanelRuleId(c.controlKey, 'Range'),
+        controlKey: c.controlKey, ruleType: 'Range',
+        ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
+        errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
+        severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
+    if (lobjValues.dateOperator) {
+      larrRules.push({
+        ruleId: this.buildPanelRuleId(c.controlKey, 'Date'),
+        controlKey: c.controlKey, ruleType: 'Date',
+        ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
+        errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
+      });
+    }
   }
+
+  // The panel cannot express these, so they come straight from the saved version.
+  const larrPanelOwned: RuleType[] = ['Required', 'Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
+  larrRules.push(...this.iarrSavedRules.filter(r => r.isActive && !larrPanelOwned.includes(r.ruleType)));
+
+  return larrRules;
+}
 
   seedOptions(aObjC: CanvasControl): string[] {
     if (!aObjC.propertiesJson) return [];
@@ -487,4 +494,6 @@ export class FormBuilder implements OnInit {
       return typeof lobjProps.SeedData === 'string' ? lobjProps.SeedData.split(',') : [];
     } catch { return []; }
   }
+
+  
 }

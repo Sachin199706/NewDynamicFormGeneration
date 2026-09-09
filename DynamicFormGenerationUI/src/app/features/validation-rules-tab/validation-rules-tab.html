@@ -1,0 +1,208 @@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0 fw-bold">
+                Existing Validation Rules
+                <span class="badge bg-light text-dark ms-1">{{ iarrRules.length }}</span>
+            </h6>
+            <button class="btn btn-primary btn-sm" (click)="openAdd()">
+                <i class="bi bi-plus-lg me-1"></i> Add Validation Rule
+            </button>
+        </div>
+
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:50px;">#</th>
+                    <th>Field</th>
+                    <th>Rule</th>
+                    <th>Error Message</th>
+                    <th style="width:100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let r of iarrRules; let i = index">
+                    <td>{{ i + 1 }}</td>
+                    <td>{{ controlLabel(r.controlKey) }}</td>
+                    <td><span class="rule-pill">{{ ruleSummary(r) }}</span></td>
+                    <td class="text-muted">{{ r.errorMessage }}</td>
+                    <td>
+                        <button class="btn btn-link btn-sm text-secondary p-1" (click)="openEdit(r)" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-link btn-sm text-danger p-1" (click)="deleteRule(r)" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                <tr *ngIf="iarrRules.length === 0">
+                    <td colspan="5" class="text-center text-muted py-4">No validation rules yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4" *ngIf="iboolFormOpen">
+    <div class="card-body">
+        <h6 class="fw-bold mb-3">{{ istrEditingRuleId ? 'Edit Validation Rule' : 'Add Validation Rule' }}</h6>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <label class="form-label small">Field <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="istrControlKey">
+                    <option value="">Select Field</option>
+                    <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Rule Type <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="istrRuleType">
+                    <option *ngFor="let t of iarrRuleTypes" [value]="t.type">{{ t.label }}</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Error Message <span class="text-danger">*</span></label>
+                <textarea class="form-control" rows="2" maxlength="200" [(ngModel)]="istrErrorMessage"
+                    placeholder="Enter error message"></textarea>
+                <div class="text-end text-muted small">{{ istrErrorMessage.length }}/200</div>
+            </div>
+        </div>
+
+        <div class="row g-0 border rounded overflow-hidden">
+            <div class="col-md-3 border-end rule-type-list bg-white py-2">
+                <div class="rule-type-item" *ngFor="let t of iarrRuleTypes" [class.selected]="istrRuleType === t.type"
+                    (click)="istrRuleType = t.type">
+                    <i class="bi" [ngClass]="t.icon"></i> {{ t.label }}
+                </div>
+            </div>
+
+            <div class="col-md-9 p-3">
+                <div class="text-muted small mb-3">{{ selectedMeta?.description }}</div>
+
+                <div class="border rounded p-3 bg-light">
+                    <div class="fw-semibold small mb-2">Options</div>
+
+                    <div *ngIf="istrRuleType === 'Required'" class="text-muted small">
+                        No further options — the field simply must have a value.
+                    </div>
+
+                    <div class="row g-3" *ngIf="istrRuleType === 'Length'">
+                        <div class="col-md-4">
+                            <label class="form-label small">Min length</label>
+                            <input type="number" class="form-control form-control-sm" [(ngModel)]="inumLengthMin" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Max length</label>
+                            <input type="number" class="form-control form-control-sm" [(ngModel)]="inumLengthMax" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3" *ngIf="istrRuleType === 'Range'">
+                        <div class="col-md-4">
+                            <label class="form-label small">Min value</label>
+                            <input type="number" class="form-control form-control-sm" [(ngModel)]="inumRangeMin" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Max value</label>
+                            <input type="number" class="form-control form-control-sm" [(ngModel)]="inumRangeMax" />
+                        </div>
+                    </div>
+
+                    <div *ngIf="istrRuleType === 'Pattern'">
+                        <label class="form-label small">Regular expression</label>
+                        <input type="text" class="form-control form-control-sm" [(ngModel)]="istrPattern"
+                            placeholder="^[0-9]{10}$" />
+                        <div class="form-text">An invalid pattern is ignored rather than failing the field.</div>
+                    </div>
+
+                    <div *ngIf="istrRuleType === 'Format'" class="col-md-5">
+                        <label class="form-label small">Format</label>
+                        <select class="form-select form-select-sm" [(ngModel)]="istrFormatKind">
+                            <option *ngFor="let f of iarrFormatKinds" [value]="f">{{ f }}</option>
+                        </select>
+                    </div>
+
+                    <div *ngIf="istrRuleType === 'Date'" class="col-md-5">
+                        <label class="form-label small">Condition</label>
+                        <select class="form-select form-select-sm" [(ngModel)]="istrDateOperator">
+                            <option value="&lt;=Today">On or before today</option>
+                            <option value="&gt;=Today">On or after today</option>
+                            <option value="&lt;Today">Before today</option>
+                            <option value="&gt;Today">After today</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-3" *ngIf="istrRuleType === 'File'">
+                        <div class="col-md-7">
+                            <label class="form-label small">Allowed extensions</label>
+                            <input type="text" class="form-control form-control-sm" [(ngModel)]="istrFileExtensions"
+                                placeholder="pdf, png, jpg" />
+                            <div class="form-text">Comma separated. Leave empty to allow any type.</div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small">Max size (KB)</label>
+                            <input type="number" class="form-control form-control-sm" [(ngModel)]="inumFileMaxSizeKb"
+                                placeholder="2048" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3" *ngIf="istrRuleType === 'CompareFields'">
+                        <div class="col-md-5">
+                            <label class="form-label small">Compare with</label>
+                            <select class="form-select form-select-sm" [(ngModel)]="istrCompareFieldKey">
+                                <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small">Operator</label>
+                            <select class="form-select form-select-sm" [(ngModel)]="istrCompareFieldOperator">
+                                <option value="==">Equals ( = )</option>
+                                <option value="!=">Not equals</option>
+                                <option value="&lt;">Less than</option>
+                                <option value="&lt;=">Less than or equal</option>
+                                <option value="&gt;">Greater than</option>
+                                <option value="&gt;=">Greater than or equal</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button class="btn btn-outline-secondary" (click)="cancel()">Cancel</button>
+                    <button class="btn btn-primary" [disabled]="!canSave" (click)="save()">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        {{ istrEditingRuleId ? 'Save Changes' : 'Add Rule' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-primary d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex gap-2">
+        <i class="bi bi-info-circle mt-1"></i>
+        <div class="small">
+            <div><strong>Validation Rules</strong> check the user input and show error messages.</div>
+            <div>Use Conditional Rules to control field behavior based on other field values.</div>
+        </div>
+    </div>
+    <button class="btn btn-outline-primary btn-sm text-nowrap" (click)="igoToConditional.emit()">
+        Go to Conditional Rules <i class="bi bi-arrow-right ms-1"></i>
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h6 class="fw-bold mb-3">Common Validation Examples</h6>
+        <div class="row g-3">
+            <div class="col-md-2" *ngFor="let ex of iarrExamples">
+                <div class="example-tile">
+                    <div class="example-title"><i class="bi me-1" [ngClass]="ex.icon"></i>{{ ex.title }}</div>
+                    <div class="example-sub">{{ ex.sub }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

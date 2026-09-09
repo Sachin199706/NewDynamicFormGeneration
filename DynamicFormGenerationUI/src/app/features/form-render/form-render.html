@@ -16,7 +16,7 @@
                 <ng-container [ngSwitch]="c.controlTypeCode">
                     <textarea *ngSwitchCase="'TextArea'" class="form-control"
                         [formControlName]="c.controlKey"></textarea>
-
+                 
                     <select *ngSwitchCase="'Dropdown'" class="form-control" [formControlName]="c.controlKey">
                         <option value="">-- Select --</option>
                         <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
@@ -94,6 +94,12 @@
                             <div *ngIf="!storedFileName(c.controlKey)" class="form-control bg-light text-muted">No image
                                 uploaded</div>
                         </ng-container>
+                        <div class="text-danger small mt-1" *ngIf="
+        form.get(c.controlKey)?.touched &&
+        form.get(c.controlKey)?.errors?.['ruleFailure']
+    ">
+                            {{ form.get(c.controlKey)?.errors?.['ruleFailure']?.message }}
+                        </div>
                     </div>
 
 
