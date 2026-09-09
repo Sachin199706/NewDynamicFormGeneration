@@ -9,6 +9,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { Observable, forkJoin, of } from 'rxjs';
+import {ToastrService} from 'ngx-toastr';
 
 interface CanvasControl extends FormControlDef {
   tempId: string;
@@ -23,8 +25,8 @@ interface CanvasControl extends FormControlDef {
 export class FormBuilder implements OnInit {
   inumTemplateId: number | null = null;
   inumVersionId: number | null = null;
-  istrFormName = '';
-  istrTemplateName = '';
+  istrVersionDescription = '';
+  istrTemplateName = "";
   iarrControlTypes: ControlType[] = [];
   iarrCanvasControls: CanvasControl[] = [];
   iobjSelected: CanvasControl | null = null;
@@ -49,9 +51,9 @@ export class FormBuilder implements OnInit {
     private iobjFormService: FormService,
     private iobjRuleService: RuleService,
     private iobjRuleEngine: RuleEngineService,
-    private iobjRoute: ActivatedRoute,
-    private iobjRouter: Router
-  ) { }
+    private iobjRoute: ActivatedRoute, 
+    private iobjRouter: Router,
+    private toastr: ToastrService) { }
 
   ngOnInit(): void {
     this.iobjControlTypeService.getAll().subscribe(types => this.iarrControlTypes = types);
@@ -68,7 +70,7 @@ export class FormBuilder implements OnInit {
 
       lobjVersionLoad$.subscribe(res => {
         if (res.success && res.data) {
-          this.istrFormName = res.data.formName;
+          this.istrVersionDescription = res.data.versionDescription;
           this.inumVersionId = res.data.formVersionId;
           this.iarrCanvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
 
@@ -260,15 +262,17 @@ export class FormBuilder implements OnInit {
 
     const lobjDto = {
       formId: this.inumTemplateId,
-      formName: this.istrFormName || 'Untitled Form',
-      formDefinitionJson: JSON.stringify({ controls: larrControlsWithRules }),
+      formVersionId: this.inumVersionId,
+      versionDescription: this.istrVersionDescription || 'Untitled Form',
+      formDefinitionJson: JSON.stringify({ controls: this.iarrCanvasControls }),
       layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
       controls: larrControlsWithRules
     };
 
     this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
       if (res.success && res.data) {
-        this.iobjRouter.navigate(['/dashboard']);
+        this.toastr.success('Form version saved successfully.', 'Success');
+        // this.iobjRouter.navigate(['/dashboard']);
       }
     });
   }
@@ -494,6 +498,4 @@ private buildInMemoryRules(): FormRule[] {
       return typeof lobjProps.SeedData === 'string' ? lobjProps.SeedData.split(',') : [];
     } catch { return []; }
   }
-
-  
 }

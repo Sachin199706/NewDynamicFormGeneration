@@ -101,50 +101,61 @@ public class FormService : IFormService
 
     public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto)
     {
-        int lnumFormId;
-        if (!aObjDto.FormId.HasValue || aObjDto.FormId.Value == 0)
+        int lnumFormId = aObjDto.FormId;
+
+        // If a FormVersionId is provided, update the existing version
+        if (aObjDto.FormVersionId.HasValue && aObjDto.FormVersionId.Value > 0)
         {
-            var lobjForm = new Form
-            {
-                FormCode = Guid.NewGuid().ToString("N")[..12],
-                FormName = aObjDto.FormName ?? "Untitled Form",
-                CreatedDate = DateTime.UtcNow
-            };
-            await _uow.Repository<Form>().AddAsync(lobjForm);
+            var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(aObjDto.FormVersionId.Value);
+            if (lobjVersion == null)
+                return Result<FormVersionDto>.Fail("Form version not found.");
+
+            // update stored JSON/layout/description
+            lobjVersion.FormDefinitionJson = aObjDto.FormDefinitionJson;
+            lobjVersion.LayoutDefinitionJson = aObjDto.LayoutDefinitionJson;
+            lobjVersion.VersionDescription = aObjDto.VersionDescription;
+            _uow.Repository<FormVersion>().Update(lobjVersion);
             await _uow.SaveChangesAsync();
-            lnumFormId = lobjForm.FormId;
-        }
-        else
-        {
-            lnumFormId = aObjDto.FormId.Value;
+
+            // update parent form modified date
+            var lobjFormEntity = await _uow.Repository<Form>().GetByIdAsync(lnumFormId);
+            if (lobjFormEntity != null)
+            {
+                lobjFormEntity.ModifiedDate = DateTime.UtcNow;
+                _uow.Repository<Form>().Update(lobjFormEntity);
+                await _uow.SaveChangesAsync();
+            }
+
+            return await GetVersionByIdAsync(aObjDto.FormVersionId.Value);
         }
 
+        // Otherwise create a new version
         var lnumNextVersionNo = _uow.Repository<FormVersion>().Query()
             .Where(v => v.FormId == lnumFormId)
             .Select(v => (int?)v.VersionNo)
             .Max() ?? 0;
         lnumNextVersionNo++;
 
-        // Controls (and their embedded rules) live entirely inside FormDefinitionJson now —
-        // no FormControls table anymore, so this is just a straight save of the JSON blob
-        // the builder already sent. No per-control insert loop needed.
-        var lobjVersion = new FormVersion
+        var lobjNewVersion = new FormVersion
         {
             FormId = lnumFormId,
             VersionNo = lnumNextVersionNo,
+            VersionDescription = aObjDto.VersionDescription,
             Status = FormStatus.Draft,
             FormDefinitionJson = aObjDto.FormDefinitionJson,
             LayoutDefinitionJson = aObjDto.LayoutDefinitionJson,
             CreatedDate = DateTime.UtcNow
         };
-        await _uow.Repository<FormVersion>().AddAsync(lobjVersion);
+
+        await _uow.Repository<FormVersion>().AddAsync(lobjNewVersion);
         await _uow.SaveChangesAsync();
 
-        var lobjFormEntity = await _uow.Repository<Form>().GetByIdAsync(lnumFormId);
-        if (lobjFormEntity != null)
+        // update parent form modified date
+        var lobjForm = await _uow.Repository<Form>().GetByIdAsync(lnumFormId);
+        if (lobjForm != null)
         {
-            lobjFormEntity.ModifiedDate = DateTime.UtcNow;
-            _uow.Repository<Form>().Update(lobjFormEntity);
+            lobjForm.ModifiedDate = DateTime.UtcNow;
+            _uow.Repository<Form>().Update(lobjForm);
             await _uow.SaveChangesAsync();
         }
 
@@ -278,7 +289,8 @@ public class FormService : IFormService
                 FormName = lstrFormName,
                 VersionNo = v.VersionNo,
                 Status = v.Status,
-                ModifiedDate = v.CreatedDate
+                ModifiedDate = v.CreatedDate,
+                VersionDescription = v.VersionDescription
             }).ToList(),
             Page = aNumPage,
             PageSize = aNumPageSize,
@@ -296,15 +308,16 @@ public class FormService : IFormService
             .ToDictionary(f => f.FormId, f => f.FormName);
 
         var lobjVersionNosById = _uow.Repository<FormVersion>().Query()
-            .ToDictionary(v => v.FormVersionId, v => v.VersionNo);
+            .ToDictionary(v => v.FormVersionId, v => new { v.VersionNo, v.VersionDescription });
 
         return larrHistory.Select(h => new FormPublishHistoryItemDto
         {
             FormId = h.FormId,
             FormVersionId = h.FormVersionId,
             FormName = lobjFormNamesById.GetValueOrDefault(h.FormId, "Unknown"),
-            VersionNo = lobjVersionNosById.GetValueOrDefault(h.FormVersionId, 0),
-            PublishedOn = h.PublishedOn
+            VersionNo = lobjVersionNosById.GetValueOrDefault(h.FormVersionId)?.VersionNo ?? 0,
+            PublishedOn = h.PublishedOn,
+            VersionDescription = lobjVersionNosById.GetValueOrDefault(h.FormVersionId)?.VersionDescription
         }).ToList();
     }
 
@@ -334,6 +347,7 @@ public class FormService : IFormService
         {
             FormVersionId = aObjVersion.FormVersionId,
             FormId = aObjVersion.FormId,
+            VersionDescription = aObjVersion.VersionDescription,
             VersionNo = aObjVersion.VersionNo,
             Status = aObjVersion.Status,
             FormDefinitionJson = aObjVersion.FormDefinitionJson,
@@ -396,7 +410,7 @@ public class FormService : IFormService
                     ModifiedDate = v.CreatedDate,
                     VersionDescription = v.VersionDescription
                 }
-            ).Take(5).ToList()
+            ).Take(10).ToList()
         };
 
         return await Task.FromResult(lobjDashboard);
