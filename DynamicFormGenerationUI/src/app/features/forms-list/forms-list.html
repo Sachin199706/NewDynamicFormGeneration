@@ -15,7 +15,7 @@
         <tbody>
             <tr *ngFor="let f of iarrForms">
                 <td>{{ f.formName }}</td>
-                <td>v{{ f.versionNo }}</td>
+                <td>v{{ f.versionNo }} {{f.versionDescription}}</td>
                 <td>{{ f.publishedOn | date:'medium' }}</td>
                 <td class="d-flex gap-2">
                     <a [routerLink]="['/forms/builder', f.formId]" [queryParams]="{ version: f.formVersionId }">Edit</a>

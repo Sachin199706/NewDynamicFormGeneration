@@ -24,8 +24,8 @@
 
         <div class="d-flex gap-2">
             <a
-                [routerLink]="['/forms/builder']"
-                [queryParams]="{ tid: inumFormTemplateId, tname: strTemplateName }"
+                [routerLink]="['/forms/builder',inumFormTemplateId]"
+                [queryParams]="{ tname: strTemplateName }"
                 class="btn btn-primary">
                 + Create Version
             </a>
@@ -105,7 +105,7 @@
 
                 <thead>
                     <tr>
-                        <th>Form Name</th>
+                        <th>Description</th>
                         <th>Version</th>
                         <th>Status</th>
                         <th>Modified On</th>
@@ -118,7 +118,7 @@
                     <tr *ngFor="let f of iarrForms">
 
                         <td>
-                            <strong>{{ f.formName }}</strong>
+                            <strong>{{ f.versionDescription }}</strong>
                         </td>
 
                         <td>
