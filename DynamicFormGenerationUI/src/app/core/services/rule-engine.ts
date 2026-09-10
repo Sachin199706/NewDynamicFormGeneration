@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import {
-  CompareFieldsDetails, ConditionalDetails, ConditionLogic, ControlEffects, DateRuleDetails, FormatDetails,
-  FormatKind, FormRule, LengthDetails, PatternDetails, RangeDetails, RuleCondition, RuleType, VisibilityDetails
+  CompareFieldsDetails, ConditionalDetails, ConditionLogic, ConditionOperator, ControlEffects,
+  DateRuleDetails, FilterDependencyDetails, FormatDetails, FormatKind, FormRule, LengthDetails, PatternDetails,
+  RangeDetails, RuleCondition, RuleType,
+  SetValueDetails
 } from '../models/rule.model';
 import { FormControlDef } from '../models/form.model';
 
@@ -24,7 +26,7 @@ export class RuleEngineService {
    *  passes in the browser and then fails on submit. */
   private static readonly FormatPatterns: Record<FormatKind, RegExp> = {
     'Email': /^[^@\s]+@[^@\s]+\.[^@\s]+$/,
-    'Phone': /^\+?[0-9\s\-()]{10,15}$/,
+    'Phone': /^\+?[0-9\s\-()]{7,15}$/,
     'URL': /^https?:\/\/[^\s/$.?#].[^\s]*$/,
     'Number': /^-?\d+(\.\d+)?$/,
     'Alphanumeric': /^[A-Za-z0-9]+$/
@@ -50,7 +52,9 @@ export class RuleEngineService {
   private isConditional(aStrRuleType: RuleType): boolean {
     return aStrRuleType === 'Visibility'
       || aStrRuleType === 'EnableDisable'
-      || aStrRuleType === 'RequiredOptional';
+      || aStrRuleType === 'RequiredOptional'
+      || aStrRuleType === 'SetValue'
+      || aStrRuleType === 'FilterDependency';
   }
 
   /** Builds an Angular ValidatorFn for one rule. Cross-field rules need the whole form group. */
@@ -95,24 +99,49 @@ export class RuleEngineService {
 
     // A stored Required rule is another way of saying the control is required by default,
     // so it seeds the same flag — a Required/Optional rule below can then override it.
-    for (const rule of rules.filter(r => r.isActive && r.severity==='Error')) {
+    // Matched on rule TYPE, not severity: every validation rule defaults to Error severity,
+    // so filtering on that would mark a field with only a Length rule as required.
+    for (const rule of rules.filter(r => r.isActive && this.normalizeRuleType(r.ruleType) === 'Required')) {
       if (effects[rule.controlKey]) effects[rule.controlKey].required = true;
     }
 
-    for (const rule of rules
+      for (const rule of rules
       .filter(r => r.isActive && this.isConditional(r.ruleType))
       .sort((a, b) => a.displayOrder - b.displayOrder)) {
-
-      const d = this.parseDetails<ConditionalDetails>(rule.ruleDetailsJson);
-      const larrConditions = this.normaliseConditions(d);
-      if (larrConditions.length === 0) continue;
-
-      const conditionMet = this.evaluateConditions(larrConditions, d?.logic ?? 'AND', values);
 
       if (!effects[rule.controlKey]) {
         effects[rule.controlKey] = { visible: true, enabled: true, required: false };
       }
       const e = effects[rule.controlKey];
+              e.calculated = true;
+
+      // Filter/Dependency has no conditions — the source control's current value is the
+      // lookup key, so it is handled before the condition machinery below.
+      if (rule.ruleType === 'FilterDependency') {
+        const fd = this.parseDetails<FilterDependencyDetails>(rule.ruleDetailsJson);
+        if (!fd?.sourceControlKey) continue;
+
+        const raw = values[fd.sourceControlKey];
+        const sourceValue = raw === null || raw === undefined ? '' : String(raw);
+
+        // A source value with no entry yields an empty list rather than undefined —
+        // "no match" means no options, not "leave the control's own options in place".
+        e.options = fd.mapping?.[sourceValue] ?? [];
+        continue;
+      }
+
+      const d = this.parseDetails<ConditionalDetails & SetValueDetails>(rule.ruleDetailsJson);
+      const larrConditions = this.normaliseConditions(d);
+      if (larrConditions.length === 0) continue;
+
+      const conditionMet = this.evaluateConditions(larrConditions, d?.logic ?? 'AND', values);
+
+      if (rule.ruleType === 'SetValue') {
+        // Only writes when the conditions hold — a rule that stops matching leaves
+        // whatever the user has since typed alone rather than clearing it.
+        if (conditionMet) e.value = d?.value;
+        continue;
+      }
 
       switch (d?.action) {
         case 'Show': e.visible = conditionMet; break;
@@ -127,7 +156,7 @@ export class RuleEngineService {
   }
 
   /** Numeric when both sides parse as numbers, string otherwise. All six operators supported. */
-  private compareValues(a: string, b: string, op: ConditionalDetails['operator']): boolean {
+  private compareValues(a: string, b: string, op: ConditionOperator): boolean {
     const numA = Number(a), numB = Number(b);
     if (a.trim() !== '' && b.trim() !== '' && !Number.isNaN(numA) && !Number.isNaN(numB)) {
       return this.compare(numA, numB, op);
@@ -237,9 +266,11 @@ export class RuleEngineService {
         return true;
 
       // Conditional rules produce effects, not failures — see computeEffects().
-      case 'Visibility':
+       case 'Visibility':
       case 'EnableDisable':
       case 'RequiredOptional':
+      case 'SetValue':
+      case 'FilterDependency':
         return true;
 
       default:
@@ -247,7 +278,7 @@ export class RuleEngineService {
     }
   }
 
-  private compare(a: number, b: number, op: ConditionalDetails['operator']): boolean {
+  private compare(a: number, b: number, op: ConditionOperator): boolean {
     switch (op) {
       case '==': return a === b;
       case '!=': return a !== b;
@@ -263,11 +294,12 @@ export class RuleEngineService {
     if (!json) return null;
     try { return JSON.parse(json) as T; } catch { return null; }
   }
+
   /**
- * Reads a conditional rule's trigger, in either shape. Rules written before
- * multi-condition support carry a single flat trigger; those are wrapped into a
- * one-element list so the evaluation path is the same for both.
- */
+   * Reads a conditional rule's trigger, in either shape. Rules written before
+   * multi-condition support carry a single flat trigger; those are wrapped into a
+   * one-element list so the evaluation path is the same for both.
+   */
   private normaliseConditions(d: ConditionalDetails | null): RuleCondition[] {
     if (!d) return [];
 

@@ -29,7 +29,7 @@ export class FormRules implements OnInit {
   istrActiveTab: 'validation' | 'conditional' = 'validation';
 
   /** Conditional rules change form state; everything else fails a submission. */
-  private static readonly ConditionalTypes: string[] = ['Visibility', 'EnableDisable', 'RequiredOptional'];
+  private static readonly ConditionalTypes: string[] = ['Visibility', 'EnableDisable', 'RequiredOptional', 'SetValue', 'FilterDependency'];
 
   constructor(
     private iobjRoute: ActivatedRoute,

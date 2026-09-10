@@ -59,6 +59,7 @@
                     <option *ngFor="let t of iarrRuleTypes" [value]="t.type">{{ t.label }}</option>
                 </select>
             </div>
+
             <div class="col-md-4">
                 <label class="form-label small">Applies To (Field) <span class="text-danger">*</span></label>
                 <select class="form-select" [(ngModel)]="istrControlKey">
@@ -66,7 +67,8 @@
                     <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
                 </select>
             </div>
-            <div class="col-md-4">
+
+            <div class="col-md-4" *ngIf="usesAction">
                 <label class="form-label small">Action <span class="text-danger">*</span></label>
                 <div class="d-flex gap-3 pt-1">
                     <div class="form-check" *ngFor="let a of selectedMeta?.actions">
@@ -76,9 +78,22 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col-md-4" *ngIf="istrRuleType === 'SetValue'">
+                <label class="form-label small">Value to set <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="istrSetValue" placeholder="e.g. India" />
+            </div>
+
+            <div class="col-md-4" *ngIf="istrRuleType === 'FilterDependency'">
+                <label class="form-label small">Based on field <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="istrSourceControlKey">
+                    <option value="">Select Field</option>
+                    <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
+                </select>
+            </div>
         </div>
 
-        <div class="border rounded p-3 bg-light mb-3">
+        <div class="border rounded p-3 bg-light mb-3" *ngIf="usesConditions">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <div class="small fw-semibold">When the following condition is met</div>
                 <div class="d-flex gap-2">
@@ -126,6 +141,71 @@
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Filter Options has no conditions: the source field's value is the lookup key, and
+             each row says which options the target should offer for that value. -->
+        <div class="border rounded p-3 bg-light mb-3" *ngIf="istrRuleType === 'FilterDependency'">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="small fw-semibold">Option mapping</div>
+                <button class="btn btn-outline-primary btn-sm" (click)="addMappingRow()">
+                    <i class="bi bi-plus-lg me-1"></i> Add Mapping
+                </button>
+            </div>
+
+            <div class="row g-2 mb-2 align-items-end" *ngFor="let row of iarrMappingRows; let i = index">
+                <div class="col-md-4">
+                    <label class="form-label small" *ngIf="i === 0">
+                        When {{ controlLabel(istrSourceControlKey) || 'source field' }} is
+                    </label>
+                    <input type="text" class="form-control form-control-sm" [(ngModel)]="row.sourceValue"
+                        [ngModelOptions]="{standalone: true}" placeholder="India" list="sourceValues" />
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label small" *ngIf="i === 0">Show these options</label>
+                    <input type="text" class="form-control form-control-sm" [(ngModel)]="row.options"
+                        [ngModelOptions]="{standalone: true}" placeholder="Maharashtra, Gujarat, Karnataka" />
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-danger btn-sm w-100" (click)="removeMappingRow(i)"
+                        [disabled]="iarrMappingRows.length === 1" title="Remove mapping">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-text">Options are comma separated. A source value with no row shows no options.</div>
+
+            <datalist id="sourceValues">
+                <option *ngFor="let o of seedOptionsFor(istrSourceControlKey)" [value]="o"></option>
+            </datalist>
+        </div>
+
+        <!-- Calculate has no conditions: it recomputes whenever a referenced field changes. -->
+        <div class="border rounded p-3 bg-light mb-3" *ngIf="istrRuleType === 'Calculate'">
+            <div class="small fw-semibold mb-2">Expression</div>
+
+            <div class="row g-2">
+                <div class="col-md-9">
+                    <input type="text" class="form-control form-control-sm" [(ngModel)]="istrExpression"
+                        [class.is-invalid]="expressionError" placeholder="{txtQty} * {txtRate}" />
+                    <div class="invalid-feedback">{{ expressionError }}</div>
+                    <div class="form-text">Reference fields with braces. Supports + - * / and brackets.</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Decimal places</label>
+                    <input type="number" class="form-control form-control-sm" [(ngModel)]="inumDecimals" min="0" max="6"
+                        placeholder="2" />
+                </div>
+            </div>
+
+            <div class="mt-2">
+                <div class="small text-muted mb-1">Available fields — click to insert</div>
+                <button class="btn btn-outline-secondary btn-sm me-1 mb-1" *ngFor="let c of iarrControls"
+                    (click)="istrExpression = istrExpression + '{' + c.controlKey + '}'">
+                    {{ c.label }}
+                </button>
             </div>
         </div>
 

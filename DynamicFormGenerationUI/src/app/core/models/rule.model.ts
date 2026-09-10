@@ -17,6 +17,9 @@ export type RuleType =
     | 'Visibility'
     | 'EnableDisable'
     | 'RequiredOptional'
+    | 'SetValue'
+    | 'FilterDependency'
+    | 'Calculate'
     // Names used before issue #10. Still present in saved forms, so they are read
     // and normalised — never written for new rules.
     | 'MinLength'
@@ -24,7 +27,6 @@ export type RuleType =
     | 'Regex'
     | 'Email'
     | 'CrossField';
-
 export type RuleSeverity = 'Error' | 'Warning';
 
 export type FormatKind = 'Email' | 'Phone' | 'URL' | 'Number' | 'Alphanumeric';
@@ -32,7 +34,12 @@ export type FormatKind = 'Email' | 'Phone' | 'URL' | 'Number' | 'Alphanumeric';
 export type ConditionalAction =
     | 'Show' | 'Hide'
     | 'Enable' | 'Disable'
-    | 'Required' | 'Optional';
+    | 'Required' | 'Optional'
+    // Set Value, Filter Options and Calculate each have one fixed action rather than a
+    // pair — they carry it so the table's badge and Action column have something to show.
+    | 'SetValue'
+    | 'Filter'
+    | 'Calculate';
 
 export interface FormRule {
     ruleId: string;
@@ -81,7 +88,7 @@ export interface CompareFieldsDetails {
  * Show/Hide, Enable/Disable and Required/Optional differ only in that field.
  */
 export interface ConditionalDetails {
-      conditions: RuleCondition[];
+    conditions: RuleCondition[];
     logic: ConditionLogic;
     action: ConditionalAction;
 
@@ -104,6 +111,10 @@ export interface ControlEffects {
     visible: boolean;
     enabled: boolean;
     required: boolean;
+    value?: string;
+    calculated?: boolean;
+    /** Set by a FilterDependency rule; undefined means the control's own options apply. */
+    options?: string[];
 }
 
 export interface SubmitFormRequest {
@@ -157,16 +168,20 @@ export interface RuleCondition {
     value: string;
 }
 
-/**
- * All conditional rules share this shape — the target is the rule's own controlKey,
- * and `action` decides which effect the conditions drive.
- *
- * The legacy single-trigger fields are still read from stored rules but never written;
- * see normaliseConditions() in the rule engine.
- */
-export interface ConditionalDetails {
-   
+export interface SetValueDetails {
+    conditions: RuleCondition[];
+    logic: ConditionLogic;
+    value: string;
+}
 
-
-    
+/** Source value → the options the target should offer. */
+export interface FilterDependencyDetails {
+    sourceControlKey: string;
+    mapping: Record<string, string[]>;
+}
+export interface CalculateDetails {
+    /** Field references use {controlKey}; supports + - * / and parentheses. */
+    expression: string;
+    /** Decimal places for the result. Omitted means no rounding. */
+    decimals?: number;
 }
