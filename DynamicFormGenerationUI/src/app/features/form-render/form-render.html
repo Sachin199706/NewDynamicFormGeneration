@@ -19,7 +19,7 @@
                  
                     <select *ngSwitchCase="'Dropdown'" class="form-control" [formControlName]="c.controlKey">
                         <option value="">-- Select --</option>
-                        <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
+                        <option *ngFor="let opt of optionsFor(c)" [value]="opt">{{ opt }}</option>
                     </select>
 
                     <input *ngSwitchCase="'Number'" type="number" class="form-control"
@@ -28,7 +28,7 @@
                     <input *ngSwitchCase="'Date'" type="date" class="form-control" [formControlName]="c.controlKey" />
 
                     <div *ngSwitchCase="'Radio'">
-                        <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                        <div class="form-check" *ngFor="let opt of optionsFor(c)">
                             <input type="radio" class="form-check-input" [formControlName]="c.controlKey" [value]="opt"
                                 [id]="c.controlKey + '_' + opt" />
                             <label class="form-check-label" [for]="c.controlKey + '_' + opt">{{ opt }}</label>
@@ -42,7 +42,7 @@
                     </div>
 
                     <div *ngSwitchCase="'CheckboxList'">
-                        <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                        <div class="form-check" *ngFor="let opt of optionsFor(c)">
                             <input type="checkbox" class="form-check-input"
                                 [checked]="isCheckboxListOptionSelected(c.controlKey, opt)"
                                 (change)="toggleCheckboxListOption(c.controlKey, opt)"

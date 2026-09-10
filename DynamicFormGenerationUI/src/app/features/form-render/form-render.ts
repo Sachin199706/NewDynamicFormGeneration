@@ -140,12 +140,25 @@ export class FormRender implements OnInit {
   const ctrl = this.form.get(c.controlKey);
   if (!lobjEffect || !ctrl) continue;
 
+        // A calculated field is derived, so the user must not type over it.
+      if (lobjEffect.calculated && ctrl.enabled) {
+        ctrl.disable({ emitEvent: false });
+      }
   if (lobjEffect.enabled && ctrl.disabled) {
     ctrl.enable({ emitEvent: false });
   } else if (!lobjEffect.enabled && ctrl.enabled) {
     ctrl.disable({ emitEvent: false });
   }
 
+   if (lobjEffect.value !== undefined && ctrl.value !== lobjEffect.value) {
+        ctrl.setValue(lobjEffect.value, { emitEvent: false });
+      }
+
+      // A filtered-out value would otherwise sit in the control invisibly and be
+      // submitted as something no longer offered.
+      if (lobjEffect.options && ctrl.value && !lobjEffect.options.includes(String(ctrl.value))) {
+        ctrl.setValue('', { emitEvent: false });
+      }
   // A control the user cannot see or edit is not held to its rules, so a hidden
   // Required field never blocks submission.
   const lboolActive = lobjEffect.visible && lobjEffect.enabled;
@@ -263,4 +276,7 @@ displayFileName(aStrStoredFileName: string): string {
     ? aStrStoredFileName.substring(lnumIndex + 1)
     : aStrStoredFileName;
 }
+  optionsFor(aObjControl: FormControlDef): string[] {
+    return this.iobjEffects[aObjControl.controlKey]?.options ?? this.seedOptions(aObjControl);
+  }
 }
