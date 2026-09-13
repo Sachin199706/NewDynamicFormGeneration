@@ -26,7 +26,8 @@ export type RuleType =
     | 'MaxLength'
     | 'Regex'
     | 'Email'
-    | 'CrossField';
+    | 'CrossField'
+    | 'SectionVisibility';
 export type RuleSeverity = 'Error' | 'Warning';
 
 export type FormatKind = 'Email' | 'Phone' | 'URL' | 'Number' | 'Alphanumeric';

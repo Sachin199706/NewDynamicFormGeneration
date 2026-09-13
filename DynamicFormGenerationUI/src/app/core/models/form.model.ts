@@ -22,6 +22,7 @@ export interface UpdateFormTemplateRequest extends CreateFormTemplateRequest {
 }
 
 export interface FormControlDef {
+     sectionKey?: string;
     controlId?: number;
     controlKey: string;
     controlTypeCode: string;
@@ -57,6 +58,7 @@ export interface FormVersion {
     layoutDefinitionJson?: string;
     controls: FormControlDef[];
     createdDate: string;
+    sections?: FormSection[];
 }
 
 export interface FormRenderPayload {
@@ -66,6 +68,7 @@ export interface FormRenderPayload {
     layoutDefinitionJson?: string;
     controls: FormControlDef[];
     rules: FormRule[];
+    sections?: FormSection[];
 }
 
 export interface ControlType {
@@ -104,4 +107,9 @@ export interface DashboardItems {
     publishedForms: number;
     archivedForms: number;
     recentForms: FormVersionListItem[];
+}
+export interface FormSection {
+    sectionKey: string;
+    title: string;
+    displayOrder: number;
 }

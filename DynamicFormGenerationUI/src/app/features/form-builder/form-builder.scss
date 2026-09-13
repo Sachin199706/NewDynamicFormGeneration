@@ -15,3 +15,43 @@
     overflow-y: auto;
     border-radius: 8px;
 }
+
+// Canvas drop targets — one for unsectioned controls, one per section.
+.canvas-list {
+    min-height: 60px;
+    border: 1px dashed #d1d5db;
+    border-radius: .375rem;
+    background: #fff;
+}
+
+.section-block {
+    border: 1px solid #e5e7eb;
+    border-radius: .5rem;
+    background: #fafbfc;
+
+    .section-header {
+        padding: .5rem .75rem;
+        border-bottom: 1px solid #e5e7eb;
+
+        .section-title {
+            max-width: 280px;
+            font-weight: 600;
+        }
+    }
+}
+
+// Sections inside the preview overlay use the same classes as the real fill screen,
+// so the two stay visually in step.
+.form-section {
+    border: 1px solid #e5e7eb;
+    border-radius: .5rem;
+    background: #fff;
+
+    .form-section-header {
+        padding: .6rem 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        background: #f8f9fb;
+        border-radius: .5rem .5rem 0 0;
+    }
+}

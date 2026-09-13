@@ -279,4 +279,22 @@ displayFileName(aStrStoredFileName: string): string {
   optionsFor(aObjControl: FormControlDef): string[] {
     return this.iobjEffects[aObjControl.controlKey]?.options ?? this.seedOptions(aObjControl);
   }
+
+    /** Controls with no sectionKey. They render above every section. */
+  get unsectionedControls(): FormControlDef[] {
+    return (this.payload?.controls ?? []).filter(c => !c.sectionKey);
+  }
+
+  controlsIn(aStrSectionKey: string): FormControlDef[] {
+    return (this.payload?.controls ?? []).filter(c => c.sectionKey === aStrSectionKey);
+  }
+
+  /**
+   * The section header and border are drawn by the section itself, so its visibility is
+   * tracked separately from its controls' — even though a hidden section also marks
+   * every control inside it hidden.
+   */
+  isSectionVisible(aStrSectionKey: string): boolean {
+    return this.ruleEngine.isSectionVisible(aStrSectionKey);
+  }
 }

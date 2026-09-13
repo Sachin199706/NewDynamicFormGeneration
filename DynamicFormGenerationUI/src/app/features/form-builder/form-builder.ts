@@ -9,8 +9,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { Observable, forkJoin, of } from 'rxjs';
-import {ToastrService} from 'ngx-toastr';
+import { ToastrService } from 'ngx-toastr';
 
 interface CanvasControl extends FormControlDef {
   tempId: string;
@@ -26,7 +25,7 @@ export class FormBuilder implements OnInit {
   inumTemplateId: number | null = null;
   inumVersionId: number | null = null;
   istrVersionDescription = '';
-  istrTemplateName = "";
+  istrTemplateName = '';
   iarrControlTypes: ControlType[] = [];
   iarrCanvasControls: CanvasControl[] = [];
   iobjSelected: CanvasControl | null = null;
@@ -35,25 +34,30 @@ export class FormBuilder implements OnInit {
   iboolPreviewOpen = false;
   iarrPreviewRules: FormRule[] = [];
   iobjPreviewValues: Record<string, any> = {};
-  /** Per-control state after all conditional rules have run. Replaces the old visibility map. */
+  /** Per-control state after all conditional rules have run. */
   iobjPreviewEffects: Record<string, ControlEffects> = {};
   iobjPreviewErrors: Record<string, string> = {};
   iobjSelectedFiles: Record<string, File> = {};
   iobjPreviewImageUrls: Record<string, string> = {};
+  iobjPreviewTouched: Record<string, boolean> = {};
 
   iboolPublished = false;
   istrPublishError = '';
 
   iobjControlRuleValues: Record<string, any> = {};
 
+  /** Rules loaded from the saved version — conditional ones are only available from here. */
+  iarrSavedRules: FormRule[] = [];
+
   constructor(
     private iobjControlTypeService: ControlTypeService,
     private iobjFormService: FormService,
     private iobjRuleService: RuleService,
     private iobjRuleEngine: RuleEngineService,
-    private iobjRoute: ActivatedRoute, 
+    private iobjRoute: ActivatedRoute,
     private iobjRouter: Router,
-    private toastr: ToastrService) { }
+    private toastr: ToastrService
+  ) { }
 
   ngOnInit(): void {
     this.iobjControlTypeService.getAll().subscribe(types => this.iarrControlTypes = types);
@@ -251,9 +255,6 @@ export class FormBuilder implements OnInit {
     });
   }
 
-  /** Rules loaded from the saved version — conditional ones are only available from here. */
-  iarrSavedRules: FormRule[] = [];
-
   save(): void {
     const larrControlsWithRules = this.iarrCanvasControls.map(({ tempId, ...rest }) => ({
       ...rest,
@@ -264,7 +265,7 @@ export class FormBuilder implements OnInit {
       formId: this.inumTemplateId,
       formVersionId: this.inumVersionId,
       versionDescription: this.istrVersionDescription || 'Untitled Form',
-      formDefinitionJson: JSON.stringify({ controls: this.iarrCanvasControls }),
+      formDefinitionJson: JSON.stringify({ controls: larrControlsWithRules }),
       layoutDefinitionJson: JSON.stringify({ columnLayout: this.inumColumnLayout }),
       controls: larrControlsWithRules
     };
@@ -272,15 +273,21 @@ export class FormBuilder implements OnInit {
     this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
       if (res.success && res.data) {
         this.toastr.success('Form version saved successfully.', 'Success');
-        // this.iobjRouter.navigate(['/dashboard']);
       }
     });
   }
 
- 
+  /** Panel rules bypass AddRuleAsync, so they need an id assigned here or they would be
+   *  uneditable in the Rule Builder. Deterministic per control + type, so re-saving the
+   *  same panel value keeps the same id rather than creating a new one each time. */
   private buildPanelRuleId(aStrControlKey: string, aStrRuleType: string): string {
-  return `panel:${aStrControlKey}#${aStrRuleType}`;
-}
+    return `panel:${aStrControlKey}#${aStrRuleType}`;
+  }
+
+  /// Rules from the inline Properties panel are merged into the control's own rules array
+  /// rather than POSTed separately after the save. The panel-owned types are replaced
+  /// wholesale; every other type is carried through untouched, which is what stops a save
+  /// from wiping rules set up in the Rule Builder.
   private mergeRulesForControl(aObjControl: FormControlDef): FormRule[] {
     // Legacy MinLength/MaxLength are stripped too — the panel loaded them in, and they
     // are rewritten below as a single Length rule. Leaving them would duplicate.
@@ -296,7 +303,8 @@ export class FormBuilder implements OnInit {
     const larrPanelRules: FormRule[] = [];
 
     if (lobjValues.minLength != null || lobjValues.maxLength != null) {
-      larrPanelRules.push({ruleId:this.buildPanelRuleId(aObjControl.controlKey,'Length'),
+      larrPanelRules.push({
+        ruleId: this.buildPanelRuleId(aObjControl.controlKey, 'Length'),
         controlKey: aObjControl.controlKey, ruleType: 'Length',
         ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
         errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
@@ -304,7 +312,8 @@ export class FormBuilder implements OnInit {
       });
     }
     if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-      larrPanelRules.push({ruleId:this.buildPanelRuleId(aObjControl.controlKey,'Range'),
+      larrPanelRules.push({
+        ruleId: this.buildPanelRuleId(aObjControl.controlKey, 'Range'),
         controlKey: aObjControl.controlKey, ruleType: 'Range',
         ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
         errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
@@ -312,7 +321,8 @@ export class FormBuilder implements OnInit {
       });
     }
     if (lobjValues.dateOperator) {
-      larrPanelRules.push({ruleId:this.buildPanelRuleId(aObjControl.controlKey,'Date'),
+      larrPanelRules.push({
+        ruleId: this.buildPanelRuleId(aObjControl.controlKey, 'Date'),
         controlKey: aObjControl.controlKey, ruleType: 'Date',
         ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
         errorMessage: `Date is invalid.`,
@@ -352,6 +362,7 @@ export class FormBuilder implements OnInit {
   openPreview(): void {
     this.iobjPreviewValues = {};
     this.iobjPreviewEffects = {};
+    this.iobjPreviewTouched = {};
     this.iarrCanvasControls.forEach(c => this.iobjPreviewValues[c.controlKey] = c.defaultValue ?? '');
 
     this.iarrPreviewRules = this.buildInMemoryRules();
@@ -365,7 +376,8 @@ export class FormBuilder implements OnInit {
   }
 
   onPreviewChange(aStrControlKey: string, aObjValue: any): void {
-    this.iobjPreviewValues[aStrControlKey] = aObjValue;
+  this.iobjPreviewValues[aStrControlKey] = aObjValue;
+    this.iobjPreviewTouched[aStrControlKey] = true;
     this.recomputePreviewEffects();
     this.recomputePreviewErrors();
   }
@@ -416,8 +428,8 @@ export class FormBuilder implements OnInit {
     const lobjErrors: Record<string, string> = {};
 
     for (const lobjFailure of lobjResult.failures) {
-      // A control the user cannot see or edit is not held to its rules — the server's
-      // Evaluate() skips these too, so Preview must match or it flags phantom errors.
+      // A control the user cannot see or edit is not held to its rules, so Preview must
+      // skip these or it flags errors on fields that aren't on screen.
       const lobjEffect = this.iobjPreviewEffects[lobjFailure.controlKey];
       if (lobjEffect && (!lobjEffect.visible || !lobjEffect.enabled)) continue;
 
@@ -437,59 +449,55 @@ export class FormBuilder implements OnInit {
   /// built client-side so Preview works on a form that's never been saved. Conditional
   /// rules and Pattern/Format/File/CompareFields come from the saved version, which is
   /// why they are merged in from iarrSavedRules rather than rebuilt here.
- /// Required (from the checkbox) + Length/Range/Date (from the inline Properties panel),
-/// built client-side so Preview works on a form that's never been saved. Conditional
-/// rules and Pattern/Format/File/CompareFields come from the saved version, which is
-/// why they are merged in from iarrSavedRules rather than rebuilt here.
-private buildInMemoryRules(): FormRule[] {
-  const larrRules: FormRule[] = [];
+  private buildInMemoryRules(): FormRule[] {
+    const larrRules: FormRule[] = [];
 
-  for (const c of this.iarrCanvasControls) {
-    if (c.isRequired) {
-      larrRules.push({
-        ruleId: this.buildPanelRuleId(c.controlKey, 'Required'),
-        controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
-        errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
-      });
+    for (const c of this.iarrCanvasControls) {
+      if (c.isRequired) {
+        larrRules.push({
+          ruleId: this.buildPanelRuleId(c.controlKey, 'Required'),
+          controlKey: c.controlKey, ruleType: 'Required', ruleDetailsJson: undefined,
+          errorMessage: 'This field is required.', severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
+
+      const lobjValues = this.iobjControlRuleValues[c.controlKey];
+      if (!lobjValues) continue;
+
+      if (lobjValues.minLength != null || lobjValues.maxLength != null) {
+        larrRules.push({
+          ruleId: this.buildPanelRuleId(c.controlKey, 'Length'),
+          controlKey: c.controlKey, ruleType: 'Length',
+          ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
+          errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
+          severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
+      if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
+        larrRules.push({
+          ruleId: this.buildPanelRuleId(c.controlKey, 'Range'),
+          controlKey: c.controlKey, ruleType: 'Range',
+          ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
+          errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
+          severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
+      if (lobjValues.dateOperator) {
+        larrRules.push({
+          ruleId: this.buildPanelRuleId(c.controlKey, 'Date'),
+          controlKey: c.controlKey, ruleType: 'Date',
+          ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
+          errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
+        });
+      }
     }
 
-    const lobjValues = this.iobjControlRuleValues[c.controlKey];
-    if (!lobjValues) continue;
+    // The panel cannot express these, so they come straight from the saved version.
+    const larrPanelOwned: RuleType[] = ['Required', 'Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
+    larrRules.push(...this.iarrSavedRules.filter(r => r.isActive && !larrPanelOwned.includes(r.ruleType)));
 
-    if (lobjValues.minLength != null || lobjValues.maxLength != null) {
-      larrRules.push({
-        ruleId: this.buildPanelRuleId(c.controlKey, 'Length'),
-        controlKey: c.controlKey, ruleType: 'Length',
-        ruleDetailsJson: JSON.stringify({ min: lobjValues.minLength, max: lobjValues.maxLength }),
-        errorMessage: this.buildLengthMessage(lobjValues.minLength, lobjValues.maxLength),
-        severity: 'Error', displayOrder: 0, isActive: true
-      });
-    }
-    if (lobjValues.rangeMin != null || lobjValues.rangeMax != null) {
-      larrRules.push({
-        ruleId: this.buildPanelRuleId(c.controlKey, 'Range'),
-        controlKey: c.controlKey, ruleType: 'Range',
-        ruleDetailsJson: JSON.stringify({ min: lobjValues.rangeMin, max: lobjValues.rangeMax }),
-        errorMessage: `Value must be between ${lobjValues.rangeMin} and ${lobjValues.rangeMax}.`,
-        severity: 'Error', displayOrder: 0, isActive: true
-      });
-    }
-    if (lobjValues.dateOperator) {
-      larrRules.push({
-        ruleId: this.buildPanelRuleId(c.controlKey, 'Date'),
-        controlKey: c.controlKey, ruleType: 'Date',
-        ruleDetailsJson: JSON.stringify({ operator: lobjValues.dateOperator }),
-        errorMessage: `Date is invalid.`, severity: 'Error', displayOrder: 0, isActive: true
-      });
-    }
+    return larrRules;
   }
-
-  // The panel cannot express these, so they come straight from the saved version.
-  const larrPanelOwned: RuleType[] = ['Required', 'Length', 'Range', 'Date', 'MinLength', 'MaxLength'];
-  larrRules.push(...this.iarrSavedRules.filter(r => r.isActive && !larrPanelOwned.includes(r.ruleType)));
-
-  return larrRules;
-}
 
   seedOptions(aObjC: CanvasControl): string[] {
     if (!aObjC.propertiesJson) return [];
@@ -497,5 +505,16 @@ private buildInMemoryRules(): FormRule[] {
       const lobjProps = JSON.parse(aObjC.propertiesJson);
       return typeof lobjProps.SeedData === 'string' ? lobjProps.SeedData.split(',') : [];
     } catch { return []; }
+  }
+
+   markPreviewTouched(aStrControlKey: string): void {
+    this.iobjPreviewTouched[aStrControlKey] = true;
+  }
+
+  /** The message to show, or '' while the field is still untouched. */
+  previewError(aStrControlKey: string): string {
+    return this.iobjPreviewTouched[aStrControlKey]
+      ? (this.iobjPreviewErrors[aStrControlKey] ?? '')
+      : '';
   }
 }

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { FormControlDef } from '../../core/models/form.model';
+import { FormControlDef, FormSection } from '../../core/models/form.model';
 import { FormRule } from '../../core/models/rule.model';
 import { FormService } from '../../core/services/form';
 import { RuleService } from '../../core/services/rule';
@@ -25,24 +25,25 @@ export class FormRules implements OnInit {
   inumVersionId!: number;
   iarrControls: FormControlDef[] = [];
   iarrRules: FormRule[] = [];
+    iarrSections: FormSection[] = [];
 
   istrActiveTab: 'validation' | 'conditional' = 'validation';
 
   /** Conditional rules change form state; everything else fails a submission. */
-  private static readonly ConditionalTypes: string[] = ['Visibility', 'EnableDisable', 'RequiredOptional', 'SetValue', 'FilterDependency'];
+    private static readonly ConditionalTypes: string[] =
+    ['Visibility', 'EnableDisable', 'RequiredOptional', 'SetValue', 'FilterDependency', 'Calculate','SectionVisibility'];
 
-  constructor(
-    private iobjRoute: ActivatedRoute,
-    private iobjRuleService: RuleService,
-    private iobjFormService: FormService
-  ) { }
+  constructor(private iobjRoute: ActivatedRoute,private iobjRuleService: RuleService,private iobjFormService: FormService) { }
 
   ngOnInit(): void {
     this.inumFormId = Number(this.iobjRoute.snapshot.paramMap.get('formId'));
     this.inumVersionId = Number(this.iobjRoute.snapshot.paramMap.get('versionId'));
 
     this.iobjFormService.getVersionById(this.inumVersionId).subscribe(res => {
-      if (res.success && res.data) this.iarrControls = res.data.controls;
+        if (res.success && res.data) {
+        this.iarrControls = res.data.controls;
+        this.iarrSections = res.data.sections ?? [];
+      }
     });
 
     this.loadRules();

@@ -18,8 +18,8 @@
         </div>
         <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
             <label class="fw-bold">Version Description:</label>
-            <input class="form-control" style="width:260px;" [(ngModel)]="istrVersionDescription" placeholder="Enter version description"
-                 />
+            <input class="form-control" style="width:260px;" [(ngModel)]="istrVersionDescription"
+                placeholder="Enter version description" />
             <button class="btn btn-primary btn-sm" (click)="save()">Save</button>
             <button class="btn btn-outline-primary btn-sm" (click)="openPreview()">
                 <i class="bi"></i>Preview
@@ -38,6 +38,8 @@
                 [routerLink]="['/forms', inumTemplateId, 'versions', inumVersionId, 'rules']">Validation Rules</a>
         </div>
 
+        <!-- cdkDropListOrientation="mixed" is required here: the items wrap in a flex layout,
+             and without it CDK cannot work out a drop position. -->
         <div class="p-3 flex-grow-1" style="overflow-y:auto;">
             <div cdkDropList id="canvasList" [cdkDropListData]="iarrCanvasControls" (cdkDropListDropped)="drop($event)"
                 cdkDropListOrientation="mixed" class="dfg-canvas-dropzone p-3"
@@ -46,15 +48,15 @@
                 <div *ngIf="iarrCanvasControls.length === 0" class="text-muted text-center py-5">Drag controls here
                 </div>
 
+                <!-- Design canvas: every control here is a static mock-up, nothing is bound
+                     to a value. Live bindings belong in the preview overlay below. -->
                 <div *ngFor="let c of iarrCanvasControls" cdkDrag class="dfg-control-wrapper mb-2"
                     [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'"
                     [class.selected]="iobjSelected === c" (click)="select(c)">
                     <label class="form-label small mb-1">{{ c.label }} <span *ngIf="c.isRequired"
                             class="text-danger">*</span></label>
                     <ng-container [ngSwitch]="c.controlTypeCode">
-                        <textarea *ngSwitchCase="'TextArea'" class="form-control"
-                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"></textarea>
+                        <textarea *ngSwitchCase="'TextArea'" class="form-control" disabled></textarea>
 
                         <select *ngSwitchCase="'Dropdown'" class="form-control" disabled>
                             <option>{{ seedOptions(c).length === 0 ? c.placeholder : '-- Select --' }}</option>
@@ -128,9 +130,9 @@
             </div>
             <div class="mb-2">
                 <label class="form-label small">Field Key</label>
-                <!-- Internal reference used by Rules (CrossField/Visibility) and submitted data —
-                     not shown to the end user. Read-only so an accidental edit can't silently
-                     break a rule or disconnect from existing submissions tied to this key. -->
+                <!-- Internal reference used by Rules and submitted data — not shown to the end
+                     user. Read-only so an accidental edit can't silently break a rule or
+                     disconnect from existing submissions tied to this key. -->
                 <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.controlKey" readonly />
             </div>
             <div class="form-check mb-2">
@@ -143,7 +145,7 @@
 </div>
 
 <!-- PREVIEW OVERLAY: renders the same JSON (controls + rules) an end user would get,
-         through the identical RuleEngineService used by the real fill-in screen. -->
+     through the identical RuleEngineService used by the real fill-in screen. -->
 <div *ngIf="iboolPreviewOpen" class="preview-overlay" (click)="closePreview()">
     <div class="preview-panel" (click)="$event.stopPropagation()">
         <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
@@ -160,21 +162,29 @@
                     [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
                     <label class="form-label">{{ c.label }} <span *ngIf="isEffectivelyRequired(c)"
                             class="text-danger">*</span></label>
+
                     <ng-container [ngSwitch]="c.controlTypeCode">
                         <textarea *ngSwitchCase="'TextArea'" class="form-control"
-                            [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"></textarea>
+                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
+                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
+                            (blur)="markPreviewTouched(c.controlKey)"></textarea>
 
                         <select *ngSwitchCase="'Dropdown'" class="form-control"
-                            [ngModel]="iobjPreviewValues[c.controlKey]"
+                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
                             (ngModelChange)="onPreviewChange(c.controlKey, $event)">
                             <option value="">-- Select --</option>
                             <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
                         </select>
 
+                        <input *ngSwitchCase="'Number'" type="number" class="form-control"
+                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
+                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
+                            (blur)="markPreviewTouched(c.controlKey)" />
+
                         <div *ngSwitchCase="'Radio'">
                             <div class="form-check" *ngFor="let opt of seedOptions(c)">
                                 <input type="radio" class="form-check-input" [name]="c.controlKey"
+                                    [disabled]="!isPreviewEnabled(c.controlKey)"
                                     [checked]="iobjPreviewValues[c.controlKey] === opt"
                                     (change)="onPreviewChange(c.controlKey, opt)" />
                                 <label class="form-check-label">{{ opt }}</label>
@@ -182,18 +192,21 @@
                         </div>
 
                         <input *ngSwitchCase="'Date'" type="date" class="form-control"
-                            [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)" />
+                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
+                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
+                            (blur)="markPreviewTouched(c.controlKey)" />
 
                         <div class="form-check" *ngSwitchCase="'Checkbox'">
-                            <input type="checkbox" class="form-check-input" [checked]="iobjPreviewValues[c.controlKey]"
-                                (change)="onPreviewChange(c.controlKey, $event.target.checked)" />
+                            <input type="checkbox" class="form-check-input" [disabled]="!isPreviewEnabled(c.controlKey)"
+                                [checked]="iobjPreviewValues[c.controlKey]"
+                                (change)="onPreviewChange(c.controlKey, $any($event.target).checked)" />
                             <label class="form-check-label">{{ c.placeholder || c.label }}</label>
                         </div>
 
                         <div *ngSwitchCase="'CheckboxList'">
                             <div class="form-check" *ngFor="let opt of seedOptions(c)">
                                 <input type="checkbox" class="form-check-input"
+                                    [disabled]="!isPreviewEnabled(c.controlKey)"
                                     [checked]="isPreviewCheckboxListSelected(c.controlKey, opt)"
                                     (change)="togglePreviewCheckboxListOption(c.controlKey, opt)" />
                                 <label class="form-check-label">{{ opt }}</label>
@@ -201,10 +214,12 @@
                         </div>
 
                         <input *ngSwitchCase="'File'" type="file" class="form-control"
+                            [disabled]="!isPreviewEnabled(c.controlKey)"
                             (change)="onPreviewFileChange(c.controlKey, $event)" />
 
                         <div *ngSwitchCase="'Image'">
                             <input type="file" accept="image/*" class="form-control"
+                                [disabled]="!isPreviewEnabled(c.controlKey)"
                                 (change)="onPreviewFileChange(c.controlKey, $event)" />
                             <img *ngIf="iobjPreviewImageUrls[c.controlKey]" [src]="iobjPreviewImageUrls[c.controlKey]"
                                 style="max-width:120px; max-height:120px; margin-top:8px; border-radius:6px; display:block;" />
@@ -213,9 +228,16 @@
                         <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
 
                         <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
-                            [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)" />
+                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
+                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
+                            (blur)="markPreviewTouched(c.controlKey)" />
                     </ng-container>
+
+                    <!-- Guarded by previewError(), which returns '' until the field is touched —
+                         otherwise every required field errors the moment Preview opens. -->
+                    <div class="text-danger small mt-1" *ngIf="previewError(c.controlKey)">
+                        {{ previewError(c.controlKey) }}
+                    </div>
                 </div>
 
                 <button class="btn btn-primary" disabled>Submit (disabled in preview)</button>
