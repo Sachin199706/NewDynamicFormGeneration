@@ -353,6 +353,7 @@ public class FormService : IFormService
             FormDefinitionJson = aObjVersion.FormDefinitionJson,
             LayoutDefinitionJson = aObjVersion.LayoutDefinitionJson,
             Controls = ParseControls(aObjVersion.FormDefinitionJson),
+            Sections = ParseSections(aObjVersion.FormDefinitionJson),
             CreatedDate = aObjVersion.CreatedDate
         };
     }
@@ -414,6 +415,31 @@ public class FormService : IFormService
         };
 
         return await Task.FromResult(lobjDashboard);
+    }
+
+    /// <summary>
+    /// Sections sit beside "controls" in FormDefinitionJson. Versions saved before sections
+    /// existed have no such property, which is not an error — they parse as an empty list.
+    /// </summary>
+    internal static List<FormSectionDto> ParseSections(string aStrFormDefinitionJson)
+    {
+        if (string.IsNullOrWhiteSpace(aStrFormDefinitionJson)) return new List<FormSectionDto>();
+
+        try
+        {
+            using var lobjDoc = JsonDocument.Parse(aStrFormDefinitionJson);
+            if (!lobjDoc.RootElement.TryGetProperty("sections", out var lobjSectionsEl))
+                return new List<FormSectionDto>();
+
+            var larrSections = JsonSerializer.Deserialize<List<FormSectionDto>>(lobjSectionsEl.GetRawText(), JsonOpts)
+                ?? new List<FormSectionDto>();
+
+            return larrSections.OrderBy(s => s.DisplayOrder).ToList();
+        }
+        catch
+        {
+            return new List<FormSectionDto>();
+        }
     }
 
 }

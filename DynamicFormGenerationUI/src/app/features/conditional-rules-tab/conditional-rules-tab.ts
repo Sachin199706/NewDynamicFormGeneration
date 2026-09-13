@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ConditionalAction, ConditionLogic, CreateFormRuleRequest, FormRule, RuleCondition, RuleType } from '../../core/models/rule.model';
-import { FormControlDef } from '../../core/models/form.model';
+import { FormControlDef, FormSection } from '../../core/models/form.model';
 import { RuleService } from '../../core/services/rule';
 import { ExpressionEvaluator } from '../../core/services/expression-evaluator';
 
@@ -25,6 +25,7 @@ export class ConditionalRulesTab {
   @Input() inumVersionId!: number;
   @Input() iarrControls: FormControlDef[] = [];
   @Input() iarrRules: FormRule[] = [];
+  @Input() iarrSections: FormSection[] = [];
   @Output() ichanged = new EventEmitter<void>();
   @Output() igoToValidation = new EventEmitter<void>();
 
@@ -70,6 +71,14 @@ export class ConditionalRulesTab {
       type: 'Calculate', label: 'Calculate', icon: 'bi-calculator',
       actions: ['Calculate'],
       badges: { 'Calculate': { text: 'Calculate', css: 'bg-warning-subtle text-warning-emphasis' } }
+    },
+    {
+      type: 'SectionVisibility', label: 'Show / Hide Section', icon: 'bi-layout-text-window',
+      actions: ['Show', 'Hide'],
+      badges: {
+        'Show': { text: 'Show Section', css: 'bg-danger-subtle text-danger-emphasis' },
+        'Hide': { text: 'Hide Section', css: 'bg-warning-subtle text-warning-emphasis' }
+      }
     }
   ];
 
@@ -168,11 +177,13 @@ export class ConditionalRulesTab {
     return aObjRule.errorMessage;
   }
 
-  onRuleTypeChange(): void {
+   onRuleTypeChange(): void {
     const larrActions = this.selectedMeta?.actions ?? ['Show', 'Hide'];
     if (!larrActions.includes(this.istrAction)) this.istrAction = larrActions[0];
-  }
 
+    // Applies To switches between fields and sections, so the current pick is stale.
+    this.istrControlKey = '';
+  }
   addCondition(): void {
     this.iarrConditions.push({ controlKey: '', operator: '==', value: '' });
   }
@@ -348,6 +359,16 @@ export class ConditionalRulesTab {
       });
       lstrDescription = `Calculate "${this.controlLabel(this.istrControlKey)}" as ${this.istrExpression}`;
     }
+    else if (this.istrRuleType === 'SectionVisibility') {
+      lstrDetailsJson = JSON.stringify({
+        conditions: larrValid,
+        logic: this.istrLogic,
+        action: this.istrAction
+      });
+      // controlKey carries the sectionKey for this rule type.
+      lstrDescription = `${this.istrAction} "${this.sectionTitle(this.istrControlKey)}" section when ` +
+        this.describeConditions(larrValid);
+    }
     else {
       lstrDetailsJson = JSON.stringify({
         conditions: larrValid,
@@ -402,5 +423,20 @@ export class ConditionalRulesTab {
     this.iarrMappingRows = [{ sourceValue: '', options: '' }];
     this.istrExpression = '';
     this.inumDecimals = undefined;
+  }
+  /** Section rules target a sectionKey, so Applies To lists sections rather than fields. */
+  get targetsSection(): boolean {
+    return this.istrRuleType === 'SectionVisibility';
+  }
+
+  sectionTitle(aStrSectionKey: string): string {
+    return this.iarrSections.find(s => s.sectionKey === aStrSectionKey)?.title ?? aStrSectionKey;
+  }
+
+  /** What the Applies To column shows — a section title or a control label. */
+  targetLabel(aObjRule: FormRule): string {
+    return aObjRule.ruleType === 'SectionVisibility'
+      ? this.sectionTitle(aObjRule.controlKey) + ' (Section)'
+      : this.controlLabel(aObjRule.controlKey);
   }
 }

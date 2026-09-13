@@ -1,12 +1,14 @@
 import { Injectable } from '@angular/core';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import {
+    CalculateDetails,
   CompareFieldsDetails, ConditionalDetails, ConditionLogic, ConditionOperator, ControlEffects,
   DateRuleDetails, FilterDependencyDetails, FormatDetails, FormatKind, FormRule, LengthDetails, PatternDetails,
   RangeDetails, RuleCondition, RuleType,
   SetValueDetails
 } from '../models/rule.model';
 import { FormControlDef } from '../models/form.model';
+import { ExpressionEvaluator } from './expression-evaluator';
 
 /**
  * Client-side counterpart of the server's RuleEngineService (C#). Same RuleType +
@@ -31,7 +33,7 @@ export class RuleEngineService {
     'Number': /^-?\d+(\.\d+)?$/,
     'Alphanumeric': /^[A-Za-z0-9]+$/
   };
-
+private iobjSectionVisibility: Record<string, boolean> = {};
   /**
    * Maps a stored rule name onto its current equivalent — mirrors NormalizeRuleType in
    * the C# engine. Rules saved before issue #10 still carry the old names, so they are
@@ -46,6 +48,9 @@ export class RuleEngineService {
       case 'CrossField': return 'CompareFields';
       default: return aStrRuleType;
     }
+  }
+   isSectionVisible(aStrSectionKey: string): boolean {
+    return this.iobjSectionVisibility[aStrSectionKey] !== false;
   }
 
   /** Conditional rules produce effects rather than failures. */
@@ -91,6 +96,7 @@ export class RuleEngineService {
   computeEffects(rules: FormRule[], values: Record<string, any>, controls: FormControlDef[]):
     Record<string, ControlEffects> {
     const effects: Record<string, ControlEffects> = {};
+        this.iobjSectionVisibility = {};
 
     // Every control starts visible and enabled; required comes from its own definition.
     for (const c of controls) {
@@ -105,7 +111,7 @@ export class RuleEngineService {
       if (effects[rule.controlKey]) effects[rule.controlKey].required = true;
     }
 
-      for (const rule of rules
+        for (const rule of rules
       .filter(r => r.isActive && this.isConditional(r.ruleType))
       .sort((a, b) => a.displayOrder - b.displayOrder)) {
 
@@ -113,10 +119,28 @@ export class RuleEngineService {
         effects[rule.controlKey] = { visible: true, enabled: true, required: false };
       }
       const e = effects[rule.controlKey];
-              e.calculated = true;
 
-      // Filter/Dependency has no conditions — the source control's current value is the
-      // lookup key, so it is handled before the condition machinery below.
+      // Calculate has no conditions — it recomputes whenever a referenced field changes.
+      if (rule.ruleType === 'Calculate') {
+        const cd = this.parseDetails<CalculateDetails>(rule.ruleDetailsJson);
+        if (!cd?.expression) continue;
+
+        // Flagged whether or not the result resolves, so an incomplete expression still
+        // leaves the field locked rather than briefly editable.
+        e.calculated = true;
+
+        const lnumResult = ExpressionEvaluator.evaluate(cd.expression, values);
+
+        // null means a referenced field is empty or the expression is malformed — the
+        // target is left blank rather than showing a misleading zero.
+        if (lnumResult !== null) {
+          e.value = cd.decimals != null ? lnumResult.toFixed(cd.decimals) : String(lnumResult);
+        }
+        continue;
+      }
+
+      // Filter/Dependency has no conditions either — the source control's current value
+      // is the lookup key.
       if (rule.ruleType === 'FilterDependency') {
         const fd = this.parseDetails<FilterDependencyDetails>(rule.ruleDetailsJson);
         if (!fd?.sourceControlKey) continue;
@@ -151,6 +175,29 @@ export class RuleEngineService {
         case 'Required': e.required = conditionMet; break;
         case 'Optional': e.required = !conditionMet; break;
       }
+    }
+
+        // Section rules run last and target a sectionKey rather than a controlKey, so they
+    // are resolved into their member controls here. Hiding a section hides everything
+    // inside it, which means the rest of the pipeline — validators, submission
+    // stripping — needs no knowledge of sections at all.
+    for (const rule of rules
+      .filter(r => r.isActive && r.ruleType === 'SectionVisibility')
+      .sort((a, b) => a.displayOrder - b.displayOrder)) {
+
+      const d = this.parseDetails<ConditionalDetails>(rule.ruleDetailsJson);
+      const larrConditions = this.normaliseConditions(d);
+      if (larrConditions.length === 0) continue;
+
+      const conditionMet = this.evaluateConditions(larrConditions, d?.logic ?? 'AND', values);
+      const visible = d?.action === 'Hide' ? !conditionMet : conditionMet;
+
+      // rule.controlKey holds the sectionKey for this rule type.
+      for (const c of controls.filter(c => c.sectionKey === rule.controlKey)) {
+        if (effects[c.controlKey]) effects[c.controlKey].visible = visible;
+      }
+
+      this.iobjSectionVisibility[rule.controlKey] = visible;
     }
     return effects;
   }

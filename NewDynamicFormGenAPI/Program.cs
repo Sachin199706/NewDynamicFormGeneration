@@ -1,6 +1,7 @@
 using FormGen.Application.Services;
 using FormGen.Infrastructure.Persistence;
 using FormGen.Infrastructure.Persistence.Repositories;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using NewDynamicFormGenAPI.API.Middleware;
 using NewDynamicFormGenAPI.Models.Interfaces;
@@ -11,6 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 // ---- Database (Database-First: connection string points at the DB created from database/01_Schema.sql) ----
 builder.Services.AddDbContext<FormGenDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024;   // 10 MB
+});
 
 builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);
 

@@ -26,6 +26,6 @@
         (igoToConditional)="switchTab('conditional')"></app-validation-rules-tab>
 
     <app-conditional-rules-tab *ngIf="istrActiveTab === 'conditional'" [inumVersionId]="inumVersionId"
-        [iarrControls]="iarrControls" [iarrRules]="conditionalRules" (ichanged)="loadRules()"
-        (igoToValidation)="switchTab('validation')"></app-conditional-rules-tab>
+        [iarrControls]="iarrControls" [iarrSections]="iarrSections" [iarrRules]="conditionalRules"
+        (ichanged)="loadRules()" (igoToValidation)="switchTab('validation')"></app-conditional-rules-tab>
 </div>

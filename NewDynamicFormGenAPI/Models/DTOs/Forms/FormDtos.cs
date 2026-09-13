@@ -22,6 +22,8 @@ public class CreateFormDto
 
 public class FormControlDto
 {
+    /// <summary>The section this control belongs to. Null means unsectioned.</summary>
+    public string? SectionKey { get; set; }
     public int ControlId { get; set; }
     public string ControlKey { get; set; } = null!;
     public string ControlTypeCode { get; set; } = null!;
@@ -59,6 +61,8 @@ public class FormVersionDto
     public string LayoutDefinitionJson { get; set; }
     public List<FormControlDto> Controls { get; set; } = new();
     public DateTime CreatedDate { get; set; }
+    public List<FormSectionDto> Sections { get; set; } = new();
+
 }
 
 /// <summary>Public-safe payload for the "fill in the form" screen: controls + layout + active rules.</summary>
@@ -70,6 +74,7 @@ public class FormRenderDto
     public string? LayoutDefinitionJson { get; set; }
     public List<FormControlDto> Controls { get; set; } = new();
     public List<Rules.FormRuleDto> Rules { get; set; } = new();
+    public List<FormSectionDto> Sections { get; set; } = new();
 }
 
 public class FormVersionListItemDto
@@ -125,4 +130,16 @@ public class DashboardDTO
     /// Gets or sets the recently modified form versions.
     /// </summary>
     public List<FormVersionListItemDto> RecentForms { get; set; } = new();
+}
+
+/// <summary>
+/// A named group of controls. Flat by design — sections hold controls, not other
+/// sections. Stored alongside "controls" in FormDefinitionJson; a control with no
+/// SectionKey is unsectioned, so versions saved before sections existed still parse.
+/// </summary>
+public class FormSectionDto
+{
+    public string SectionKey { get; set; } = null!;
+    public string Title { get; set; } = "";
+    public int DisplayOrder { get; set; }
 }

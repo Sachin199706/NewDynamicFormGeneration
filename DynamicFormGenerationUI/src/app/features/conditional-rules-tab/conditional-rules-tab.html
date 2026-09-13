@@ -28,7 +28,7 @@
                         <span class="badge me-2" [ngClass]="badgeFor(r).css">{{ badgeFor(r).text }}</span>
                         <span class="small text-muted">{{ summaryText(r) }}</span>
                     </td>
-                    <td>{{ controlLabel(r.controlKey) }}</td>
+                    <td>{{ targetLabel(r) }}</td>
                     <td class="small text-muted">{{ conditionText(r) }}</td>
                     <td>{{ actionOf(r) }}</td>
                     <td>
@@ -60,12 +60,25 @@
                 </select>
             </div>
 
-            <div class="col-md-4">
+            <!-- Applies To switches between fields and sections with the rule type — a
+                 Show/Hide Section rule stores a sectionKey in the same controlKey slot. -->
+            <div class="col-md-4" *ngIf="!targetsSection">
                 <label class="form-label small">Applies To (Field) <span class="text-danger">*</span></label>
                 <select class="form-select" [(ngModel)]="istrControlKey">
                     <option value="">Select Field</option>
                     <option *ngFor="let c of iarrControls" [ngValue]="c.controlKey">{{ c.label }}</option>
                 </select>
+            </div>
+
+            <div class="col-md-4" *ngIf="targetsSection">
+                <label class="form-label small">Applies To (Section) <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="istrControlKey">
+                    <option value="">Select Section</option>
+                    <option *ngFor="let s of iarrSections" [ngValue]="s.sectionKey">{{ s.title }}</option>
+                </select>
+                <div class="form-text" *ngIf="iarrSections.length === 0">
+                    No sections on this form — add one in the designer first.
+                </div>
             </div>
 
             <div class="col-md-4" *ngIf="usesAction">
