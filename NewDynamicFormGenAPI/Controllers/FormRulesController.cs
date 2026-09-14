@@ -33,14 +33,14 @@ public class FormRulesController : ControllerBase
         return Ok(lobjRule);
     }
 
-    [HttpDelete("{aNumFormVersionId:int}/rules/{aStrRuleId}")]
+    [HttpDelete("forms/versions/{aNumFormVersionId:int}/rules/{aStrRuleId}")]
     public async Task<IActionResult> DeleteRule(int aNumFormVersionId, string aStrRuleId)
     {
         await _ruleEngine.DeleteRuleAsync(aNumFormVersionId, aStrRuleId);
         return NoContent();
     }
 
-    [HttpPut("{aNumFormVersionId:int}/rules/{aStrRuleId}")]
+    [HttpPut("forms/versions/{aNumFormVersionId:int}/rules/{aStrRuleId}")]
     public async Task<IActionResult> UpdateRule(int aNumFormVersionId, string aStrRuleId, [FromBody] CreateFormRuleDto aObjDto)
     {
         var lobjUpdated = await _ruleEngine.UpdateRuleAsync(aNumFormVersionId, aStrRuleId, aObjDto);

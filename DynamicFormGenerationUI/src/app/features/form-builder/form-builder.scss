@@ -10,10 +10,18 @@
 
 .preview-panel {
     background: #fff;
-    width: 640px;
-    max-height: 85vh;
-    overflow-y: auto;
+    width: 750px;
+    max-width: 95vw;
+    height: 85vh;
     border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.preview-body {
+    flex: 1;
+    overflow-y: auto;
 }
 
 // Canvas drop targets — one for unsectioned controls, one per section.

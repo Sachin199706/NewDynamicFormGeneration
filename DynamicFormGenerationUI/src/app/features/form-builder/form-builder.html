@@ -34,8 +34,8 @@
                 <option [ngValue]="4">4 Columns</option>
             </select>
 
-            <a *ngIf="inumTemplateId && inumVersionId" class="btn btn-outline-secondary btn-sm"
-                [routerLink]="['/forms', inumTemplateId, 'versions', inumVersionId, 'rules']">Validation Rules</a>
+            <button *ngIf="inumTemplateId" class="btn btn-outline-secondary btn-sm" (click)="goToRules()">Validation
+                Rules</button>
         </div>
 
         <!-- cdkDropListOrientation="mixed" is required here: the items wrap in a flex layout,
@@ -53,7 +53,9 @@
                 <div *ngFor="let c of iarrCanvasControls" cdkDrag class="dfg-control-wrapper mb-2"
                     [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'"
                     [class.selected]="iobjSelected === c" (click)="select(c)">
-                    <label class="form-label small mb-1">{{ c.label }} <span *ngIf="c.isRequired"
+                    <!-- Required comes from a saved rule now, not control.isRequired, so the
+                         asterisk is read from the rule list rather than the control itself. -->
+                    <label class="form-label small mb-1">{{ c.label }} <span *ngIf="isRequiredOnCanvas(c)"
                             class="text-danger">*</span></label>
                     <ng-container [ngSwitch]="c.controlTypeCode">
                         <textarea *ngSwitchCase="'TextArea'" class="form-control" disabled></textarea>
@@ -112,11 +114,11 @@
         <div *ngIf="iobjSelected">
             <div class="mb-2">
                 <label class="form-label small">Label</label>
-                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.label" />
+                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.label" (ngModelChange)="onLabelChange($event)" />
             </div>
             <div class="mb-2">
                 <label class="form-label small">Placeholder</label>
-                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.placeholder" />
+                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.placeholder"  (ngModelChange)="onPlaceholderChange($event)" />
             </div>
             <div class="mb-2" *ngIf="selectedNeedsOptions">
                 <label class="form-label small">Options (comma-separated)</label>
@@ -135,10 +137,14 @@
                      disconnect from existing submissions tied to this key. -->
                 <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.controlKey" readonly />
             </div>
+
             <div class="form-check mb-2">
-                <input type="checkbox" class="form-check-input" [(ngModel)]="iobjSelected.isRequired" id="reqChk" />
+                <input type="checkbox" class="form-check-input" [(ngModel)]="selectedIsRequired" id="reqChk" />
                 <label class="form-check-label small" for="reqChk">Required</label>
             </div>
+            <!-- Validation is not configured here. Required, Length, Range and Date all live
+                 in the Rule Builder now: the panel used to define them too, and its
+                 generated error text overwrote whatever the author had written there. -->
             <button class="btn btn-outline-danger btn-sm w-100" (click)="removeSelected()">Delete</button>
         </div>
     </div>
@@ -156,7 +162,7 @@
             <button class="btn btn-sm btn-outline-secondary" (click)="closePreview()">Close</button>
         </div>
 
-        <div class="p-4" style="max-width:720px; margin:0 auto;">
+        <div class="p-4 preview-body">
             <div style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
                 <div class="mb-3" *ngFor="let c of iarrCanvasControls" [hidden]="!isPreviewVisible(c.controlKey)"
                     [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
@@ -239,8 +245,6 @@
                         {{ previewError(c.controlKey) }}
                     </div>
                 </div>
-
-                <button class="btn btn-primary" disabled>Submit (disabled in preview)</button>
             </div>
         </div>
     </div>

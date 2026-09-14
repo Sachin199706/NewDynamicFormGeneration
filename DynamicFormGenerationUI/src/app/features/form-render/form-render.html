@@ -8,9 +8,12 @@
     <form [formGroup]="form" (ngSubmit)="submit()">
 
         <!-- Unsectioned controls render above every section, so a form saved before
-             sections existed looks exactly as it did. -->
+             sections existed looks exactly as it did.
+             Bound to a held array rather than a getter: a getter returning filter() gave
+             *ngFor a new array each change-detection pass, so the list rebuilt itself
+             continuously and the controls appeared one at a time. -->
         <div style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
-            <ng-container *ngFor="let c of unsectionedControls">
+            <ng-container *ngFor="let c of iarrUnsectionedControls; trackBy: trackByControlKey">
                 <ng-container *ngTemplateOutlet="controlTpl; context: { $implicit: c }"></ng-container>
             </ng-container>
         </div>
@@ -23,7 +26,7 @@
 
             <div class="p-3"
                 style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
-                <ng-container *ngFor="let c of controlsIn(s.sectionKey)">
+                <ng-container *ngFor="let c of controlsIn(s.sectionKey); trackBy: trackByControlKey">
                     <ng-container *ngTemplateOutlet="controlTpl; context: { $implicit: c }"></ng-container>
                 </ng-container>
             </div>
@@ -40,7 +43,7 @@
 
 <!-- One definition of a control, used by the unsectioned area and every section. -->
 <ng-template #controlTpl let-c>
-    <div class="mb-3" [hidden]="!isVisible(c.controlKey)"
+    <div class="mb-3" [formGroup]="form" [hidden]="!isVisible(c.controlKey)"
         [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
         <label class="form-label">
             {{ c.label }}

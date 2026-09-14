@@ -56,39 +56,39 @@ export class ConditionalRulesTab {
         'Required': { text: 'Make Required', css: 'bg-warning-subtle text-warning-emphasis' },
         'Optional': { text: 'Make Optional', css: 'bg-light text-muted' }
       }
-    },
-    {
-      type: 'SetValue', label: 'Set Value', icon: 'bi-pencil-square',
-      actions: ['SetValue'],
-      badges: { 'SetValue': { text: 'Set Value', css: 'bg-info-subtle text-info-emphasis' } }
-    },
-    {
-      type: 'FilterDependency', label: 'Filter Options', icon: 'bi-funnel',
-      actions: ['Filter'],
-      badges: { 'Filter': { text: 'Filter Options', css: 'bg-secondary-subtle text-secondary-emphasis' } }
-    },
-    {
-      type: 'Calculate', label: 'Calculate', icon: 'bi-calculator',
-      actions: ['Calculate'],
-      badges: { 'Calculate': { text: 'Calculate', css: 'bg-warning-subtle text-warning-emphasis' } }
-    },
-    {
-      type: 'SectionVisibility', label: 'Show / Hide Section', icon: 'bi-layout-text-window',
-      actions: ['Show', 'Hide'],
-      badges: {
-        'Show': { text: 'Show Section', css: 'bg-danger-subtle text-danger-emphasis' },
-        'Hide': { text: 'Hide Section', css: 'bg-warning-subtle text-warning-emphasis' }
-      }
     }
+    // {
+    //   type: 'SetValue', label: 'Set Value', icon: 'bi-pencil-square',
+    //   actions: ['SetValue'],
+    //   badges: { 'SetValue': { text: 'Set Value', css: 'bg-info-subtle text-info-emphasis' } }
+    // },
+    // {
+    //   type: 'FilterDependency', label: 'Filter Options', icon: 'bi-funnel',
+    //   actions: ['Filter'],
+    //   badges: { 'Filter': { text: 'Filter Options', css: 'bg-secondary-subtle text-secondary-emphasis' } }
+    // },
+    // {
+    //   type: 'Calculate', label: 'Calculate', icon: 'bi-calculator',
+    //   actions: ['Calculate'],
+    //   badges: { 'Calculate': { text: 'Calculate', css: 'bg-warning-subtle text-warning-emphasis' } }
+    // },
+    // {
+    //   type: 'SectionVisibility', label: 'Show / Hide Section', icon: 'bi-layout-text-window',
+    //   actions: ['Show', 'Hide'],
+    //   badges: {
+    //     'Show': { text: 'Show Section', css: 'bg-danger-subtle text-danger-emphasis' },
+    //     'Hide': { text: 'Hide Section', css: 'bg-warning-subtle text-warning-emphasis' }
+    //   }
+    // }
   ];
 
   iarrExamples = [
     { icon: 'bi-eye', title: 'Show / Hide Field', sub: 'Show or hide a field based on another field value.' },
     { icon: 'bi-asterisk', title: 'Make Required / Optional', sub: 'Make a field required or optional conditionally.' },
-    { icon: 'bi-toggle-on', title: 'Enable / Disable Field', sub: 'Enable or disable a field for user input.' },
-    { icon: 'bi-pencil-square', title: 'Set Value', sub: 'Automatically set a value in a field.' },
-    { icon: 'bi-layout-text-window', title: 'Show / Hide Section', sub: 'Show or hide a section based on condition.' },
-    { icon: 'bi-funnel', title: 'Filter Options', sub: 'Filter dropdown/list options based on another field.' }
+    { icon: 'bi-toggle-on', title: 'Enable / Disable Field', sub: 'Enable or disable a field for user input.' }
+    // { icon: 'bi-pencil-square', title: 'Set Value', sub: 'Automatically set a value in a field.' },
+    // { icon: 'bi-layout-text-window', title: 'Show / Hide Section', sub: 'Show or hide a section based on condition.' },
+    // { icon: 'bi-funnel', title: 'Filter Options', sub: 'Filter dropdown/list options based on another field.' }
   ];
 
   istrRuleType: RuleType = 'Visibility';
@@ -113,30 +113,7 @@ export class ConditionalRulesTab {
   inumDecimals?: number;
 
   constructor(private iobjRuleService: RuleService) { }
-
-  get selectedMeta(): ConditionalTypeMeta | undefined {
-    return this.iarrRuleTypes.find(t => t.type === this.istrRuleType);
-  }
-
-  controlLabel(aStrControlKey: string): string {
-    return this.iarrControls.find(c => c.controlKey === aStrControlKey)?.label ?? aStrControlKey;
-  }
-
-  private parseDetails(aStrJson?: string): any {
-    if (!aStrJson) return {};
-    try { return JSON.parse(aStrJson); } catch { return {}; }
-  }
-
-  /** Rules saved before multi-condition support carry a single flat trigger. */
-  private conditionsOf(aObjRule: FormRule): RuleCondition[] {
-    const d = this.parseDetails(aObjRule.ruleDetailsJson);
-    if (Array.isArray(d.conditions) && d.conditions.length > 0) return d.conditions;
-    if (d.triggerControlKey) {
-      return [{ controlKey: d.triggerControlKey, operator: d.operator ?? '==', value: d.triggerValue ?? '' }];
-    }
-    return [];
-  }
-
+  //#region  public Method
   actionOf(aObjRule: FormRule): string {
     const d = this.parseDetails(aObjRule.ruleDetailsJson);
     if (d.action) return d.action;
@@ -152,7 +129,9 @@ export class ConditionalRulesTab {
     return lobjMeta?.badges[this.actionOf(aObjRule)]
       ?? { text: aObjRule.ruleType, css: 'bg-light text-muted' };
   }
-
+  controlLabel(aStrControlKey: string): string {
+    return this.iarrControls.find(c => c.controlKey === aStrControlKey)?.label ?? aStrControlKey;
+  }
   /** "Reason = Other AND Department != HR" — the Condition column. */
   conditionText(aObjRule: FormRule): string {
     const d = this.parseDetails(aObjRule.ruleDetailsJson);
@@ -177,7 +156,7 @@ export class ConditionalRulesTab {
     return aObjRule.errorMessage;
   }
 
-   onRuleTypeChange(): void {
+  onRuleTypeChange(): void {
     const larrActions = this.selectedMeta?.actions ?? ['Show', 'Hide'];
     if (!larrActions.includes(this.istrAction)) this.istrAction = larrActions[0];
 
@@ -193,18 +172,6 @@ export class ConditionalRulesTab {
     if (this.iarrConditions.length > 1) this.iarrConditions.splice(aNumIndex, 1);
   }
 
-  /** True when the rule type is driven by conditions rather than a source lookup. */
-  get usesConditions(): boolean {
-    return this.istrRuleType !== 'FilterDependency' && this.istrRuleType !== 'Calculate';
-  }
-
-  /** True when the rule needs an Action picker — the other three have only one action. */
-  get usesAction(): boolean {
-    return this.istrRuleType !== 'SetValue'
-      && this.istrRuleType !== 'FilterDependency'
-      && this.istrRuleType !== 'Calculate';
-  }
-
   addMappingRow(): void {
     this.iarrMappingRows.push({ sourceValue: '', options: '' });
   }
@@ -213,55 +180,14 @@ export class ConditionalRulesTab {
     if (this.iarrMappingRows.length > 1) this.iarrMappingRows.splice(aNumIndex, 1);
   }
 
-  /** Rows to the stored shape. "Maharashtra, Gujarat" becomes ['Maharashtra','Gujarat']. */
-  private buildMapping(): Record<string, string[]> {
-    const lobjMapping: Record<string, string[]> = {};
-
-    for (const lobjRow of this.iarrMappingRows) {
-      const lstrKey = lobjRow.sourceValue.trim();
-      if (!lstrKey) continue;
-
-      lobjMapping[lstrKey] = lobjRow.options
-        .split(',')
-        .map(o => o.trim())
-        .filter(o => o.length > 0);
-    }
-
-    return lobjMapping;
-  }
-
-  /** The chosen field's own options, offered as autocomplete when writing a mapping. */
-  seedOptionsFor(aStrControlKey: string): string[] {
-    const lobjControl = this.iarrControls.find(c => c.controlKey === aStrControlKey);
-    if (!lobjControl?.propertiesJson) return [];
-    try {
-      const lobjProps = JSON.parse(lobjControl.propertiesJson);
-      return typeof lobjProps.SeedData === 'string' ? lobjProps.SeedData.split(',').map((o: string) => o.trim()) : [];
-    } catch { return []; }
-  }
-
-  /** Live check so a typo in the expression is caught before the rule is saved. */
-  get expressionError(): string {
-    if (!this.istrExpression) return '';
-
-    const larrFields = ExpressionEvaluator.referencedFields(this.istrExpression);
-    const larrUnknown = larrFields.filter(k => !this.iarrControls.some(c => c.controlKey === k));
-    if (larrUnknown.length > 0) return `Unknown field: ${larrUnknown.join(', ')}`;
-
-    // Every referenced field set to 1 — proves the syntax parses, whatever the real values.
-    const lobjProbe: Record<string, any> = {};
-    larrFields.forEach(k => lobjProbe[k] = 1);
-    if (ExpressionEvaluator.evaluate(this.istrExpression, lobjProbe) === null) {
-      return 'The expression could not be parsed.';
-    }
-
-    return '';
-  }
-
   openAdd(): void {
     this.resetDraft();
     this.istrEditingRuleId = null;
     this.iboolFormOpen = true;
+  }
+deleteRule(aObjRule: FormRule): void {
+    this.iobjRuleService.deleteRule(this.inumVersionId, aObjRule.ruleId)
+      .subscribe(() => this.ichanged.emit());
   }
 
   openEdit(aObjRule: FormRule): void {
@@ -292,7 +218,6 @@ export class ConditionalRulesTab {
       }));
       this.iarrMappingRows = larrRows.length > 0 ? larrRows : [{ sourceValue: '', options: '' }];
     }
-
     const larr = this.conditionsOf(aObjRule);
     this.iarrConditions = larr.length > 0
       ? larr.map(c => ({ ...c }))
@@ -305,29 +230,6 @@ export class ConditionalRulesTab {
     this.iboolFormOpen = false;
     this.istrEditingRuleId = null;
   }
-
-  private get validConditions(): RuleCondition[] {
-    return this.iarrConditions.filter(c => !!c.controlKey && c.value !== '');
-  }
-
-  get canSave(): boolean {
-    if (!this.istrControlKey) return false;
-
-    if (this.istrRuleType === 'FilterDependency') {
-      // A mapping with no rows would blank the target's options entirely.
-      return !!this.istrSourceControlKey && Object.keys(this.buildMapping()).length > 0;
-    }
-
-    if (this.istrRuleType === 'Calculate') {
-      return !!this.istrExpression && this.expressionError === '';
-    }
-
-    if (this.validConditions.length === 0) return false;
-    if (this.istrRuleType === 'SetValue') return this.istrSetValue !== '';
-
-    return true;
-  }
-
   save(): void {
     if (!this.canSave) return;
 
@@ -400,6 +302,118 @@ export class ConditionalRulesTab {
       this.ichanged.emit();
     });
   }
+   sectionTitle(aStrSectionKey: string): string {
+    return this.iarrSections.find(s => s.sectionKey === aStrSectionKey)?.title ?? aStrSectionKey;
+  }
+
+  /** What the Applies To column shows — a section title or a control label. */
+  targetLabel(aObjRule: FormRule): string {
+    return aObjRule.ruleType === 'SectionVisibility'
+      ? this.sectionTitle(aObjRule.controlKey) + ' (Section)'
+      : this.controlLabel(aObjRule.controlKey);
+  }
+
+   /** The chosen field's own options, offered as autocomplete when writing a mapping. */
+  seedOptionsFor(aStrControlKey: string): string[] {
+    const lobjControl = this.iarrControls.find(c => c.controlKey === aStrControlKey);
+    if (!lobjControl?.propertiesJson) return [];
+    try {
+      const lobjProps = JSON.parse(lobjControl.propertiesJson);
+      return typeof lobjProps.SeedData === 'string' ? lobjProps.SeedData.split(',').map((o: string) => o.trim()) : [];
+    } catch { return []; }
+  }
+
+
+  //#endregion
+  get selectedMeta(): ConditionalTypeMeta | undefined {
+    return this.iarrRuleTypes.find(t => t.type === this.istrRuleType);
+  }
+
+
+
+  private parseDetails(aStrJson?: string): any {
+    if (!aStrJson) return {};
+    try { return JSON.parse(aStrJson); } catch { return {}; }
+  }
+
+  /** Rules saved before multi-condition support carry a single flat trigger. */
+  private conditionsOf(aObjRule: FormRule): RuleCondition[] {
+    const d = this.parseDetails(aObjRule.ruleDetailsJson);
+    if (Array.isArray(d.conditions) && d.conditions.length > 0) return d.conditions;
+    if (d.triggerControlKey) {
+      return [{ controlKey: d.triggerControlKey, operator: d.operator ?? '==', value: d.triggerValue ?? '' }];
+    }
+    return [];
+  }
+
+
+
+  /** True when the rule type is driven by conditions rather than a source lookup. */
+  get usesConditions(): boolean {
+    return this.istrRuleType !== 'FilterDependency' && this.istrRuleType !== 'Calculate';
+  }
+
+  /** True when the rule needs an Action picker — the other three have only one action. */
+  get usesAction(): boolean {
+    return this.istrRuleType !== 'SetValue'
+      && this.istrRuleType !== 'FilterDependency'
+      && this.istrRuleType !== 'Calculate';
+  }
+  /** Rows to the stored shape. "Maharashtra, Gujarat" becomes ['Maharashtra','Gujarat']. */
+  private buildMapping(): Record<string, string[]> {
+    const lobjMapping: Record<string, string[]> = {};
+
+    for (const lobjRow of this.iarrMappingRows) {
+      const lstrKey = lobjRow.sourceValue.trim();
+      if (!lstrKey) continue;
+
+      lobjMapping[lstrKey] = lobjRow.options
+        .split(',')
+        .map(o => o.trim())
+        .filter(o => o.length > 0);
+    }
+
+    return lobjMapping;
+  }
+
+  /** Live check so a typo in the expression is caught before the rule is saved. */
+  get expressionError(): string {
+    if (!this.istrExpression) return '';
+
+    const larrFields = ExpressionEvaluator.referencedFields(this.istrExpression);
+    const larrUnknown = larrFields.filter(k => !this.iarrControls.some(c => c.controlKey === k));
+    if (larrUnknown.length > 0) return `Unknown field: ${larrUnknown.join(', ')}`;
+
+    // Every referenced field set to 1 — proves the syntax parses, whatever the real values.
+    const lobjProbe: Record<string, any> = {};
+    larrFields.forEach(k => lobjProbe[k] = 1);
+    if (ExpressionEvaluator.evaluate(this.istrExpression, lobjProbe) === null) {
+      return 'The expression could not be parsed.';
+    }
+
+    return '';
+  }
+  private get validConditions(): RuleCondition[] {
+    return this.iarrConditions.filter(c => !!c.controlKey && c.value !== '');
+  }
+
+  get canSave(): boolean {
+    if (!this.istrControlKey) return false;
+
+    if (this.istrRuleType === 'FilterDependency') {
+      // A mapping with no rows would blank the target's options entirely.
+      return !!this.istrSourceControlKey && Object.keys(this.buildMapping()).length > 0;
+    }
+
+    if (this.istrRuleType === 'Calculate') {
+      return !!this.istrExpression && this.expressionError === '';
+    }
+
+    if (this.validConditions.length === 0) return false;
+    if (this.istrRuleType === 'SetValue') return this.istrSetValue !== '';
+
+    return true;
+  }
 
   private describeConditions(aArrConditions: RuleCondition[]): string {
     return aArrConditions
@@ -407,11 +421,7 @@ export class ConditionalRulesTab {
       .join(` ${this.istrLogic} `);
   }
 
-  deleteRule(aObjRule: FormRule): void {
-    this.iobjRuleService.deleteRule(this.inumVersionId, aObjRule.ruleId)
-      .subscribe(() => this.ichanged.emit());
-  }
-
+  
   private resetDraft(): void {
     this.istrRuleType = 'Visibility';
     this.istrControlKey = '';
@@ -429,14 +439,4 @@ export class ConditionalRulesTab {
     return this.istrRuleType === 'SectionVisibility';
   }
 
-  sectionTitle(aStrSectionKey: string): string {
-    return this.iarrSections.find(s => s.sectionKey === aStrSectionKey)?.title ?? aStrSectionKey;
-  }
-
-  /** What the Applies To column shows — a section title or a control label. */
-  targetLabel(aObjRule: FormRule): string {
-    return aObjRule.ruleType === 'SectionVisibility'
-      ? this.sectionTitle(aObjRule.controlKey) + ' (Section)'
-      : this.controlLabel(aObjRule.controlKey);
-  }
 }

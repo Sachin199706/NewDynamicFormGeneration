@@ -3,7 +3,7 @@ import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import {
     CalculateDetails,
   CompareFieldsDetails, ConditionalDetails, ConditionLogic, ConditionOperator, ControlEffects,
-  DateRuleDetails, FilterDependencyDetails, FormatDetails, FormatKind, FormRule, LengthDetails, PatternDetails,
+  DateRuleDetails, FileDetails, FilterDependencyDetails, FormatDetails, FormatKind, FormRule, LengthDetails, PatternDetails,
   RangeDetails, RuleCondition, RuleType,
   SetValueDetails
 } from '../models/rule.model';
@@ -337,7 +337,7 @@ private iobjSectionVisibility: Record<string, boolean> = {};
     }
   }
 
-  private parseDetails<T>(json?: string): T | null {
+  public parseDetails<T>(json?: string): T | null {
     if (!json) return null;
     try { return JSON.parse(json) as T; } catch { return null; }
   }
@@ -386,5 +386,29 @@ private iobjSectionVisibility: Record<string, boolean> = {};
     }
 
     return !isOr;
+  }
+    /// File rules cannot go through evaluateOne(): it only sees the value map, which holds
+  /// the file name, not the File object, so size is invisible to it. Both the Preview and
+  /// the fill screen call this from their file-change handler instead.
+  /// Client-side only — the server still accepts anything (see RP-04).
+  validateFile(aArrRules: FormRule[], aStrControlKey: string, aObjFile: File): string | null {
+    for (const lobjRule of aArrRules.filter(r => r.isActive && r.ruleType === 'File'
+        && r.controlKey === aStrControlKey)) {
+
+      const lobjDetails = this.parseDetails<FileDetails>(lobjRule.ruleDetailsJson);
+      if (!lobjDetails) continue;
+
+      const larrAllowed = lobjDetails.allowedExtensions ?? [];
+      if (larrAllowed.length > 0) {
+        const lstrExt = aObjFile.name.split('.').pop()?.toLowerCase() ?? '';
+        if (!larrAllowed.map(e => e.toLowerCase()).includes(lstrExt)) return lobjRule.errorMessage;
+      }
+
+      if (lobjDetails.maxSizeKb != null && aObjFile.size / 1024 > lobjDetails.maxSizeKb) {
+        return lobjRule.errorMessage;
+      }
+    }
+
+    return null;
   }
 }
