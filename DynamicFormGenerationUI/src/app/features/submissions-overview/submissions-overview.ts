@@ -32,9 +32,14 @@ export class SubmissionsOverview implements OnInit {
     this.iobjFormService.getForms(1, 200).subscribe(res => this.iarrForms = res.items);
 
     const lStrFormIdParam = this.iobjRoute.snapshot.queryParamMap.get('formId');
+    const lStrVersionNoParam = this.iobjRoute.snapshot.queryParamMap.get('versionno');
     this.iobjFilter.formId = null;
+    this.iobjFilter.versionNo = null;
     if (lStrFormIdParam) {
       this.iobjFilter.formId = Number(lStrFormIdParam);
+    }
+    if (lStrVersionNoParam) {
+      this.iobjFilter.versionNo = Number(lStrVersionNoParam);
     }
     this.iobjFilter.isRead = null;
 

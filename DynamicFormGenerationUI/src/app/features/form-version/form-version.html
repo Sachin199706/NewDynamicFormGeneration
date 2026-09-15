@@ -159,10 +159,8 @@
                                 <a
                                     class="btn btn-sm btn-outline-secondary"
                                     [routerLink]="[
-                                        '/forms',
-                                        f.formId,
-                                        'submissions'
-                                    ]">
+                                        '/submissions'
+                                    ]" [queryParams]="{ formId: f.formId, versionno: f.versionNo }">
                                     Submissions
                                 </a>
 

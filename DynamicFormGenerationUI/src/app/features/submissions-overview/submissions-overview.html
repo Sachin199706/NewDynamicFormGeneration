@@ -1,27 +1,22 @@
 <div class="p-4">
     <h3 class="mb-1">Submissions</h3>
-    <p class="text-muted small mb-4">Home / Submissions</p>
-
     <div class="row g-3 mb-4">
         <div class="col-4">
             <div class="card p-3">
                 <div class="text-muted small">Total Submissions</div>
                 <div class="fs-3 fw-bold text-primary">{{ iobjStats.totalSubmissions }}</div>
-                <div class="text-muted small">All time</div>
             </div>
         </div>
         <div class="col-4">
             <div class="card p-3">
                 <div class="text-muted small">Unread Submissions</div>
                 <div class="fs-3 fw-bold text-warning">{{ iobjStats.unreadSubmissions }}</div>
-                <div class="text-muted small">Requires your attention</div>
             </div>
         </div>
         <div class="col-4">
             <div class="card p-3">
                 <div class="text-muted small">Read Submissions</div>
                 <div class="fs-3 fw-bold text-success">{{ iobjStats.readSubmissions }}</div>
-                <div class="text-muted small">Already viewed</div>
             </div>
         </div>
     </div>
@@ -64,9 +59,9 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-end mb-2">
+    <!-- <div class="d-flex justify-content-end mb-2">
         <button class="btn btn-outline-primary btn-sm" (click)="exportCsv()">Export (current page)</button>
-    </div>
+    </div> -->
 
     <table class="table bg-white">
         <thead>
@@ -94,7 +89,7 @@
                     <button class="btn btn-sm btn-outline-primary" *ngIf="!s.isRead" (click)="markAsRead(s)">
                         Mark as Read
                     </button>
-                  <a [routerLink]="['/forms', s.formId, 'versions', s.versionNo,'fill']" [queryParams]="{ submissionId: s.submissionId }" target="_blank">View</a>
+                  <a [routerLink]="['/forms', s.formId, 'versions', s.formVersionId,'fill']" [queryParams]="{ submissionId: s.submissionId }" target="_blank">View</a>
                 </td>
             </tr>
             <tr *ngIf="iarrSubmissions.length === 0">

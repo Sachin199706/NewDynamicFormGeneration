@@ -14,18 +14,24 @@
     <!-- CENTER: canvas -->
     <div class="flex-grow-1 d-flex flex-column">
         <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
-            <label class="fw-bold">Creating New Version for Template: {{istrTemplateName}}</label>
+            Version of Template: <label class="fw-bold">{{istrTemplateName}}</label>
+            <button class="btn btn-primary btn-sm" (click)="save()">
+                <i class="bi bi-floppy"></i> Save
+            </button>
+            <button class="btn btn-outline-primary btn-sm" (click)="openPreview()">
+                <i class="bi bi-eye"></i> Preview
+            </button>
+            <button class="btn btn-success btn-sm" (click)="publish()" [disabled]="!inumTemplateId">    
+                <i class="bi bi-cloud-arrow-up"></i> Publish
+            </button>
+            <button *ngIf="inumTemplateId" class="btn btn-outline-secondary btn-sm" (click)="goToRules()">
+              Validation
+              Rules
+            </button>
         </div>
         <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
-            <label class="fw-bold">Version Description:</label>
-            <input class="form-control" style="width:260px;" [(ngModel)]="istrVersionDescription"
-                placeholder="Enter version description" />
-            <button class="btn btn-primary btn-sm" (click)="save()">Save</button>
-            <button class="btn btn-outline-primary btn-sm" (click)="openPreview()">
-                <i class="bi"></i>Preview
-            </button>
-            <button class="btn btn-success btn-sm" (click)="publish()" [disabled]="!inumTemplateId">Publish</button>
-
+            <label class="fw-bold">Description:</label>
+            <input class="form-control" style="width:70%;" [(ngModel)]="istrVersionDescription" placeholder="Describe the form..." />
             <select class="form-select form-select-sm" style="width:140px;" [(ngModel)]="inumColumnLayout"
                 aria-label="Number of columns">
                 <option [ngValue]="1">1 Column</option>
@@ -33,9 +39,6 @@
                 <option [ngValue]="3">3 Columns</option>
                 <option [ngValue]="4">4 Columns</option>
             </select>
-
-            <button *ngIf="inumTemplateId" class="btn btn-outline-secondary btn-sm" (click)="goToRules()">Validation
-                Rules</button>
         </div>
 
         <!-- cdkDropListOrientation="mixed" is required here: the items wrap in a flex layout,

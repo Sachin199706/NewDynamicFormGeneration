@@ -185,7 +185,7 @@ public class FormService : IFormService
         var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
         if (lobjForm == null) return Result<FormRenderDto>.Fail("Form not found.");
 
-        var lobjVersion = _uow.Repository<FormVersion>().Query().First(v => v.FormVersionId == aNumFormVersionId);
+        var lobjVersion = _uow.Repository<FormVersion>().Query().First(v => v.FormId == lobjForm.FormId && v.FormVersionId == aNumFormVersionId );
         var lobjVersionDto = BuildVersionDto(lobjVersion);
         var larrRules = await _ruleEngine.GetRulesForVersionAsync(aNumFormVersionId);
 

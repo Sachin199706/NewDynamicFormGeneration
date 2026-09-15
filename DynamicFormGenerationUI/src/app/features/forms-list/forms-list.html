@@ -1,8 +1,20 @@
 <div class="p-4">
-    <div class="d-flex justify-content-between mb-3">
-        <h3>Published Forms</h3>
-        <a routerLink="/forms/builder" class="btn btn-primary">+ Create Form</a>
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+        <h3 class="mb-0">Published Forms</h3>
+        <div class="flex-grow-1 d-flex justify-content-end">
+            <div class="input-group" style="max-width: 320px;">
+                <span class="input-group-text">Search</span>
+                <input
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="strSearch"
+                    placeholder="Filter by form name or version"
+                    aria-label="Filter published forms"
+                />
+            </div>
+        </div>
     </div>
+
     <table class="table bg-white">
         <thead>
             <tr>
@@ -13,18 +25,20 @@
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let f of iarrForms">
+            <tr *ngFor="let f of filteredForms">
                 <td>{{ f.formName }}</td>
                 <td>v{{ f.versionNo }} {{f.versionDescription}}</td>
                 <td>{{ f.publishedOn | date:'medium' }}</td>
                 <td class="d-flex gap-2">
                     <a [routerLink]="['/forms/builder', f.formId]" [queryParams]="{ version: f.formVersionId }">Edit</a>
                     <a [routerLink]="['/forms', f.formId, 'versions', f.formVersionId, 'fill']" target="_blank">View</a>
-                  <a [routerLink]="['/submissions']" [queryParams]="{ formId: f.formId }">Submissions</a>
+                    <a [routerLink]="['/submissions']" [queryParams]="{ formId: f.formId }">Submissions</a>
                 </td>
             </tr>
-            <tr *ngIf="iarrForms.length === 0">
-                <td colspan="4" class="text-muted text-center">No forms published yet.</td>
+            <tr *ngIf="filteredForms.length === 0">
+                <td colspan="4" class="text-muted text-center">
+                    {{ iarrForms.length === 0 ? 'No forms published yet.' : 'No published forms match your filter.' }}
+                </td>
             </tr>
         </tbody>
     </table>
