@@ -141,6 +141,7 @@ export interface SubmissionOverviewItem {
     versionNo: number;
     submittedOn: string;
     isRead: boolean;
+    formVersionId:number;
 }
 
 export interface SubmissionStats {
@@ -152,6 +153,7 @@ export interface SubmissionStats {
 export interface SubmissionFilter {
     search?: string;
     formId?: number | null;
+    versionNo?: number | null;
     isRead?: boolean | null;
     fromDate?: string;
     toDate?: string;

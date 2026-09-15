@@ -26,6 +26,8 @@ public class SubmissionDetailDto
     public int VersionNo { get; set; }
     public DateTime SubmittedOn { get; set; }
     public Dictionary<string, object?> Values { get; set; } = new();
+    
+
 }
 
 public class SubmissionOverviewItemDto
@@ -33,6 +35,7 @@ public class SubmissionOverviewItemDto
     public int SubmissionId { get; set; }
     public string SubmissionCode { get; set; } = null!;
     public int FormId { get; set; }
+    public int FormVersionId { get; set; }
     public string FormName { get; set; } = null!;
     public int VersionNo { get; set; }
     public DateTime SubmittedOn { get; set; }

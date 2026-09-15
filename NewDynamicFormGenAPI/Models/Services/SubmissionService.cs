@@ -125,6 +125,7 @@ public class SubmissionService : ISubmissionService
                 SubmissionId = x.s.SubmissionId,
                 SubmissionCode = x.s.SubmissionCode,
                 FormId = x.f.FormId,
+                FormVersionId = x.s.FormVersionId,
                 FormName = x.f.FormName,
                 VersionNo = x.v.VersionNo,
                 SubmittedOn = x.s.SubmittedOn,

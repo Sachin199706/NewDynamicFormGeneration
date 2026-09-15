@@ -211,12 +211,16 @@ export class FormBuilder implements OnInit {
       controls: larrControlsWithRules
     };
 
+    let lstrMessage = 'Form version created successfully.';
+    if(lobjDto.formId != undefined && lobjDto.formVersionId != undefined) {
+       lstrMessage = 'Form version updated successfully.';
+    }
     this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
       if (res.success && res.data) {
         this.inumTemplateId = res.data.formId;
         this.inumVersionId = res.data.formVersionId;
         this.iboolDirty = false;
-        this.toastr.success('Form version saved successfully.', 'Success');
+          this.toastr.success(lstrMessage, 'Success');
          aFnOnSaved?.();
       }
     });
