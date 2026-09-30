@@ -389,13 +389,12 @@ public class FormService : IFormService
     {
         var lobjForms = _uow.Repository<Form>().Query();
         var lobjVersions = _uow.Repository<FormVersion>().Query();
-
         var lobjDashboard = new DashboardDTO
         {
             TotalForms = lobjForms.Count(),
             TotalVersions = lobjVersions.Count(),
-            DraftForms = lobjVersions.Where(v => v.Status == FormStatus.Draft).Select(v => v.FormId).Distinct().Count(),
-            PublishedForms = lobjVersions.Where(v => v.Status == FormStatus.Published).Select(v => v.FormId).Distinct().Count(),
+            DraftForms = lobjVersions.Where(v => v.Status == FormStatus.Draft).Select(v => v.FormVersionId).Distinct().Count(),
+            PublishedForms = lobjVersions.Where(v => v.Status == FormStatus.Published).Select(v => v.FormVersionId).Distinct().Count(),
             ArchivedForms = lobjVersions.Where(v => v.Status == FormStatus.Archived).Select(v => v.FormId).Distinct().Count(),
             RecentForms = (
                 from v in lobjVersions

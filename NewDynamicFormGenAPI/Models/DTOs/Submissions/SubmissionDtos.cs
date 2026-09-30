@@ -55,6 +55,8 @@ public class SubmissionFilterDto
     public bool? IsRead { get; set; }           // null = All, true = Read, false = Unread
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
+    public string SortBy { get; set; } = "submittedOn";
+    public string SortDirection { get; set; } = "desc";
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 10;
 }

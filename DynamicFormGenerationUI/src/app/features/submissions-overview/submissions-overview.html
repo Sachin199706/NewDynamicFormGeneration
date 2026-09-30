@@ -1,26 +1,12 @@
-<div class="p-4">
-    <h3 class="mb-1">Submissions</h3>
-    <div class="row g-3 mb-4">
-        <div class="col-4">
-            <div class="card p-3">
-                <div class="text-muted small">Total Submissions</div>
-                <div class="fs-3 fw-bold text-primary">{{ iobjStats.totalSubmissions }}</div>
-            </div>
-        </div>
-        <div class="col-4">
-            <div class="card p-3">
-                <div class="text-muted small">Unread Submissions</div>
-                <div class="fs-3 fw-bold text-warning">{{ iobjStats.unreadSubmissions }}</div>
-            </div>
-        </div>
-        <div class="col-4">
-            <div class="card p-3">
-                <div class="text-muted small">Read Submissions</div>
-                <div class="fs-3 fw-bold text-success">{{ iobjStats.readSubmissions }}</div>
-            </div>
+<div class="p-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <h4 class="mb-0">Submissions</h4>
+        <div class="d-flex flex-wrap gap-4">
+            <div><span class="fw-bold">Total Submissions:</span> <span class="fw-bold text-primary">{{ iobjStats.totalSubmissions }}</span></div>
+            <div><span class="fw-bold">Unread Submissions:</span> <span class="fw-bold text-warning">{{ iobjStats.unreadSubmissions }}</span></div>
+            <div><span class="fw-bold">Read Submissions:</span> <span class="fw-bold text-success">{{ iobjStats.readSubmissions }}</span></div>
         </div>
     </div>
-
     <div class="card p-3 mb-3">
         <div class="row g-2">
             <div class="col-4">
@@ -66,24 +52,34 @@
     <table class="table bg-white">
         <thead>
             <tr>
-                <th>Submission Code</th>
-                <th>Form Template</th>
-                <th>Version</th>
-                <th>Status</th>
-                <th>Submitted On</th>
+                <th [attr.aria-sort]="getAriaSort('submissionCode')">
+                    <button type="button" class="btn btn-link p-0 fw-bold text-dark text-decoration-none" (click)="sortBy('submissionCode')">
+                        Submission Code <span aria-hidden="true">{{ getSortIndicator('submissionCode') }}</span>
+                    </button>
+                </th>
+                <th [attr.aria-sort]="getAriaSort('formName')">
+                    <button type="button" class="btn btn-link p-0 fw-bold text-dark text-decoration-none" (click)="sortBy('formName')">
+                        Form Template <span aria-hidden="true">{{ getSortIndicator('formName') }}</span>
+                    </button>
+                </th>
+                <th [attr.aria-sort]="getAriaSort('versionNo')">
+                    <button type="button" class="btn btn-link p-0 fw-bold text-dark text-decoration-none" (click)="sortBy('versionNo')">
+                        Version <span aria-hidden="true">{{ getSortIndicator('versionNo') }}</span>
+                    </button>
+                </th>
+                <th [attr.aria-sort]="getAriaSort('submittedOn')">
+                    <button type="button" class="btn btn-link p-0 fw-bold text-dark text-decoration-none" (click)="sortBy('submittedOn')">
+                        Submitted On <span aria-hidden="true">{{ getSortIndicator('submittedOn') }}</span>
+                    </button>
+                </th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let s of iarrSubmissions">
+            <tr *ngFor="let s of iarrSubmissions" [class.fw-bold]="!s.isRead">
                 <td>{{ s.submissionCode }}</td>
                 <td>{{ s.formName }}</td>
                 <td>v{{ s.versionNo }}</td>
-                <td>
-                    <span class="badge" [class.bg-warning]="!s.isRead" [class.bg-success]="s.isRead">
-                        {{ s.isRead ? 'Read' : 'Unread' }}
-                    </span>
-                </td>
                 <td>{{ s.submittedOn | date:'medium' }}</td>
                 <td class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-primary" *ngIf="!s.isRead" (click)="markAsRead(s)">
@@ -93,7 +89,7 @@
                 </td>
             </tr>
             <tr *ngIf="iarrSubmissions.length === 0">
-                <td colspan="6" class="text-muted text-center">No submissions found.</td>
+                <td colspan="5" class="text-muted text-center">No submissions found.</td>
             </tr>
         </tbody>
     </table>

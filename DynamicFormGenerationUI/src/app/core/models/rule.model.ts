@@ -157,6 +157,8 @@ export interface SubmissionFilter {
     isRead?: boolean | null;
     fromDate?: string;
     toDate?: string;
+    sortBy?: 'submissionCode' | 'formName' | 'versionNo' | 'submittedOn';
+    sortDirection?: 'asc' | 'desc';
     page: number;
     pageSize: number;
 }

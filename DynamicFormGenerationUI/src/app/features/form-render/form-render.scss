@@ -11,3 +11,27 @@
         border-radius: .5rem .5rem 0 0;
     }
 }
+
+.fill-layout-row.shared-row-border {
+    border-top-width: 0 !important;
+}
+
+.form-layout-columns {
+    gap: 12px;
+}
+
+.form-layout-columns--divided {
+    gap: 0;
+}
+
+.fill-layout-column {
+    box-sizing: border-box;
+}
+
+.fill-layout-column.column-divider-enabled {
+    border-right: 1px solid #d1d5db;
+}
+
+.fill-label-heading {
+    margin: 0.25rem 0 0.75rem;
+}

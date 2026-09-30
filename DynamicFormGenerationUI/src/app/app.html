@@ -1,15 +1,30 @@
 <div class="global-loader" *ngIf="iobjloadingService.iboolLoading()">
   <div class="spinner-border text-primary" role="status"></div>
 </div>
-<div class="d-flex" style="min-height:100vh;">
-  <nav *ngIf="iboolShowSidebar" class="bg-dark text-white p-3" style="width:220px;">
-    <h5  routerLink="/dashboard" class="mb-4">Form Generation System</h5>
-    <a routerLink="/dashboard" class="d-block text-white-50 py-1 text-decoration-none">Dashboard</a>
-    <a routerLink="/formtemplates" class="d-block text-white-50 py-1 text-decoration-none">Forms Templates</a>
-    <a routerLink="/forms" class="d-block text-white-50 py-1 text-decoration-none">Publish Forms</a>
-    <a routerLink="/submissions" class="d-block text-white-50 py-1 text-decoration-none">Submissions</a>
+<div class="app-shell">
+  <nav *ngIf="iboolShowSidebar" class="app-sidebar" aria-label="Main navigation">
+    <div class="app-sidebar__brand" routerLink="/dashboard" title="Dashboard">
+      <i class="bi bi-grid-1x2-fill"></i>
+    </div>
+
+    <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="app-sidebar__item" title="Dashboard" aria-label="Dashboard">
+      <i class="bi bi-house-door-fill"></i>
+    </a>
+
+    <a routerLink="/formtemplates" routerLinkActive="active" class="app-sidebar__item" title="Forms Templates" aria-label="Forms Templates">
+      <i class="bi bi-file-earmark-text-fill"></i>
+    </a>
+
+    <a routerLink="/forms" routerLinkActive="active" class="app-sidebar__item" title="Publish Forms" aria-label="Publish Forms">
+      <i class="bi bi-journal-check"></i>
+    </a>
+
+    <a routerLink="/submissions" routerLinkActive="active" class="app-sidebar__item" title="Submissions" aria-label="Submissions">
+      <i class="bi bi-inboxes-fill"></i>
+    </a>
   </nav>
-  <main class="flex-grow-1">
+
+  <main class="app-main">
     <router-outlet></router-outlet>
   </main>
 </div>

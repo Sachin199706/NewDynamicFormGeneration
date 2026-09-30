@@ -22,7 +22,7 @@ export class SubmissionsOverview implements OnInit {
   iarrForms: FormListItem[] = [];
   iobjStats: SubmissionStats = { totalSubmissions: 0, unreadSubmissions: 0, readSubmissions: 0 };
 
-  iobjFilter: SubmissionFilter = { page: 1, pageSize: 10 };
+  iobjFilter: SubmissionFilter = { page: 1, pageSize: 10, sortBy: 'submittedOn', sortDirection: 'desc' };
   inumTotalCount = 0;
   inumTotalPages = 0;
 
@@ -69,8 +69,30 @@ export class SubmissionsOverview implements OnInit {
     this.loadPage();
   }
 
+  sortBy(istrColumn: NonNullable<SubmissionFilter['sortBy']>): void {
+    if (this.iobjFilter.sortBy === istrColumn) {
+      this.iobjFilter.sortDirection = this.iobjFilter.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.iobjFilter.sortBy = istrColumn;
+      this.iobjFilter.sortDirection = 'asc';
+    }
+
+    this.iobjFilter.page = 1;
+    this.loadPage();
+  }
+
+  getSortIndicator(istrColumn: NonNullable<SubmissionFilter['sortBy']>): string {
+    if (this.iobjFilter.sortBy !== istrColumn) return '↕';
+    return this.iobjFilter.sortDirection === 'asc' ? '↑' : '↓';
+  }
+
+  getAriaSort(istrColumn: NonNullable<SubmissionFilter['sortBy']>): 'ascending' | 'descending' | 'none' {
+    if (this.iobjFilter.sortBy !== istrColumn) return 'none';
+    return this.iobjFilter.sortDirection === 'asc' ? 'ascending' : 'descending';
+  }
+
   clear(): void {
-    this.iobjFilter = { page: 1, pageSize: 10,formId:null,isRead:null};
+    this.iobjFilter = { page: 1, pageSize: 10, formId: null, isRead: null, sortBy: 'submittedOn', sortDirection: 'desc' };
     this.refreshStats(null);
     this.loadPage();
 

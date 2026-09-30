@@ -34,6 +34,8 @@ public class FormControlDto
     public bool IsReadOnly { get; set; }
     public bool IsVisible { get; set; }
     public int DisplayOrder { get; set; }
+    public int? LayoutRowIndex { get; set; }
+    public int? LayoutColumnIndex { get; set; }
     public int? ParentControlId { get; set; }
     public string? PropertiesJson { get; set; }
     public List<FormRuleDto> Rules { get; set; } = new();

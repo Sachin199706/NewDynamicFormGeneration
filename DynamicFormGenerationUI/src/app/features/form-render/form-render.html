@@ -2,32 +2,24 @@
     Viewing a submitted response.
 </div>
 
-<div class="p-4" style="max-width:700px; margin:0 auto;" *ngIf="payload">
+<div class="p-4" style="max-width:900px; margin:0 auto;" *ngIf="payload">
     <h4 class="mb-3">{{ payload.formName }}</h4>
 
     <form [formGroup]="form" (ngSubmit)="submit()">
-
-        <!-- Unsectioned controls render above every section, so a form saved before
-             sections existed looks exactly as it did.
-             Bound to a held array rather than a getter: a getter returning filter() gave
-             *ngFor a new array each change-detection pass, so the list rebuilt itself
-             continuously and the controls appeared one at a time. -->
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
-            <ng-container *ngFor="let c of iarrUnsectionedControls; trackBy: trackByControlKey">
-                <ng-container *ngTemplateOutlet="controlTpl; context: { $implicit: c }"></ng-container>
-            </ng-container>
-        </div>
-
-        <!-- A hidden section hides its header and border here; its controls were already
-             marked hidden by the rule engine, which is what clears their validators. -->
-        <div class="form-section mb-3" *ngFor="let s of payload.sections"
-            [hidden]="!isSectionVisible(s.sectionKey)">
-            <div class="form-section-header">{{ s.title }}</div>
-
-            <div class="p-3"
-                style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
-                <ng-container *ngFor="let c of controlsIn(s.sectionKey); trackBy: trackByControlKey">
-                    <ng-container *ngTemplateOutlet="controlTpl; context: { $implicit: c }"></ng-container>
+        <div *ngFor="let row of layoutRows; let rowIndex = index" class="fill-layout-row" [class.shared-row-border]="hasSharedTopBorder(rowIndex)"
+            [style.border-style]="row.borderEnabled ? row.borderStyle : null"
+            [style.border-width.px]="row.borderEnabled ? row.borderWidth : null"
+            [style.border-color]="row.borderEnabled ? row.borderColor : null">
+            <div class="d-flex flex-wrap align-items-stretch form-layout-columns" [class.form-layout-columns--divided]="row.columnBordersEnabled">
+                <ng-container *ngFor="let column of row.columns; let columnIndex = index">
+                    <div class="fill-layout-column" [style.flex]="row.columnBordersEnabled ? '0 0 ' + ((column.span / 12) * 100) + '%' : columnFlexBasis(column.span, row.columns.length)" [style.minWidth]="'0'"
+                        [class.column-divider-enabled]="row.columnBordersEnabled && columnIndex < row.columns.length - 1">
+                        <div class="d-flex flex-column gap-3">
+                            <ng-container *ngFor="let c of controlsInRowColumn(rowIndex, columnIndex); trackBy: trackByControlKey">
+                                <ng-container *ngTemplateOutlet="controlTpl; context: { $implicit: c }"></ng-container>
+                            </ng-container>
+                        </div>
+                    </div>
                 </ng-container>
             </div>
         </div>
@@ -41,11 +33,9 @@
     </form>
 </div>
 
-<!-- One definition of a control, used by the unsectioned area and every section. -->
 <ng-template #controlTpl let-c>
-    <div class="mb-3" [formGroup]="form" [hidden]="!isVisible(c.controlKey)"
-        [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
-        <label class="form-label">
+    <div class="mb-3" [formGroup]="form" [hidden]="!isVisible(c.controlKey)" [style.width]="'100%'">
+        <label *ngIf="c.controlTypeCode !== 'Label'" class="form-label">
             {{ c.label }}
             <span class="text-danger" *ngIf="isRequired(c.controlKey)">*</span>
         </label>
@@ -59,83 +49,69 @@
             </select>
 
             <input *ngSwitchCase="'Number'" type="number" class="form-control" [formControlName]="c.controlKey" />
-
             <input *ngSwitchCase="'Date'" type="date" class="form-control" [formControlName]="c.controlKey" />
 
             <div *ngSwitchCase="'Radio'">
                 <div class="form-check" *ngFor="let opt of optionsFor(c)">
-                    <input type="radio" class="form-check-input" [formControlName]="c.controlKey" [value]="opt"
-                        [id]="c.controlKey + '_' + opt" />
+                    <input type="radio" class="form-check-input" [formControlName]="c.controlKey" [value]="opt" [id]="c.controlKey + '_' + opt" />
                     <label class="form-check-label" [for]="c.controlKey + '_' + opt">{{ opt }}</label>
                 </div>
             </div>
 
             <div class="form-check" *ngSwitchCase="'Checkbox'">
-                <input type="checkbox" class="form-check-input" [formControlName]="c.controlKey"
-                    [id]="c.controlKey" />
+                <input type="checkbox" class="form-check-input" [formControlName]="c.controlKey" [id]="c.controlKey" />
                 <label class="form-check-label" [for]="c.controlKey">{{ c.placeholder || c.label }}</label>
             </div>
 
             <div *ngSwitchCase="'CheckboxList'">
                 <div class="form-check" *ngFor="let opt of optionsFor(c)">
-                    <input type="checkbox" class="form-check-input"
-                        [checked]="isCheckboxListOptionSelected(c.controlKey, opt)"
-                        (change)="toggleCheckboxListOption(c.controlKey, opt)" [id]="c.controlKey + '_' + opt" />
+                    <input type="checkbox" class="form-check-input" [checked]="isCheckboxListOptionSelected(c.controlKey, opt)" (change)="toggleCheckboxListOption(c.controlKey, opt)" [id]="c.controlKey + '_' + opt" />
                     <label class="form-check-label" [for]="c.controlKey + '_' + opt">{{ opt }}</label>
                 </div>
             </div>
 
-            <!-- A file input can never be given a stored filename by script (browser security),
-                 so read-only mode renders the name and a download link instead of the input. -->
             <div *ngSwitchCase="'File'">
-                <input *ngIf="!iboolReadOnly" type="file" class="form-control"
-                    [disabled]="!isEnabled(c.controlKey)" (change)="onFileSelected(c.controlKey, $event)" />
+                <input *ngIf="!iboolReadOnly" type="file" class="form-control" [disabled]="!isEnabled(c.controlKey)" (change)="onFileSelected(c.controlKey, $event)" />
 
                 <div *ngIf="iboolReadOnly && storedFileName(c.controlKey)" class="d-flex align-items-center gap-2">
-                    <input type="text" class="form-control" [value]="displayFileName(storedFileName(c.controlKey))"
-                        disabled />
-                    <a class="btn btn-outline-primary btn-sm text-nowrap"
-                        [href]="downloadUrl(storedFileName(c.controlKey))" target="_blank"
-                        rel="noopener">Download</a>
+                    <input type="text" class="form-control" [value]="displayFileName(storedFileName(c.controlKey))" disabled />
+                    <a class="btn btn-outline-primary btn-sm text-nowrap" [href]="downloadUrl(storedFileName(c.controlKey))" target="_blank" rel="noopener">Download</a>
                 </div>
 
-                <div *ngIf="iboolReadOnly && !storedFileName(c.controlKey)" class="form-control bg-light text-muted">
-                    No file uploaded</div>
+                <div *ngIf="iboolReadOnly && !storedFileName(c.controlKey)" class="form-control bg-light text-muted">No file uploaded</div>
             </div>
 
             <div *ngSwitchCase="'Image'">
-                <input *ngIf="!iboolReadOnly" type="file" class="form-control"
-                    [disabled]="!isEnabled(c.controlKey)" (change)="onFileSelected(c.controlKey, $event)" />
+                <input *ngIf="!iboolReadOnly" type="file" class="form-control" [disabled]="!isEnabled(c.controlKey)" (change)="onFileSelected(c.controlKey, $event)" />
 
-                <img *ngIf="!iboolReadOnly && imagePreviewUrls[c.controlKey]" [src]="imagePreviewUrls[c.controlKey]"
-                    style="max-width:150px; max-height:150px; margin-top:8px; border-radius:6px; display:block;" />
+                <img *ngIf="!iboolReadOnly && imagePreviewUrls[c.controlKey]" [src]="imagePreviewUrls[c.controlKey]" style="max-width:150px; max-height:150px; margin-top:8px; border-radius:6px; display:block;" />
 
                 <ng-container *ngIf="iboolReadOnly">
                     <div *ngIf="storedFileName(c.controlKey)">
                         <div class="d-flex align-items-center gap-2">
-                            <input type="text" class="form-control"
-                                [value]="displayFileName(storedFileName(c.controlKey))" disabled />
-                            <a class="btn btn-outline-primary btn-sm text-nowrap"
-                                [href]="downloadUrl(storedFileName(c.controlKey))" target="_blank"
-                                rel="noopener">Download</a>
+                            <input type="text" class="form-control" [value]="displayFileName(storedFileName(c.controlKey))" disabled />
+                            <a class="btn btn-outline-primary btn-sm text-nowrap" [href]="downloadUrl(storedFileName(c.controlKey))" target="_blank" rel="noopener">Download</a>
                         </div>
-                        <img [src]="fileUrl(storedFileName(c.controlKey))"
-                            style="max-width:150px; max-height:150px; margin-top:8px; border-radius:6px; display:block;" />
+                        <img [src]="fileUrl(storedFileName(c.controlKey))" style="max-width:150px; max-height:150px; margin-top:8px; border-radius:6px; display:block;" />
                     </div>
 
-                    <div *ngIf="!storedFileName(c.controlKey)" class="form-control bg-light text-muted">
-                        No image uploaded</div>
+                    <div *ngIf="!storedFileName(c.controlKey)" class="form-control bg-light text-muted">No image uploaded</div>
                 </ng-container>
             </div>
 
-            <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
-
-            <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
-                [formControlName]="c.controlKey" />
+            <ng-container *ngSwitchCase="'Label'" [ngSwitch]="labelHeadingLevel(c)">
+                <div *ngSwitchCase="'normal'" class="form-text">{{ c.placeholder || c.label }}</div>
+                <h1 *ngSwitchCase="'h1'" class="fill-label-heading">{{ c.placeholder || c.label }}</h1>
+                <h2 *ngSwitchCase="'h2'" class="fill-label-heading">{{ c.placeholder || c.label }}</h2>
+                <h3 *ngSwitchCase="'h3'" class="fill-label-heading">{{ c.placeholder || c.label }}</h3>
+                <h4 *ngSwitchCase="'h4'" class="fill-label-heading">{{ c.placeholder || c.label }}</h4>
+                <h5 *ngSwitchCase="'h5'" class="fill-label-heading">{{ c.placeholder || c.label }}</h5>
+                <h6 *ngSwitchCase="'h6'" class="fill-label-heading">{{ c.placeholder || c.label }}</h6>
+            </ng-container>
+            <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder" [formControlName]="c.controlKey" />
         </ng-container>
 
-        <div class="text-danger small mt-1"
-            *ngIf="form.get(c.controlKey)?.touched && form.get(c.controlKey)?.errors?.['ruleFailure']">
+        <div class="text-danger small mt-1" *ngIf="form.get(c.controlKey)?.touched && form.get(c.controlKey)?.errors?.['ruleFailure']">
             {{ form.get(c.controlKey)?.errors?.['ruleFailure']?.message }}
         </div>
     </div>

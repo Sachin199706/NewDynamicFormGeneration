@@ -115,9 +115,26 @@ public class SubmissionService : ISubmissionService
             lobjQuery = lobjQuery.Where(x => x.s.SubmittedOn <= aObjFilter.ToDate.Value.AddDays(1).AddTicks(-1));
 
         var lnumTotal = lobjQuery.Count();
+        var lboolAscending = string.Equals(aObjFilter.SortDirection, "asc", StringComparison.OrdinalIgnoreCase);
+        var lobjOrderedQuery = (aObjFilter.SortBy ?? "submittedOn").ToLowerInvariant() switch
+        {
+            "submissioncode" => lboolAscending
+                ? lobjQuery.OrderBy(x => x.s.SubmissionCode)
+                : lobjQuery.OrderByDescending(x => x.s.SubmissionCode),
+            "formname" => lboolAscending
+                ? lobjQuery.OrderBy(x => x.f.FormName)
+                : lobjQuery.OrderByDescending(x => x.f.FormName),
+            "versionno" => lboolAscending
+                ? lobjQuery.OrderBy(x => x.v.VersionNo)
+                : lobjQuery.OrderByDescending(x => x.v.VersionNo),
+            "submittedon" => lboolAscending
+                ? lobjQuery.OrderBy(x => x.s.SubmittedOn)
+                : lobjQuery.OrderByDescending(x => x.s.SubmittedOn),
+            _ => lobjQuery.OrderByDescending(x => x.s.SubmittedOn)
+        };
 
-        var larrItems = lobjQuery
-            .OrderByDescending(x => x.s.SubmittedOn)
+        var larrItems = lobjOrderedQuery
+            .ThenBy(x => x.s.SubmissionId)
             .Skip((aObjFilter.Page - 1) * aObjFilter.PageSize)
             .Take(aObjFilter.PageSize)
             .Select(x => new SubmissionOverviewItemDto

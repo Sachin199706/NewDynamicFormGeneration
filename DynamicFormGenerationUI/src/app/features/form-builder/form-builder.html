@@ -1,119 +1,207 @@
 <div class="d-flex" style="height:100vh;">
-
-    <!-- LEFT: toolbox -->
-    <div class="p-3" style="width:230px; background:#fff; border-right:1px solid #e5e7eb; overflow-y:auto;">
-        <h6>Controls</h6>
-        <div cdkDropList id="toolboxList" [cdkDropListConnectedTo]="['canvasList']" [cdkDropListData]="iarrControlTypes"
-            [cdkDropListSortingDisabled]="true">
-            <div *ngFor="let ct of iarrControlTypes" cdkDrag [cdkDragData]="ct" class="dfg-toolbox-item border mb-1">
-                {{ ct.controlName }}
+    <aside class="builder-sidebar">
+        <div class="builder-sidebar__header">Controls</div>
+        <div cdkDropList id="toolboxList" [cdkDropListConnectedTo]="columnDropListTargets" [cdkDropListData]="iarrControlTypes"
+            [cdkDropListSortingDisabled]="true" class="builder-sidebar__list">
+            <div *ngFor="let ct of iarrControlTypes" cdkDrag [cdkDragData]="ct" class="dfg-toolbox-item" [title]="ct.controlName">
+                <i class="bi" [ngClass]="getControlIcon(ct.controlCode)"></i>
             </div>
         </div>
-    </div>
+    </aside>
 
-    <!-- CENTER: canvas -->
     <div class="flex-grow-1 d-flex flex-column">
         <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
-            Version of Template: <label class="fw-bold">{{istrTemplateName}}</label>
+            Version of Template: <label class="fw-bold">{{ istrTemplateName }}</label>
             <button class="btn btn-primary btn-sm" (click)="save()">
                 <i class="bi bi-floppy"></i> Save
             </button>
             <button class="btn btn-outline-primary btn-sm" (click)="openPreview()">
                 <i class="bi bi-eye"></i> Preview
             </button>
-            <button class="btn btn-success btn-sm" (click)="publish()" [disabled]="!inumTemplateId">    
+            <button class="btn btn-success btn-sm" (click)="publish()" [disabled]="!inumTemplateId">
                 <i class="bi bi-cloud-arrow-up"></i> Publish
             </button>
             <button *ngIf="inumTemplateId" class="btn btn-outline-secondary btn-sm" (click)="goToRules()">
-              Validation
-              Rules
+              Validation Rules
             </button>
         </div>
+
         <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
             <label class="fw-bold">Description:</label>
             <input class="form-control" style="width:70%;" [(ngModel)]="istrVersionDescription" placeholder="Describe the form..." />
-            <select class="form-select form-select-sm" style="width:140px;" [(ngModel)]="inumColumnLayout"
-                aria-label="Number of columns">
-                <option [ngValue]="1">1 Column</option>
-                <option [ngValue]="2">2 Columns</option>
-                <option [ngValue]="3">3 Columns</option>
-                <option [ngValue]="4">4 Columns</option>
-            </select>
         </div>
 
-        <!-- cdkDropListOrientation="mixed" is required here: the items wrap in a flex layout,
-             and without it CDK cannot work out a drop position. -->
         <div class="p-3 flex-grow-1" style="overflow-y:auto;">
-            <div cdkDropList id="canvasList" [cdkDropListData]="iarrCanvasControls" (cdkDropListDropped)="drop($event)"
-                cdkDropListOrientation="mixed" class="dfg-canvas-dropzone p-3"
-                style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
+            <div *ngIf="layoutRows.length === 0" class="border rounded p-3 text-muted small fst-italic">Canvas empty — default row created.</div>
+            <div cdkDropList id="layoutRowsList" [cdkDropListData]="layoutRows" cdkDropListOrientation="vertical" (cdkDropListDropped)="reorderRows($event)" class="builder-rows-list">
+            <div *ngFor="let row of layoutRows; let rowIndex = index" cdkDrag [cdkDragData]="row" class="row-layout mb-2 p-1" (click)="selectRow(rowIndex)" (contextmenu)="openRowContextMenu($event, rowIndex)"
+                [style.border-style]="row.borderEnabled ? row.borderStyle : null"
+                [style.border-width.px]="row.borderEnabled ? row.borderWidth : null"
+                [style.border-color]="row.borderEnabled ? row.borderColor : null">
+                <!-- <div class="d-flex justify-content-between align-items-center mb-1"
+                    [class.selected-row]="selectedRowIndex === rowIndex"
+                    (click)="selectRow(rowIndex)">
+                    <div class="d-flex align-items-center gap-1">
+                        <button class="row-drag-handle" type="button" cdkDragHandle aria-label="Drag row to reorder" title="Drag row to reorder" (click)="$event.stopPropagation()"><i class="bi bi-grip-vertical"></i></button>
+                        <span class="fw-semibold small text-muted">Row {{ rowIndex + 1 }}</span>
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm py-0 px-2" (click)="removeRow(rowIndex); $event.stopPropagation()" *ngIf="layoutRows.length > 1">Delete Row</button>
+                </div> -->
 
-                <div *ngIf="iarrCanvasControls.length === 0" class="text-muted text-center py-5">Drag controls here
+                <div class="d-flex flex-wrap align-items-stretch">
+                    <div *ngFor="let column of row.columns; let columnIndex = index"
+                        [id]="'column-' + rowIndex + '-' + columnIndex"
+                        cdkDropList
+                        [cdkDropListConnectedTo]="columnDropListTargets"
+                        [cdkDropListData]="controlsInCell(rowIndex, columnIndex)"
+                        (cdkDropListDropped)="dropToColumn($event, rowIndex, columnIndex)"
+                        (contextmenu)="openColumnContextMenu($event, rowIndex, columnIndex)"
+                        (click)="selectColumn(rowIndex, columnIndex); $event.stopPropagation()"
+                        [style.flex]="'0 0 ' + ((column.span / 12) * 100) + '%'"
+                        [style.minWidth]="'0'"
+                        [class.column-divider-enabled]="row.columnBordersEnabled && columnIndex < row.columns.length - 1"
+                        [class.selected-column]="selectedColumnRowIndex === rowIndex && selectedColumnIndex === columnIndex"
+                        class="dfg-layout-column p-1 bg-light">
+                        <div *ngIf="controlsInCell(rowIndex, columnIndex).length === 0" class="text-muted small fst-italic">Drop controls here</div>
+
+                        <div *ngFor="let c of controlsInCell(rowIndex, columnIndex)" cdkDrag [cdkDragData]="c" class="dfg-control-wrapper mb-2" [class.selected]="iobjSelected === c" (click)="select(c); $event.stopPropagation()">
+                            <label *ngIf="c.controlTypeCode !== 'Label'" class="form-label small mb-1">{{ c.label }} <span *ngIf="isRequiredOnCanvas(c)" class="text-danger">*</span></label>
+                            <ng-container [ngSwitch]="c.controlTypeCode">
+                                <textarea *ngSwitchCase="'TextArea'" class="form-control" disabled></textarea>
+                                <select *ngSwitchCase="'Dropdown'" class="form-control" disabled>
+                                    <option>{{ seedOptions(c).length === 0 ? c.placeholder : '-- Select --' }}</option>
+                                    <option *ngFor="let opt of seedOptions(c)">{{ opt }}</option>
+                                </select>
+                                <input *ngSwitchCase="'Number'" type="number" class="form-control" [placeholder]="c.placeholder" disabled />
+                                <input *ngSwitchCase="'Date'" type="date" class="form-control" disabled />
+                                <div *ngSwitchCase="'Radio'">
+                                    <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                                        <input type="radio" class="form-check-input" disabled />
+                                        <label class="form-check-label">{{ opt }}</label>
+                                    </div>
+                                </div>
+                                <div class="form-check" *ngSwitchCase="'Checkbox'">
+                                    <input type="checkbox" class="form-check-input" disabled />
+                                    <label class="form-check-label">{{ c.placeholder || c.label }}</label>
+                                </div>
+                                <div *ngSwitchCase="'CheckboxList'">
+                                    <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                                        <input type="checkbox" class="form-check-input" disabled />
+                                        <label class="form-check-label">{{ opt }}</label>
+                                    </div>
+                                </div>
+                                <input *ngSwitchCase="'File'" type="file" class="form-control" disabled />
+                                <input *ngSwitchCase="'Image'" type="file" accept="image/*" class="form-control" disabled />
+                                <ng-container *ngSwitchCase="'Label'" [ngSwitch]="labelHeadingLevel(c)">
+                                    <div *ngSwitchCase="'normal'" class="form-text">{{ c.placeholder || c.label }}</div>
+                                    <h1 *ngSwitchCase="'h1'" class="label-control-heading">{{ c.placeholder || c.label }}</h1>
+                                    <h2 *ngSwitchCase="'h2'" class="label-control-heading">{{ c.placeholder || c.label }}</h2>
+                                    <h3 *ngSwitchCase="'h3'" class="label-control-heading">{{ c.placeholder || c.label }}</h3>
+                                    <h4 *ngSwitchCase="'h4'" class="label-control-heading">{{ c.placeholder || c.label }}</h4>
+                                    <h5 *ngSwitchCase="'h5'" class="label-control-heading">{{ c.placeholder || c.label }}</h5>
+                                    <h6 *ngSwitchCase="'h6'" class="label-control-heading">{{ c.placeholder || c.label }}</h6>
+                                </ng-container>
+                                <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder" disabled />
+                            </ng-container>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            </div>
 
-                <!-- Design canvas: every control here is a static mock-up, nothing is bound
-                     to a value. Live bindings belong in the preview overlay below. -->
-                <div *ngFor="let c of iarrCanvasControls" cdkDrag class="dfg-control-wrapper mb-2"
-                    [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'"
-                    [class.selected]="iobjSelected === c" (click)="select(c)">
-                    <!-- Required comes from a saved rule now, not control.isRequired, so the
-                         asterisk is read from the rule list rather than the control itself. -->
-                    <label class="form-label small mb-1">{{ c.label }} <span *ngIf="isRequiredOnCanvas(c)"
-                            class="text-danger">*</span></label>
-                    <ng-container [ngSwitch]="c.controlTypeCode">
-                        <textarea *ngSwitchCase="'TextArea'" class="form-control" disabled></textarea>
+            <div *ngIf="contextMenu" class="builder-context-menu position-fixed shadow border rounded bg-white p-2" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y" style="z-index:2000; min-width:180px;">
+                <div class="mb-2 small text-muted">{{ contextMenu.mode === 'row' ? 'Row actions' : 'Column actions' }}</div>
 
-                        <select *ngSwitchCase="'Dropdown'" class="form-control" disabled>
-                            <option>{{ seedOptions(c).length === 0 ? c.placeholder : '-- Select --' }}</option>
-                            <option *ngFor="let opt of seedOptions(c)">{{ opt }}</option>
-                        </select>
-
-                        <input *ngSwitchCase="'Number'" type="number" class="form-control" [placeholder]="c.placeholder"
-                            disabled />
-
-                        <input *ngSwitchCase="'Date'" type="date" class="form-control" disabled />
-
-                        <div *ngSwitchCase="'Radio'">
-                            <div class="form-check" *ngFor="let opt of seedOptions(c)">
-                                <input type="radio" class="form-check-input" disabled />
-                                <label class="form-check-label">{{ opt }}</label>
-                            </div>
-                            <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
-                            </div>
-                        </div>
-
-                        <div class="form-check" *ngSwitchCase="'Checkbox'">
-                            <input type="checkbox" class="form-check-input" disabled />
-                            <label class="form-check-label">{{ c.placeholder || c.label }}</label>
-                        </div>
-
-                        <div *ngSwitchCase="'CheckboxList'">
-                            <div class="form-check" *ngFor="let opt of seedOptions(c)">
-                                <input type="checkbox" class="form-check-input" disabled />
-                                <label class="form-check-label">{{ opt }}</label>
-                            </div>
-                            <div class="text-muted small" *ngIf="seedOptions(c).length === 0">No options configured yet
-                            </div>
-                        </div>
-
-                        <input *ngSwitchCase="'File'" type="file" class="form-control" disabled />
-
-                        <input *ngSwitchCase="'Image'" type="file" accept="image/*" class="form-control" disabled />
-
-                        <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
-
-                        <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
-                            disabled />
-                    </ng-container>
-                </div>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" (click)="addRowAbove(); closeContextMenu();" *ngIf="contextMenu.mode === 'row'">Add Row Above</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" (click)="addRowBelow(); closeContextMenu();" *ngIf="contextMenu.mode === 'row'">Add Row Below</button>
+                <button class="btn btn-sm btn-outline-secondary w-100 mb-2" (click)="removeColumnFromRow(contextMenu.rowIndex); closeContextMenu();" *ngIf="contextMenu.mode === 'column' && canRemoveColumn(contextMenu.rowIndex)">Remove Column</button>
+                <button class="btn btn-sm btn-outline-danger w-100" (click)="removeRow(contextMenu.rowIndex); closeContextMenu();" *ngIf="layoutRows.length > 1">Delete Row</button>
             </div>
         </div>
     </div>
 
-    <!-- RIGHT: property panel -->
     <div class="p-3" style="width:280px; background:#fff; border-left:1px solid #e5e7eb; overflow-y:auto;">
         <h6>Properties</h6>
-        <div *ngIf="!iobjSelected"><em class="text-muted">Select a control to edit its properties</em></div>
+        <div *ngIf="selectedRow && !iobjSelected">
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="form-label small fw-semibold mb-0">Sections</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" aria-label="Remove section" title="Remove section" (click)="removeColumnFromRow(selectedRowIndex ?? 0)" [disabled]="!canRemoveColumn(selectedRowIndex ?? 0)"><i class="bi bi-dash-lg"></i></button>
+                        <span class="small text-muted">{{ selectedRow.columns.length }} {{ selectedRow.columns.length === 1 ? 'section' : 'sections' }}</span>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" aria-label="Add section" title="Add section" (click)="addColumnToRow(selectedRowIndex ?? 0)" [disabled]="selectedRow.columns.length >= 12"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                </div>
+
+                <label class="form-label small mt-3">Choose a layout</label>
+                <div class="layout-presets">
+                    <button *ngFor="let count of equalLayoutOptions" type="button" class="layout-preset" [class.active]="rowLayoutMode === 'preset' && selectedPresetColumnCount === count" [attr.aria-pressed]="rowLayoutMode === 'preset' && selectedPresetColumnCount === count" (click)="chooseEqualLayout(count)">
+                        <span class="layout-preset__preview">
+                            <span *ngFor="let _ of presetPreviewCells[count]" class="layout-preset__cell"></span>
+                        </span>
+                        <span>{{ count === 1 ? '1 section' : count + ' equal sections' }}</span>
+                    </button>
+                    <button type="button" class="layout-preset layout-preset--custom" [class.active]="rowLayoutMode === 'custom'" [attr.aria-pressed]="rowLayoutMode === 'custom'" (click)="chooseCustomLayout()">
+                        <span class="layout-preset__preview layout-preset__preview--custom"><i class="bi bi-sliders"></i></span>
+                        <span>Custom</span>
+                    </button>
+                </div>
+
+                <div class="section-preview" aria-label="Live section layout preview">
+                    <button *ngFor="let span of previewColumnSpans; let columnIndex = index" type="button" class="section-preview__item" [class.selected]="selectedLayoutColumns.includes(columnIndex)" [style.flex]="'0 0 ' + previewWidth(span)" (click)="toggleLayoutColumnSelection(columnIndex)" [attr.aria-label]="'Select section ' + (columnIndex + 1)">
+                        <span>Section {{ columnIndex + 1 }}</span>
+                        <small>{{ customWidthLabel(span) }}</small>
+                    </button>
+                </div>
+
+                <div *ngIf="rowLayoutMode === 'custom'" class="custom-width-editor">
+                    <div *ngFor="let width of customColumnWidths; let columnIndex = index" class="custom-width-editor__row">
+                        <label class="small" [for]="'sectionWidth-' + columnIndex">Section {{ columnIndex + 1 }}</label>
+                        <select class="form-select form-select-sm" [id]="'sectionWidth-' + columnIndex" [ngModel]="width" (ngModelChange)="updateCustomColumnWidth(columnIndex, $event)">
+                            <option *ngFor="let option of customWidthOptions" [ngValue]="option">{{ customWidthLabel(option) }}</option>
+                        </select>
+                    </div>
+                    <div class="small mt-2" [class.text-danger]="!customWidthsAreValid" [class.text-success]="customWidthsAreValid">
+                        Total: {{ customWidthLabel(customWidthsTotal) }}<span *ngIf="!customWidthsAreValid">. Section widths must total 100%.</span>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" (click)="mergeSelectedColumns()" [disabled]="!canMergeSelectedColumns()">Merge adjacent</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" (click)="splitSelectedColumn()" [disabled]="!canSplitSelectedColumn()">Split equally</button>
+                </div>
+
+                <hr />
+                <label class="form-label small fw-semibold">Row border</label>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="rowBorderEnabled" [(ngModel)]="selectedRow.borderEnabled" (ngModelChange)="markLayoutDirty()" />
+                    <label class="form-check-label small" for="rowBorderEnabled">Show border</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="columnBordersEnabled" [(ngModel)]="selectedRow.columnBordersEnabled" (ngModelChange)="markLayoutDirty()" />
+                    <label class="form-check-label small" for="columnBordersEnabled">Show column borders</label>
+                </div>
+                <div *ngIf="selectedRow.borderEnabled" class="row g-2">
+                    <div class="col-7">
+                        <label class="form-label small">Style</label>
+                        <select class="form-select form-select-sm" [(ngModel)]="selectedRow.borderStyle" (ngModelChange)="markLayoutDirty()">
+                            <option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option><option value="double">Double</option>
+                        </select>
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label small">Width</label>
+                        <input class="form-control form-control-sm" type="number" min="1" max="8" [(ngModel)]="selectedRow.borderWidth" (ngModelChange)="markLayoutDirty()" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Color</label>
+                        <input class="form-control form-control-color w-100" type="color" [(ngModel)]="selectedRow.borderColor" (ngModelChange)="markLayoutDirty()" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="!selectedRow && !iobjSelected"><em class="text-muted">Select a control or row to edit its properties</em></div>
+
         <div *ngIf="iobjSelected">
             <div class="mb-2">
                 <label class="form-label small">Label</label>
@@ -121,23 +209,25 @@
             </div>
             <div class="mb-2">
                 <label class="form-label small">Placeholder</label>
-                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.placeholder"  (ngModelChange)="onPlaceholderChange($event)" />
+                <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.placeholder" (ngModelChange)="onPlaceholderChange($event)" />
+            </div>
+            <div class="mb-2" *ngIf="iobjSelected.controlTypeCode === 'Label'">
+                <label class="form-label small">Heading level</label>
+                <select class="form-select form-select-sm" [ngModel]="selectedLabelHeadingLevel" (ngModelChange)="updateLabelHeadingLevel($event)">
+                    <option value="normal">Normal</option>
+                    <option *ngFor="let level of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']" [value]="level">{{ level | uppercase }}</option>
+                </select>
             </div>
             <div class="mb-2" *ngIf="selectedNeedsOptions">
                 <label class="form-label small">Options (comma-separated)</label>
-                <input class="form-control form-control-sm" [ngModel]="selectedOptionsText"
-                    (ngModelChange)="onOptionsChange($event)" placeholder="e.g. Red,Green,Blue" />
+                <input class="form-control form-control-sm" [ngModel]="selectedOptionsText" (ngModelChange)="onOptionsChange($event)" placeholder="e.g. Red,Green,Blue" />
             </div>
             <div class="mb-2" *ngIf="selectedIsCheckbox">
                 <label class="form-label small">Checkbox Text</label>
-                <input class="form-control form-control-sm" [ngModel]="selectedCheckboxText"
-                    (ngModelChange)="onCheckboxTextChange($event)" placeholder="e.g. I agree to the terms" />
+                <input class="form-control form-control-sm" [ngModel]="selectedCheckboxText" (ngModelChange)="onCheckboxTextChange($event)" placeholder="e.g. I agree to the terms" />
             </div>
             <div class="mb-2">
                 <label class="form-label small">Field Key</label>
-                <!-- Internal reference used by Rules and submitted data — not shown to the end
-                     user. Read-only so an accidental edit can't silently break a rule or
-                     disconnect from existing submissions tied to this key. -->
                 <input class="form-control form-control-sm" [(ngModel)]="iobjSelected.controlKey" readonly />
             </div>
 
@@ -145,16 +235,11 @@
                 <input type="checkbox" class="form-check-input" [(ngModel)]="selectedIsRequired" id="reqChk" />
                 <label class="form-check-label small" for="reqChk">Required</label>
             </div>
-            <!-- Validation is not configured here. Required, Length, Range and Date all live
-                 in the Rule Builder now: the panel used to define them too, and its
-                 generated error text overwrote whatever the author had written there. -->
             <button class="btn btn-outline-danger btn-sm w-100" (click)="removeSelected()">Delete</button>
         </div>
     </div>
 </div>
 
-<!-- PREVIEW OVERLAY: renders the same JSON (controls + rules) an end user would get,
-     through the identical RuleEngineService used by the real fill-in screen. -->
 <div *ngIf="iboolPreviewOpen" class="preview-overlay" (click)="closePreview()">
     <div class="preview-panel" (click)="$event.stopPropagation()">
         <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
@@ -166,89 +251,49 @@
         </div>
 
         <div class="p-4 preview-body">
-            <div style="display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; align-items:flex-start;">
-                <div class="mb-3" *ngFor="let c of iarrCanvasControls" [hidden]="!isPreviewVisible(c.controlKey)"
-                    [style.width]="'calc(' + (100 / inumColumnLayout) + '% - 12px)'">
-                    <label class="form-label">{{ c.label }} <span *ngIf="isEffectivelyRequired(c)"
-                            class="text-danger">*</span></label>
-
-                    <ng-container [ngSwitch]="c.controlTypeCode">
-                        <textarea *ngSwitchCase="'TextArea'" class="form-control"
-                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
-                            (blur)="markPreviewTouched(c.controlKey)"></textarea>
-
-                        <select *ngSwitchCase="'Dropdown'" class="form-control"
-                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)">
-                            <option value="">-- Select --</option>
-                            <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
-                        </select>
-
-                        <input *ngSwitchCase="'Number'" type="number" class="form-control"
-                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
-                            (blur)="markPreviewTouched(c.controlKey)" />
-
-                        <div *ngSwitchCase="'Radio'">
-                            <div class="form-check" *ngFor="let opt of seedOptions(c)">
-                                <input type="radio" class="form-check-input" [name]="c.controlKey"
-                                    [disabled]="!isPreviewEnabled(c.controlKey)"
-                                    [checked]="iobjPreviewValues[c.controlKey] === opt"
-                                    (change)="onPreviewChange(c.controlKey, opt)" />
-                                <label class="form-check-label">{{ opt }}</label>
-                            </div>
+            <div *ngFor="let row of layoutRows; let rowIndex = index" class="mb-3">
+                <div class="d-flex flex-wrap align-items-stretch form-layout-columns">
+                    <div *ngFor="let column of row.columns; let columnIndex = index" [style.flex]="columnFlexBasis(column.span, row.columns.length)" [style.minWidth]="'0'">
+                        <div *ngFor="let c of controlsInCell(rowIndex, columnIndex)" class="mb-3" [hidden]="!isPreviewVisible(c.controlKey)">
+                            <label class="form-label">{{ c.label }} <span *ngIf="isEffectivelyRequired(c)" class="text-danger">*</span></label>
+                            <ng-container [ngSwitch]="c.controlTypeCode">
+                                <textarea *ngSwitchCase="'TextArea'" class="form-control" [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]" (ngModelChange)="onPreviewChange(c.controlKey, $event)" (blur)="markPreviewTouched(c.controlKey)"></textarea>
+                                <select *ngSwitchCase="'Dropdown'" class="form-control" [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]" (ngModelChange)="onPreviewChange(c.controlKey, $event)">
+                                    <option value="">-- Select --</option>
+                                    <option *ngFor="let opt of seedOptions(c)" [value]="opt">{{ opt }}</option>
+                                </select>
+                                <input *ngSwitchCase="'Number'" type="number" class="form-control" [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]" (ngModelChange)="onPreviewChange(c.controlKey, $event)" (blur)="markPreviewTouched(c.controlKey)" />
+                                <div *ngSwitchCase="'Radio'">
+                                    <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                                        <input type="radio" class="form-check-input" [name]="c.controlKey" [disabled]="!isPreviewEnabled(c.controlKey)" [checked]="iobjPreviewValues[c.controlKey] === opt" (change)="onPreviewChange(c.controlKey, opt)" />
+                                        <label class="form-check-label">{{ opt }}</label>
+                                    </div>
+                                </div>
+                                <input *ngSwitchCase="'Date'" type="date" class="form-control" [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]" (ngModelChange)="onPreviewChange(c.controlKey, $event)" (blur)="markPreviewTouched(c.controlKey)" />
+                                <div class="form-check" *ngSwitchCase="'Checkbox'">
+                                    <input type="checkbox" class="form-check-input" [disabled]="!isPreviewEnabled(c.controlKey)" [checked]="iobjPreviewValues[c.controlKey]" (change)="onPreviewChange(c.controlKey, $any($event.target).checked)" />
+                                    <label class="form-check-label">{{ c.placeholder || c.label }}</label>
+                                </div>
+                                <div *ngSwitchCase="'CheckboxList'">
+                                    <div class="form-check" *ngFor="let opt of seedOptions(c)">
+                                        <input type="checkbox" class="form-check-input" [disabled]="!isPreviewEnabled(c.controlKey)" [checked]="isPreviewCheckboxListSelected(c.controlKey, opt)" (change)="togglePreviewCheckboxListOption(c.controlKey, opt)" />
+                                        <label class="form-check-label">{{ opt }}</label>
+                                    </div>
+                                </div>
+                                <input *ngSwitchCase="'File'" type="file" class="form-control" [disabled]="!isPreviewEnabled(c.controlKey)" (change)="onPreviewFileChange(c.controlKey, $event)" />
+                                <div *ngSwitchCase="'Image'">
+                                    <input type="file" accept="image/*" class="form-control" [disabled]="!isPreviewEnabled(c.controlKey)" (change)="onPreviewFileChange(c.controlKey, $event)" />
+                                    <img *ngIf="iobjPreviewImageUrls[c.controlKey]" [src]="iobjPreviewImageUrls[c.controlKey]" style="max-width:120px; max-height:120px; margin-top:8px; border-radius:6px; display:block;" />
+                                </div>
+                                <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
+                                <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder" [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]" (ngModelChange)="onPreviewChange(c.controlKey, $event)" (blur)="markPreviewTouched(c.controlKey)" />
+                            </ng-container>
+                            <div class="text-danger small mt-1" *ngIf="previewError(c.controlKey)">{{ previewError(c.controlKey) }}</div>
                         </div>
-
-                        <input *ngSwitchCase="'Date'" type="date" class="form-control"
-                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
-                            (blur)="markPreviewTouched(c.controlKey)" />
-
-                        <div class="form-check" *ngSwitchCase="'Checkbox'">
-                            <input type="checkbox" class="form-check-input" [disabled]="!isPreviewEnabled(c.controlKey)"
-                                [checked]="iobjPreviewValues[c.controlKey]"
-                                (change)="onPreviewChange(c.controlKey, $any($event.target).checked)" />
-                            <label class="form-check-label">{{ c.placeholder || c.label }}</label>
-                        </div>
-
-                        <div *ngSwitchCase="'CheckboxList'">
-                            <div class="form-check" *ngFor="let opt of seedOptions(c)">
-                                <input type="checkbox" class="form-check-input"
-                                    [disabled]="!isPreviewEnabled(c.controlKey)"
-                                    [checked]="isPreviewCheckboxListSelected(c.controlKey, opt)"
-                                    (change)="togglePreviewCheckboxListOption(c.controlKey, opt)" />
-                                <label class="form-check-label">{{ opt }}</label>
-                            </div>
-                        </div>
-
-                        <input *ngSwitchCase="'File'" type="file" class="form-control"
-                            [disabled]="!isPreviewEnabled(c.controlKey)"
-                            (change)="onPreviewFileChange(c.controlKey, $event)" />
-
-                        <div *ngSwitchCase="'Image'">
-                            <input type="file" accept="image/*" class="form-control"
-                                [disabled]="!isPreviewEnabled(c.controlKey)"
-                                (change)="onPreviewFileChange(c.controlKey, $event)" />
-                            <img *ngIf="iobjPreviewImageUrls[c.controlKey]" [src]="iobjPreviewImageUrls[c.controlKey]"
-                                style="max-width:120px; max-height:120px; margin-top:8px; border-radius:6px; display:block;" />
-                        </div>
-
-                        <div *ngSwitchCase="'Label'" class="form-text">{{ c.placeholder }}</div>
-
-                        <input *ngSwitchDefault type="text" class="form-control" [placeholder]="c.placeholder"
-                            [disabled]="!isPreviewEnabled(c.controlKey)" [ngModel]="iobjPreviewValues[c.controlKey]"
-                            (ngModelChange)="onPreviewChange(c.controlKey, $event)"
-                            (blur)="markPreviewTouched(c.controlKey)" />
-                    </ng-container>
-
-                    <!-- Guarded by previewError(), which returns '' until the field is touched —
-                         otherwise every required field errors the moment Preview opens. -->
-                    <div class="text-danger small mt-1" *ngIf="previewError(c.controlKey)">
-                        {{ previewError(c.controlKey) }}
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+

@@ -29,7 +29,9 @@ export class SubmissionService {
   getAllSubmissions(aObjFilter: SubmissionFilter): Observable<PagedResult<SubmissionOverviewItem>> {
     let lobjParams = new HttpParams()
       .set('page', aObjFilter.page)
-      .set('pageSize', aObjFilter.pageSize);
+      .set('pageSize', aObjFilter.pageSize)
+      .set('sortBy', aObjFilter.sortBy ?? 'submittedOn')
+      .set('sortDirection', aObjFilter.sortDirection ?? 'desc');
 
     if (aObjFilter.search) lobjParams = lobjParams.set('search', aObjFilter.search);
     if (aObjFilter.formId != null) lobjParams = lobjParams.set('formId', aObjFilter.formId);
