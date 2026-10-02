@@ -8,6 +8,7 @@
                     type="text"
                     class="form-control"
                     [(ngModel)]="strSearch"
+                    (ngModelChange)="onSearchChange()"
                     placeholder="Filter by form name or version"
                     aria-label="Filter published forms"
                 />
@@ -25,21 +26,39 @@
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let f of filteredForms">
+            <tr *ngFor="let f of iarrForms">
                 <td>{{ f.formName }}</td>
                 <td>v{{ f.versionNo }} {{f.versionDescription}}</td>
                 <td>{{ f.publishedOn | date:'medium' }}</td>
                 <td class="d-flex gap-2">
                     <a [routerLink]="['/forms/builder', f.formId]" [queryParams]="{ version: f.formVersionId }">Edit</a>
-                    <a [routerLink]="['/forms', f.formId, 'versions', f.formVersionId, 'fill']" target="_blank">View</a>
+                    <a [routerLink]="['/fill', f.publicId]" target="_blank">View</a>
                     <a [routerLink]="['/submissions']" [queryParams]="{ formId: f.formId }">Submissions</a>
                 </td>
             </tr>
-            <tr *ngIf="filteredForms.length === 0">
+            <tr *ngIf="!iboolLoadingForms && iarrForms.length === 0">
                 <td colspan="4" class="text-muted text-center">
-                    {{ iarrForms.length === 0 ? 'No forms published yet.' : 'No published forms match your filter.' }}
+                    {{ istrAppliedSearch ? 'No published forms match your filter.' : 'No forms published yet.' }}
                 </td>
             </tr>
         </tbody>
     </table>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"
+        *ngIf="inumTotalCount > 0">
+        <span class="text-muted small">
+            Showing {{ (inumCurrentPage - 1) * inumPageSize + 1 }}
+            to {{ Math.min(inumCurrentPage * inumPageSize, inumTotalCount) }}
+            of {{ inumTotalCount }} forms
+        </span>
+        <div class="d-flex align-items-center gap-2">
+            <label class="small text-muted mb-0" for="publishedFormsPageSize">Rows per page</label>
+            <select id="publishedFormsPageSize" class="form-select form-select-sm w-auto"
+                [(ngModel)]="inumPageSize" (ngModelChange)="onPageSizeChange()">
+                <option *ngFor="let lnumOption of iarrPageSizeOptions" [ngValue]="lnumOption">{{ lnumOption }}</option>
+            </select>
+            <app-pagination [inumCurrentPage]="inumCurrentPage" [inumTotalPages]="inumTotalPages"
+                (iobjPageChange)="goToPage($event)"></app-pagination>
+        </div>
+    </div>
 </div>

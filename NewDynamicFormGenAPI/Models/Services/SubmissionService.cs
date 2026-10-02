@@ -214,6 +214,7 @@ public class SubmissionService : ISubmissionService
             .Take(aObjFilter.PageSize)
             .Select(x => new SubmissionOverviewItemDto
             {
+                PublicId = x.v.PublicId,
                 SubmissionId = x.s.SubmissionId,
                 SubmissionCode = x.s.SubmissionCode,
                 FormId = x.f.FormId,
@@ -257,6 +258,19 @@ public class SubmissionService : ISubmissionService
             ReadSubmissions = lobjQuery.Count(s => s.IsRead)
         };
     }
+    public async Task<Result<int>> SubmitByPublicIdAsync(Guid aGuidPublicId, Dictionary<string, object?> aObjValues, IFormFileCollection aObjFiles)
+    {
+        var lobjVersion = _uow.Repository<FormVersion>().Query().FirstOrDefault(v => v.PublicId == aGuidPublicId);
+        if (lobjVersion == null) return Result<int>.Fail("Form not found.");
 
+        var lobjDto = new SubmitFormDto
+        {
+            FormId = lobjVersion.FormId,
+            FormVersionId = lobjVersion.FormVersionId,
+            Values = aObjValues
+        };
+
+        return await SubmitAsync(lobjDto, aObjFiles);
+    }
 
 }

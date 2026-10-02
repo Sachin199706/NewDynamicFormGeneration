@@ -184,6 +184,10 @@ public class SubmissionOverviewItemDto
     /// Gets or sets a value indicating whether this submission has been read.
     /// </summary>
     public bool IsRead { get; set; }
+    /// <summary>
+    /// Gets or sets the public identifier of the form version, used to build the fill link.
+    /// </summary>
+    public Guid PublicId { get; set; }
 }
 
 /// <summary>

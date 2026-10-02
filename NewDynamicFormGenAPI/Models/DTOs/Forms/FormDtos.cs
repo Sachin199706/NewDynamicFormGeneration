@@ -373,6 +373,13 @@ public class FormRenderDto
     /// Gets or sets the organized sections containing controls.
     /// </summary>
     public List<FormSectionDto> Sections { get; set; } = new();
+    /// <summary>
+    /// Gets or sets the public identifier of the form version being rendered.
+    /// </summary>
+    /// <remarks>
+    /// The numeric form and version IDs are deliberately not part of this payload.
+    /// </remarks>
+    public Guid PublicId { get; set; }
 }
 
 /// <summary>
@@ -417,6 +424,10 @@ public class FormVersionListItemDto
     /// Gets or sets the date when the version was last modified.
     /// </summary>
     public DateTime ModifiedDate { get; set; }
+    /// <summary>
+    /// Gets or sets the public identifier of the form version, used to build the fill link.
+    /// </summary>
+    public Guid PublicId { get; set; }
 }
 
 /// <summary>
@@ -456,6 +467,8 @@ public class FormPublishHistoryItemDto
     /// Gets or sets the date when the version was published.
     /// </summary>
     public DateTime PublishedOn { get; set; }
+    public Guid PublicId { get; set; }
+
 }
 
 /// <summary>

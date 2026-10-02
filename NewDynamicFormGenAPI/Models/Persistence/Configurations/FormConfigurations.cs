@@ -25,6 +25,7 @@ namespace FormGen.Infrastructure.Persistence.Configurations
             b.ToTable("FormVersions");
             b.HasKey(x => x.FormVersionId);
             b.HasIndex(x => new { x.FormId, x.VersionNo }).IsUnique();
+            b.HasIndex(x => x.PublicId).IsUnique();
             b.Property(x => x.Status).HasMaxLength(20).IsRequired();
             b.Property(x => x.VersionDescription).HasMaxLength(250);
             b.Property(x => x.FormDefinitionJson).IsRequired();
