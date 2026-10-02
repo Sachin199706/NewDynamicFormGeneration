@@ -85,7 +85,7 @@
                     <button class="btn btn-sm btn-outline-primary" *ngIf="!s.isRead" (click)="markAsRead(s)">
                         Mark as Read
                     </button>
-                  <a [routerLink]="['/forms', s.formId, 'versions', s.formVersionId,'fill']" [queryParams]="{ submissionId: s.submissionId }" target="_blank">View</a>
+                                  <a [routerLink]="['/fill', s.publicId]" [queryParams]="{ submissionId: s.submissionId }" target="_blank">View</a>
                 </td>
             </tr>
             <tr *ngIf="iarrSubmissions.length === 0">

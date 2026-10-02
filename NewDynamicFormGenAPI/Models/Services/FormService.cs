@@ -34,42 +34,12 @@ public class FormService : IFormService
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FormService"/> class.
-    /// </summary>
-    /// <param name="uow">The unit of work for database access across repositories.</param>
-    /// <param name="ruleEngine">The rule engine service for rule extraction and processing.</param>
     public FormService(IUnitOfWork uow, IRuleEngineService ruleEngine)
     {
         _uow = uow;
         _ruleEngine = ruleEngine;
     }
 
-    /// <summary>
-    /// Retrieves a paginated list of forms with optional search and date filtering.
-    /// </summary>
-    /// <param name="aNumPage">The page number (1-based) to retrieve.</param>
-    /// <param name="aNumPageSize">The maximum number of forms per page.</param>
-    /// <param name="aStrSearch">Optional text to search in form name, code, or description.</param>
-    /// <param name="fromDate">Optional start date to filter forms by creation date.</param>
-    /// <param name="toDate">Optional end date to filter forms by creation date.</param>
-    /// <returns>
-    /// A <see cref="PagedResult{FormListItemDto}"/> containing filtered forms and pagination metadata.
-    /// </returns>
-    /// <remarks>
-    /// <para>
-    /// This method supports multiple filtering strategies:
-    /// <list type="bullet">
-    /// <item><description>Text search – matches FormName, FormCode, or Description</description></item>
-    /// <item><description>Date range filtering – includes forms created within the specified range</description></item>
-    /// <item><description>Pagination – returns a subset of results based on page and page size</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// Results are ordered by modification date (or creation date if not modified), displaying
-    /// most recently updated forms first.
-    /// </para>
-    /// </remarks>
     public async Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate)
     {
         var lobjQuery = _uow.Repository<Form>().Query();
@@ -101,23 +71,6 @@ public class FormService : IFormService
         return new PagedResult<FormListItemDto> { Items = larrItems, Page = aNumPage, PageSize = aNumPageSize, TotalCount = lnumTotal };
     }
 
-    /// <summary>
-    /// Creates a new form template with initial metadata.
-    /// </summary>
-    /// <param name="aObjDto">The form creation request containing name, code, and description.</param>
-    /// <returns>
-    /// A <see cref="Result{FormListItemDto}"/> containing the newly created form's details if successful;
-    /// otherwise, a failure result with error messages.
-    /// </returns>
-    /// <remarks>
-    /// <para>
-    /// Form creation establishes a new form template that can then be versioned and designed.
-    /// At this stage, the form has no structure or controls; these are added via versions.
-    /// </para>
-    /// <para>
-    /// The created form entry is assigned an auto-generated FormId and creation timestamp.
-    /// </para>
-    /// </remarks>
     public async Task<Result<FormListItemDto>> CreateFormAsync(CreateFormDto aObjDto)
     {
         var lobjForm = new Form
@@ -142,24 +95,6 @@ public class FormService : IFormService
         });
     }
 
-    /// <summary>
-    /// Updates an existing form template's metadata (name, code, description).
-    /// </summary>
-    /// <param name="aNumFormId">The form ID to update.</param>
-    /// <param name="aObjDto">The form update request with revised metadata.</param>
-    /// <returns>
-    /// A <see cref="Result{FormListItemDto}"/> containing the updated form details if successful;
-    /// otherwise, HTTP 404 if the form is not found.
-    /// </returns>
-    /// <remarks>
-    /// <para>
-    /// This method updates form-level metadata only. To modify form structure and controls,
-    /// use <see cref="SaveVersionAsync"/> to create or update a form version.
-    /// </para>
-    /// <para>
-    /// The ModifiedDate is automatically updated to the current UTC time.
-    /// </para>
-    /// </remarks>
     public async Task<Result<FormListItemDto>> UpdateFormAsync(int aNumFormId, CreateFormDto aObjDto)
     {
         var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
@@ -184,42 +119,6 @@ public class FormService : IFormService
         });
     }
 
-    /// <summary>
-    /// Creates a new form version or updates an existing one with form structure, controls, and rules.
-    /// </summary>
-    /// <param name="aObjDto">
-    /// The version save request containing FormId, optional FormVersionId, and form definition JSON
-    /// with complete control and rule structures.
-    /// </param>
-    /// <returns>
-    /// A <see cref="Result{FormVersionDto}"/> containing the saved form version details.
-    /// </returns>
-    /// <remarks>
-    /// <para>
-    /// This method supports two scenarios:
-    /// <list type="number">
-    /// <item><description>
-    /// **Creating a new version:** If FormVersionId is not provided or is 0, a new FormVersion record
-    /// is created with the next sequential VersionNo. The new version defaults to Draft status.
-    /// </description></item>
-    /// <item><description>
-    /// **Updating an existing version:** If FormVersionId is provided, the specified version is updated
-    /// in-place with the new form definition, layout, and description.
-    /// </description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// The FormDefinitionJson is the single source of truth containing:
-    /// <list type="bullet">
-    /// <item><description>controls array – all form controls with properties and configuration</description></item>
-    /// <item><description>rules array – validation and conditional rules embedded in the definition</description></item>
-    /// <item><description>sections (optional) – logical grouping of controls</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// The parent form's ModifiedDate is automatically updated regardless of version creation or update.
-    /// </para>
-    /// </remarks>
     public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto)
     {
         int lnumFormId = aObjDto.FormId;
@@ -310,7 +209,7 @@ public class FormService : IFormService
         var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
         if (lobjForm == null) return Result<FormRenderDto>.Fail("Form not found.");
 
-        var lobjVersion = _uow.Repository<FormVersion>().Query().First(v => v.FormId == lobjForm.FormId && v.FormVersionId == aNumFormVersionId );
+        var lobjVersion = _uow.Repository<FormVersion>().Query().First(v => v.FormId == lobjForm.FormId && v.FormVersionId == aNumFormVersionId);
         var lobjVersionDto = BuildVersionDto(lobjVersion);
         var larrRules = await _ruleEngine.GetRulesForVersionAsync(aNumFormVersionId);
 
@@ -324,7 +223,6 @@ public class FormService : IFormService
             Rules = larrRules
         });
     }
-
     public async Task<Result<bool>> PublishAsync(int aNumFormId, int aNumFormVersionId)
     {
         var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(aNumFormVersionId);
@@ -351,7 +249,6 @@ public class FormService : IFormService
         await _uow.SaveChangesAsync();
         return Result<bool>.Ok(true, "Published.");
     }
-
     public async Task<List<FormVersionListItemDto>> GetAllVersionsAsync()
     {
         var larrVersions = _uow.Repository<FormVersion>().Query()
@@ -364,6 +261,7 @@ public class FormService : IFormService
 
         return larrVersions.Select(v => new FormVersionListItemDto
         {
+            PublicId=v.PublicId,
             FormId = v.FormId,
             FormVersionId = v.FormVersionId,
             FormName = lobjFormNamesById.GetValueOrDefault(v.FormId, "Unknown"),
@@ -372,7 +270,6 @@ public class FormService : IFormService
             ModifiedDate = v.CreatedDate
         }).ToList();
     }
-
     public async Task<PagedResult<FormVersionListItemDto>> GetVersionsAsync(int aNumFormId, int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate, string? status)
     {
         var lobjQuery = _uow.Repository<FormVersion>().Query()
@@ -409,6 +306,7 @@ public class FormService : IFormService
         {
             Items = larrVersions.Select(v => new FormVersionListItemDto
             {
+                PublicId = v.PublicId,
                 FormId = v.FormId,
                 FormVersionId = v.FormVersionId,
                 FormName = lstrFormName,
@@ -422,30 +320,50 @@ public class FormService : IFormService
             TotalCount = lnumTotal
         };
     }
-
-    public async Task<List<FormPublishHistoryItemDto>> GetPublishHistoryAsync()
+    public async Task<PagedResult<FormPublishHistoryItemDto>> GetPublishHistoryAsync(int aNumPage, int aNumPageSize, string? aStrSearch)
     {
-        var larrHistory = _uow.Repository<FormPublishHistory>().Query()
-            .OrderByDescending(h => h.PublishedOn)
+        var lobjQuery =
+            from h in _uow.Repository<FormPublishHistory>().Query()
+            join f in _uow.Repository<Form>().Query() on h.FormId equals f.FormId
+            join v in _uow.Repository<FormVersion>().Query() on h.FormVersionId equals v.FormVersionId
+            select new { h, f, v };
+
+        if (!string.IsNullOrWhiteSpace(aStrSearch))
+        {
+            var lstrSearch = aStrSearch.Trim();
+            lobjQuery = lobjQuery.Where(x => x.f.FormName.Contains(lstrSearch)
+                || ("v" + x.v.VersionNo.ToString()).Contains(lstrSearch)
+                || (x.v.VersionDescription != null && x.v.VersionDescription.Contains(lstrSearch)));
+        }
+
+        var lnumTotal = lobjQuery.Count();
+        var larrItems = lobjQuery
+            .OrderByDescending(x => x.h.PublishedOn)
+            .ThenByDescending(x => x.h.PublishHistoryId)
+            .Skip((aNumPage - 1) * aNumPageSize)
+            .Take(aNumPageSize)
+            .Select(x => new FormPublishHistoryItemDto
+            {
+                PublicId=x.v.PublicId,
+                FormId = x.h.FormId,
+                FormVersionId = x.h.FormVersionId,
+                FormName = x.f.FormName,
+                VersionNo = x.v.VersionNo,
+                PublishedOn = x.h.PublishedOn,
+                VersionDescription = x.v.VersionDescription
+            })
             .ToList();
 
-        var lobjFormNamesById = _uow.Repository<Form>().Query()
-            .ToDictionary(f => f.FormId, f => f.FormName);
-
-        var lobjVersionNosById = _uow.Repository<FormVersion>().Query()
-            .ToDictionary(v => v.FormVersionId, v => new { v.VersionNo, v.VersionDescription });
-
-        return larrHistory.Select(h => new FormPublishHistoryItemDto
+        var lobjResult = new PagedResult<FormPublishHistoryItemDto>
         {
-            FormId = h.FormId,
-            FormVersionId = h.FormVersionId,
-            FormName = lobjFormNamesById.GetValueOrDefault(h.FormId, "Unknown"),
-            VersionNo = lobjVersionNosById.GetValueOrDefault(h.FormVersionId)?.VersionNo ?? 0,
-            PublishedOn = h.PublishedOn,
-            VersionDescription = lobjVersionNosById.GetValueOrDefault(h.FormVersionId)?.VersionDescription
-        }).ToList();
-    }
+            Items = larrItems,
+            Page = aNumPage,
+            PageSize = aNumPageSize,
+            TotalCount = lnumTotal
+        };
 
+        return await Task.FromResult(lobjResult);
+    }
     public async Task<Result<FormVersionDto>> GetVersionByIdAsync(int aNumFormVersionId)
     {
         var lobjVersion = _uow.Repository<FormVersion>().Query()
@@ -461,11 +379,6 @@ public class FormService : IFormService
 
         return Result<FormVersionDto>.Ok(lobjDto);
     }
-
-    /// <summary>
-    /// Controls now live entirely inside FormDefinitionJson — this parses them out
-    /// instead of querying a FormControls table, which no longer exists.
-    /// </summary>
     private static FormVersionDto BuildVersionDto(FormVersion aObjVersion)
     {
         return new FormVersionDto
@@ -482,7 +395,6 @@ public class FormService : IFormService
             CreatedDate = aObjVersion.CreatedDate
         };
     }
-
     internal static List<FormControlDto> ParseControls(string aStrFormDefinitionJson)
     {
         if (string.IsNullOrWhiteSpace(aStrFormDefinitionJson)) return new List<FormControlDto>();
@@ -527,6 +439,7 @@ public class FormService : IFormService
                 orderby v.CreatedDate descending
                 select new FormVersionListItemDto
                 {
+                    PublicId= v.PublicId,
                     FormId = v.FormId,
                     FormVersionId = v.FormVersionId,
                     FormName = f.FormName,
@@ -540,11 +453,6 @@ public class FormService : IFormService
 
         return await Task.FromResult(lobjDashboard);
     }
-
-    /// <summary>
-    /// Sections sit beside "controls" in FormDefinitionJson. Versions saved before sections
-    /// existed have no such property, which is not an error — they parse as an empty list.
-    /// </summary>
     internal static List<FormSectionDto> ParseSections(string aStrFormDefinitionJson)
     {
         if (string.IsNullOrWhiteSpace(aStrFormDefinitionJson)) return new List<FormSectionDto>();
@@ -564,6 +472,68 @@ public class FormService : IFormService
         {
             return new List<FormSectionDto>();
         }
+    }
+    public async Task<PagedResult<FormVersionListItemDto>> GetDashboardVersionsAsync(int aNumPage, int aNumPageSize, string? aStrSearch)
+    {
+        var lobjQuery = _uow.Repository<FormVersion>().Query();
+
+        if (!string.IsNullOrWhiteSpace(aStrSearch))
+        {
+            var lstrSearch = aStrSearch.Trim();
+            lobjQuery = lobjQuery.Where(v => v.Form.FormName.Contains(lstrSearch)
+                || ("v" + v.VersionNo.ToString()).Contains(lstrSearch)
+                || (v.VersionDescription != null && v.VersionDescription.Contains(lstrSearch))
+                || v.Status.Contains(lstrSearch));
+        }
+
+        var lnumTotal = lobjQuery.Count();
+        var larrItems = lobjQuery
+            .OrderByDescending(v => v.CreatedDate)
+            .ThenByDescending(v => v.FormVersionId)
+            .Skip((aNumPage - 1) * aNumPageSize)
+            .Take(aNumPageSize)
+            .Select(v => new FormVersionListItemDto
+            {
+                PublicId = v.PublicId,
+                FormId = v.FormId,
+                FormVersionId = v.FormVersionId,
+                FormName = v.Form.FormName,
+                VersionNo = v.VersionNo,
+                Status = v.Status,
+                ModifiedDate = v.CreatedDate,
+                VersionDescription = v.VersionDescription
+            })
+            .ToList();
+
+        var lobjResult = new PagedResult<FormVersionListItemDto>
+        {
+            Items = larrItems,
+            Page = aNumPage,
+            PageSize = aNumPageSize,
+            TotalCount = lnumTotal
+        };
+
+        return await Task.FromResult(lobjResult);
+    }
+    public async Task<Result<FormRenderDto>> GetRenderPayloadAsync(Guid aGuidPublicId)
+    {
+        var lobjVersion = _uow.Repository<FormVersion>().Query().FirstOrDefault(v => v.PublicId == aGuidPublicId);
+        if (lobjVersion == null) return Result<FormRenderDto>.Fail("Form not found.");
+
+        var lobjForm = await _uow.Repository<Form>().GetByIdAsync(lobjVersion.FormId);
+        if (lobjForm == null) return Result<FormRenderDto>.Fail("Form not found.");
+
+        var lobjVersionDto = BuildVersionDto(lobjVersion);
+        var larrRules = await _ruleEngine.GetRulesForVersionAsync(lobjVersion.FormVersionId);
+
+        return Result<FormRenderDto>.Ok(new FormRenderDto
+        {
+            PublicId = lobjVersion.PublicId,
+            FormName = lobjForm.FormName,
+            LayoutDefinitionJson = lobjVersionDto.LayoutDefinitionJson,
+            Controls = lobjVersionDto.Controls,
+            Rules = larrRules
+        });
     }
 
 }

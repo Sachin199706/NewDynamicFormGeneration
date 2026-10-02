@@ -176,6 +176,7 @@ export interface FormVersion {
 }
 
 export interface FormRenderPayload {
+    publicId: string;
     formId: number;
     formVersionId: number;
     formName: string;
@@ -196,6 +197,7 @@ export interface ControlType {
 }
 
 export interface FormVersionListItem {
+  publicId: string;
   formId: number;
   formVersionId: number;
   formName: string;
@@ -206,6 +208,7 @@ export interface FormVersionListItem {
 }
 
 export interface FormPublishHistoryItem {
+ publicId: string;
   formId: number;
   formVersionId: number;
   versionDescription: string;

@@ -32,7 +32,8 @@ namespace NewDynamicFormGenAPI.API.Controllers;
 public class FormsController : ControllerBase
 {
     private readonly IFormService _formService;
-
+    private const int MaxDashboardPageSize = 50;
+      private const int MaxPageSize = 50;
     /// <summary>
     /// Initializes a new instance of the <see cref="FormsController"/> class.
     /// </summary>
@@ -259,9 +260,9 @@ public class FormsController : ControllerBase
     /// compliance requirements, change management, and historical analysis.
     /// </remarks>
     [HttpGet("publish-history")]
-    public async Task<IActionResult> GetPublishHistory()
+    public async Task<IActionResult> GetPublishHistory([FromQuery(Name = "page"), Range(1, int.MaxValue)] int aNumPage = 1,[FromQuery(Name = "pageSize"), Range(1, MaxPageSize)] int aNumPageSize = 10,[FromQuery] string? search = null)
     {
-        var lobjResult = await _formService.GetPublishHistoryAsync();
+        var lobjResult = await _formService.GetPublishHistoryAsync(aNumPage, aNumPageSize, search);
         return Ok(lobjResult);
     }
 
@@ -278,6 +279,29 @@ public class FormsController : ControllerBase
     public async Task<IActionResult> GetVersionById(int aNumVersionId)
     {
         var lobjResult = await _formService.GetVersionByIdAsync(aNumVersionId);
+        return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
+    }
+
+    /// <summary>
+    /// Retrieves a paginated list of form versions across all forms for the dashboard table.
+    /// </summary>
+    /// <param name="aNumPage">The page number (1-based). Defaults to 1.</param>
+    /// <param name="aNumPageSize">The number of versions per page (1 to 50). Defaults to 10.</param>
+    /// <param name="search">Optional text to search in template name, version number, version description, or status.</param>
+    /// <returns>A paginated result containing the matching form versions, newest first.</returns>
+    /// <remarks>
+    /// The summary counts shown above the table come from <see cref="DashboardCount"/> and are not affected by this search.
+    /// </remarks>
+    [HttpGet("versions/dashboard")]
+    public async Task<IActionResult> GetDashboardVersions([FromQuery(Name = "page"), Range(1, int.MaxValue)] int aNumPage = 1, [FromQuery(Name = "pageSize"), Range(1, MaxDashboardPageSize)] int aNumPageSize = 10, [FromQuery] string? search = null)
+    {
+        var lobjResult = await _formService.GetDashboardVersionsAsync(aNumPage, aNumPageSize, search);
+        return Ok(lobjResult);
+    }
+    [HttpGet("public/{aGuidPublicId:guid}/render")]
+    public async Task<IActionResult> GetRenderPayload(Guid aGuidPublicId)
+    {
+        var lobjResult = await _formService.GetRenderPayloadAsync(aGuidPublicId);
         return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
     }
 }

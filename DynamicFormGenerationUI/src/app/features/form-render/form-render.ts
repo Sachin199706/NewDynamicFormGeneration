@@ -33,17 +33,15 @@ export class FormRender implements OnInit {
   iarrUnsectionedControls: FormControlDef[] = [];
   iobjSectionControls: Record<string, FormControlDef[]> = {};
 
-  private formId!: number;
-  private versionId!: number;
+  // Public identifier of the form version, taken from the fill link (/fill/:publicId).
+  private istrPublicId = '';
 
   constructor(private route: ActivatedRoute, private formService: FormService, private submissionService: SubmissionService, private ruleEngine: RuleEngineService) { }
 
   ngOnInit(): void {
-    this.formId = Number(this.route.snapshot.paramMap.get('formId'));
-    this.versionId = Number(this.route.snapshot.paramMap.get('versionId'));
+    this.istrPublicId = this.route.snapshot.paramMap.get('publicId') ?? '';
     const lStrSubmissionIdParam = this.route.snapshot.queryParamMap.get('submissionId');
-
-    this.formService.getRenderPayload(this.formId, this.versionId).subscribe(res => {
+    this.formService.getRenderPayload(this.istrPublicId).subscribe(res => {
       if (!res.success || !res.data) return;
       this.payload = res.data;
       this.buildForm(res.data);
@@ -270,15 +268,14 @@ export class FormRender implements OnInit {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
 
-    const lobjFormData = new FormData();
-    lobjFormData.append('formVersionId', this.versionId.toString());
+        const lobjFormData = new FormData();
     lobjFormData.append('values', JSON.stringify(this.form.value));
 
     for (const controlKey of Object.keys(this.selectedFiles)) {
       lobjFormData.append(controlKey, this.selectedFiles[controlKey]);
     }
 
-    this.submissionService.submit(this.formId, lobjFormData).subscribe(res => {
+    this.submissionService.submit(this.istrPublicId, lobjFormData).subscribe(res => {
       if (res.success) {
         this.submitted = true;
       } else {

@@ -680,7 +680,8 @@ export class FormBuilder implements OnInit {
   }
 
   save(aFnOnSaved?: () => void, aBoolSkipConfirmation = false): void {
-    if (this.iboolSaving || this.iboolLoadingVersion || this.iboolLoadFailed) return;
+    // Nothing to save until the form has unsaved changes; the Save button is disabled to match.
+    if (!this.iboolDirty || this.iboolSaving || this.iboolLoadingVersion || this.iboolLoadFailed) return;
 
     if (!aBoolSkipConfirmation) {
       this.dialogConfig = {
@@ -763,8 +764,20 @@ export class FormBuilder implements OnInit {
     });
   }
 
+  // Publish is offered only for a saved Draft version with no unsaved changes.
+  // A Published version must be changed and saved first, which creates a new Draft.
+  get iboolCanPublish(): boolean {
+    return this.inumTemplateId != null
+      && this.inumVersionId != null
+      && this.istrStatus === 'Draft'
+      && !this.iboolDirty
+      && !this.iboolSaving
+      && !this.iboolLoadingVersion
+      && !this.iboolLoadFailed;
+  }
+
   publish(): void {
-    if (!this.inumTemplateId || !this.inumVersionId) return;
+    if (!this.iboolCanPublish || !this.inumTemplateId || !this.inumVersionId) return;
     this.istrPublishError = '';
 
     this.iobjFormService.publish(this.inumTemplateId, this.inumVersionId).subscribe({
@@ -837,6 +850,11 @@ export class FormBuilder implements OnInit {
   onDialogActionError(event: { action: string; error: unknown }): void {
     console.error(`Dialog action "${event.action}" failed:`, event.error);
     this.toastr.error('The requested action could not be completed.', 'Error');
+  }
+
+  onVersionDescriptionChange(aStrValue: string): void {
+    this.istrVersionDescription = aStrValue;
+    this.iboolDirty = true;
   }
 
   onLabelChange(aStrValue: string): void {

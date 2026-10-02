@@ -134,6 +134,7 @@ export interface SubmissionDetail {
 }
 
 export interface SubmissionOverviewItem {
+     publicId: string;
     submissionId: number;
     submissionCode: string;
     formId: number;

@@ -163,13 +163,16 @@ public interface IFormService
     Task<DashboardDTO> GetDashboardCountAsync();
 
     /// <summary>
-    /// Retrieves the publication history records for all forms.
+    /// Retrieves a paginated list of publication history records across all forms, with optional text search.
     /// </summary>
-    /// <returns>A list of publish history entries ordered by publication date.</returns>
+    /// <param name="aNumPage">The page number (1-based) to retrieve.</param>
+    /// <param name="aNumPageSize">The maximum number of publication events per page.</param>
+    /// <param name="aStrSearch">Optional text to search in form name, version number, or version description.</param>
+    /// <returns>A paginated result containing publish history entries, newest first.</returns>
     /// <remarks>
     /// This enables audit trails and compliance reporting for form publication governance.
     /// </remarks>
-    Task<List<FormPublishHistoryItemDto>> GetPublishHistoryAsync();
+    Task<PagedResult<FormPublishHistoryItemDto>> GetPublishHistoryAsync(int aNumPage, int aNumPageSize, string? aStrSearch);
 
     /// <summary>
     /// Retrieves a specific form version by its ID.
@@ -180,6 +183,20 @@ public interface IFormService
     /// Direct version retrieval by ID is useful for edit/view operations and comparison workflows.
     /// </remarks>
     Task<Result<FormVersionDto>> GetVersionByIdAsync(int aNumFormVersionId);
+    /// <summary>
+    /// Retrieves a paginated list of form versions across all forms for the dashboard, with optional text search.
+    /// </summary>
+    /// <param name="aNumPage">The page number (1-based) to retrieve.</param>
+    /// <param name="aNumPageSize">The maximum number of versions per page.</param>
+    /// <param name="aStrSearch">Optional text to search in template name, version number, version description, or status.</param>
+    /// <returns>A paginated result containing version list items matching the criteria, newest first.</returns>
+    /// <remarks>
+    /// This method backs the dashboard table. It is separate from <see cref="GetDashboardCountAsync"/>
+    /// so that searching and paging the table never changes the summary counts.
+    /// </remarks>
+    Task<PagedResult<FormVersionListItemDto>> GetDashboardVersionsAsync(int aNumPage, int aNumPageSize, string? aStrSearch);
+    /// <param name="aGuidPublicId">The public identifier of the form version to render.</param>
+    Task<Result<FormRenderDto>> GetRenderPayloadAsync(Guid aGuidPublicId);
 }
 
 /// <summary>
@@ -347,4 +364,16 @@ public interface ISubmissionService
     /// This method provides form-specific metrics for analytics and status monitoring.
     /// </remarks>
     Task<SubmissionStatsDto> GetStatsAsync(int anumID);
+    /// <summary>
+    /// Submits a completed form identified by the public identifier of its version.
+    /// </summary>
+    /// <param name="aGuidPublicId">The public identifier of the form version that was filled in.</param>
+    /// <param name="aObjValues">The submitted field values keyed by control key.</param>
+    /// <param name="aObjFiles">Any file uploads included in the form submission.</param>
+    /// <returns>A result containing the newly created submission ID if successful.</returns>
+    /// <remarks>
+    /// This is the entry point for the shareable fill link. It looks up the form and version
+    /// from the public identifier and then follows the same steps as <see cref="SubmitAsync"/>.
+    /// </remarks>
+    Task<Result<int>> SubmitByPublicIdAsync(Guid aGuidPublicId, Dictionary<string, object?> aObjValues, IFormFileCollection aObjFiles);
 }

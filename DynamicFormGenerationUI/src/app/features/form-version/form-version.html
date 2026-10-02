@@ -143,15 +143,9 @@
                                     Edit
                                 </a>
 
-                                <a
+                                                               <a
                                     class="btn btn-sm btn-outline-secondary"
-                                    [routerLink]="[
-                                        '/forms',
-                                        f.formId,
-                                        'versions',
-                                        f.formVersionId,
-                                        'fill'
-                                    ]"
+                                    [routerLink]="['/fill', f.publicId]"
                                     target="_blank">
                                     View
                                 </a>

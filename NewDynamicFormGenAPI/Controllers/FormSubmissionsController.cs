@@ -236,4 +236,13 @@ public class FormSubmissionsController : ControllerBase
         var lobjResult = await _submissionService.GetStatsAsync(inumID);
         return Ok(lobjResult);
     }
+
+    [HttpPost("forms/public/{aGuidPublicId:guid}/submissions")]
+    public async Task<IActionResult> Submit(Guid aGuidPublicId, [FromForm] string values)
+    {
+        var lobjValues = JsonSerializer.Deserialize<Dictionary<string, object?>>(values) ?? new Dictionary<string, object?>();
+
+        var lobjResult = await _submissionService.SubmitByPublicIdAsync(aGuidPublicId, lobjValues, Request.Form.Files);
+        return lobjResult.Success ? Ok(lobjResult) : BadRequest(lobjResult);
+    }
 }

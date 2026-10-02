@@ -14,8 +14,8 @@ export class SubmissionService {
 
   constructor(private iobjHttp: HttpClient) { }
 
-  submit(aNumFormId: number, aObjFormData: FormData): Observable<ApiResult<number>> {
-    return this.iobjHttp.post<ApiResult<number>>(`${this.istrBase}/forms/${aNumFormId}/submissions`, aObjFormData);
+   submit(aStrPublicId: string, aObjFormData: FormData): Observable<ApiResult<number>> {
+    return this.iobjHttp.post<ApiResult<number>>(`${this.istrBase}/forms/public/${encodeURIComponent(aStrPublicId)}/submissions`, aObjFormData);
   }
 
   getDetail(aNumSubmissionId: number): Observable<ApiResult<SubmissionDetail>> {
@@ -49,5 +49,4 @@ export class SubmissionService {
   getstatsById(ID:number):Observable<SubmissionStats>{
     return this.iobjHttp.get<SubmissionStats>(`${this.istrBase}/submissions/stats/${ID}`);
   }
-
 }

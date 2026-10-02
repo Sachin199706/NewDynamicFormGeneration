@@ -43,8 +43,8 @@ export class FormService {
     return this.iobjHttp.put<ApiResult<boolean>>(`${this.istrBase}/${aNumFormId}/versions/${aNumVersionId}/publish`, {});
   }
 
-  getRenderPayload(aNumFormId: number, aNumVersionId: number): Observable<ApiResult<FormRenderPayload>> {
-    return this.iobjHttp.get<ApiResult<FormRenderPayload>>(`${this.istrBase}/${aNumFormId}/versions/${aNumVersionId}/render`);
+   getRenderPayload(aStrPublicId: string): Observable<ApiResult<FormRenderPayload>> {
+    return this.iobjHttp.get<ApiResult<FormRenderPayload>>(`${this.istrBase}/public/${encodeURIComponent(aStrPublicId)}/render`);
   }
 
   getAllVersions(): Observable<FormVersionListItem[]> {
@@ -59,8 +59,10 @@ export class FormService {
     if (aStrStatus && aStrStatus !== 'All') lobjParams = lobjParams.set('status', aStrStatus);
     return this.iobjHttp.get<PagedResult<FormVersionListItem>>(`${this.istrBase}/${aNumFormId}/versions`, { params: lobjParams });
   }
-  getPublishHistory(): Observable<FormPublishHistoryItem[]> {
-    return this.iobjHttp.get<FormPublishHistoryItem[]>(`${this.istrBase}/publish-history`);
+  getPublishHistory(aNumPage = 1, aNumPageSize = 10, aStrSearch?: string): Observable<PagedResult<FormPublishHistoryItem>> {
+    let lobjParams = new HttpParams().set('page', aNumPage).set('pageSize', aNumPageSize);
+    if (aStrSearch) lobjParams = lobjParams.set('search', aStrSearch);
+    return this.iobjHttp.get<PagedResult<FormPublishHistoryItem>>(`${this.istrBase}/publish-history`, { params: lobjParams });
   }
 
   getVersionById(aNumVersionId: number): Observable<ApiResult<FormVersion>> {
@@ -77,4 +79,10 @@ export class FormService {
   updateTemplate(aNumFormId: number, aObjTemplate: CreateFormTemplateRequest): Observable<ApiResult<FormListItem>> {
     return this.iobjHttp.put<ApiResult<FormListItem>>(`${this.istrBase}/${aNumFormId}`, aObjTemplate);
   }
+  getDashboardVersions(aNumPage = 1, aNumPageSize = 10, aStrSearch?: string): Observable<PagedResult<FormVersionListItem>> {
+    let lobjParams = new HttpParams().set('page', aNumPage).set('pageSize', aNumPageSize);
+    if (aStrSearch) lobjParams = lobjParams.set('search', aStrSearch);
+    return this.iobjHttp.get<PagedResult<FormVersionListItem>>(`${this.istrBase}/versions/dashboard`, { params: lobjParams });
+  }
+   
 }

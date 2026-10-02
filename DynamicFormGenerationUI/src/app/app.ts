@@ -17,9 +17,9 @@ export class App {
     this.iobjRouter.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd)
     ).subscribe((e) => {
-      // Public fill-in link (/forms/:id/versions/:id/fill) is the one route
+      // Public fill-in link (/fill/:publicId) is the one route
       // meant to be shared outside the app — no builder chrome around it.
-      this.iboolShowSidebar = !e.urlAfterRedirects.includes('/fill');
-    });
+      this.iboolShowSidebar = !e.urlAfterRedirects.startsWith('/fill/');
+      });
   }
 }
