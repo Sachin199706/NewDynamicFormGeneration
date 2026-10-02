@@ -109,6 +109,25 @@
             </tbody>
         </table>
     </div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"
+        *ngIf="inumTotalCount > 0">
+        <span class="text-muted small">
+            Showing {{ (inumCurrentPage - 1) * inumPageSize + 1 }}
+            to {{ Math.min(inumCurrentPage * inumPageSize, inumTotalCount) }}
+            of {{ inumTotalCount }} templates
+        </span>
+        <div class="d-flex align-items-center gap-2">
+            <label class="small text-muted mb-0" for="formTemplatePageSize">Rows per page</label>
+            <select id="formTemplatePageSize" class="form-select form-select-sm w-auto"
+                [(ngModel)]="inumPageSize" (ngModelChange)="onPageSizeChange()">
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="25">25</option>
+                <option [ngValue]="50">50</option>
+            </select>
+            <app-pagination [inumCurrentPage]="inumCurrentPage" [inumTotalPages]="inumTotalPages"
+                (iobjPageChange)="goToPage($event)"></app-pagination>
+        </div>
+    </div>
     <!-- Create Form Template -->
     <app-create-form-template
         *ngIf="isCreateTemplateVisible"

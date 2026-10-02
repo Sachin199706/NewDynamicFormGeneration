@@ -7,6 +7,26 @@ using System.Text.Json;
 
 namespace NewDynamicFormGenAPI.Models.Services;
 
+/// <summary>
+/// Service for managing form lifecycle operations including creation, versioning, publishing, and rendering.
+/// </summary>
+/// <remarks>
+/// <para>
+/// FormService orchestrates all form-related business logic, including:
+/// <list type="bullet">
+/// <item><description>Form CRUD operations (Create, Read, Update form templates)</description></item>
+/// <item><description>Form versioning (creating, updating, and retrieving form versions)</description></item>
+/// <item><description>Form publishing (marking versions as publicly available)</description></item>
+/// <item><description>Form rendering for frontend display</description></item>
+/// <item><description>Publication history tracking for audit trails</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// Each form has multiple versions managed through FormVersion entities. FormDefinitionJson
+/// serves as the single source of truth for form structure, controls, and embedded rules.
+/// This enables form versioning, history tracking, and submission correlation to specific form states.
+/// </para>
+/// </remarks>
 public class FormService : IFormService
 {
     private readonly IUnitOfWork _uow;
@@ -14,12 +34,42 @@ public class FormService : IFormService
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FormService"/> class.
+    /// </summary>
+    /// <param name="uow">The unit of work for database access across repositories.</param>
+    /// <param name="ruleEngine">The rule engine service for rule extraction and processing.</param>
     public FormService(IUnitOfWork uow, IRuleEngineService ruleEngine)
     {
         _uow = uow;
         _ruleEngine = ruleEngine;
     }
 
+    /// <summary>
+    /// Retrieves a paginated list of forms with optional search and date filtering.
+    /// </summary>
+    /// <param name="aNumPage">The page number (1-based) to retrieve.</param>
+    /// <param name="aNumPageSize">The maximum number of forms per page.</param>
+    /// <param name="aStrSearch">Optional text to search in form name, code, or description.</param>
+    /// <param name="fromDate">Optional start date to filter forms by creation date.</param>
+    /// <param name="toDate">Optional end date to filter forms by creation date.</param>
+    /// <returns>
+    /// A <see cref="PagedResult{FormListItemDto}"/> containing filtered forms and pagination metadata.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method supports multiple filtering strategies:
+    /// <list type="bullet">
+    /// <item><description>Text search – matches FormName, FormCode, or Description</description></item>
+    /// <item><description>Date range filtering – includes forms created within the specified range</description></item>
+    /// <item><description>Pagination – returns a subset of results based on page and page size</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Results are ordered by modification date (or creation date if not modified), displaying
+    /// most recently updated forms first.
+    /// </para>
+    /// </remarks>
     public async Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate)
     {
         var lobjQuery = _uow.Repository<Form>().Query();
@@ -51,6 +101,23 @@ public class FormService : IFormService
         return new PagedResult<FormListItemDto> { Items = larrItems, Page = aNumPage, PageSize = aNumPageSize, TotalCount = lnumTotal };
     }
 
+    /// <summary>
+    /// Creates a new form template with initial metadata.
+    /// </summary>
+    /// <param name="aObjDto">The form creation request containing name, code, and description.</param>
+    /// <returns>
+    /// A <see cref="Result{FormListItemDto}"/> containing the newly created form's details if successful;
+    /// otherwise, a failure result with error messages.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Form creation establishes a new form template that can then be versioned and designed.
+    /// At this stage, the form has no structure or controls; these are added via versions.
+    /// </para>
+    /// <para>
+    /// The created form entry is assigned an auto-generated FormId and creation timestamp.
+    /// </para>
+    /// </remarks>
     public async Task<Result<FormListItemDto>> CreateFormAsync(CreateFormDto aObjDto)
     {
         var lobjForm = new Form
@@ -75,6 +142,24 @@ public class FormService : IFormService
         });
     }
 
+    /// <summary>
+    /// Updates an existing form template's metadata (name, code, description).
+    /// </summary>
+    /// <param name="aNumFormId">The form ID to update.</param>
+    /// <param name="aObjDto">The form update request with revised metadata.</param>
+    /// <returns>
+    /// A <see cref="Result{FormListItemDto}"/> containing the updated form details if successful;
+    /// otherwise, HTTP 404 if the form is not found.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method updates form-level metadata only. To modify form structure and controls,
+    /// use <see cref="SaveVersionAsync"/> to create or update a form version.
+    /// </para>
+    /// <para>
+    /// The ModifiedDate is automatically updated to the current UTC time.
+    /// </para>
+    /// </remarks>
     public async Task<Result<FormListItemDto>> UpdateFormAsync(int aNumFormId, CreateFormDto aObjDto)
     {
         var lobjForm = await _uow.Repository<Form>().GetByIdAsync(aNumFormId);
@@ -99,6 +184,42 @@ public class FormService : IFormService
         });
     }
 
+    /// <summary>
+    /// Creates a new form version or updates an existing one with form structure, controls, and rules.
+    /// </summary>
+    /// <param name="aObjDto">
+    /// The version save request containing FormId, optional FormVersionId, and form definition JSON
+    /// with complete control and rule structures.
+    /// </param>
+    /// <returns>
+    /// A <see cref="Result{FormVersionDto}"/> containing the saved form version details.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method supports two scenarios:
+    /// <list type="number">
+    /// <item><description>
+    /// **Creating a new version:** If FormVersionId is not provided or is 0, a new FormVersion record
+    /// is created with the next sequential VersionNo. The new version defaults to Draft status.
+    /// </description></item>
+    /// <item><description>
+    /// **Updating an existing version:** If FormVersionId is provided, the specified version is updated
+    /// in-place with the new form definition, layout, and description.
+    /// </description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The FormDefinitionJson is the single source of truth containing:
+    /// <list type="bullet">
+    /// <item><description>controls array – all form controls with properties and configuration</description></item>
+    /// <item><description>rules array – validation and conditional rules embedded in the definition</description></item>
+    /// <item><description>sections (optional) – logical grouping of controls</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The parent form's ModifiedDate is automatically updated regardless of version creation or update.
+    /// </para>
+    /// </remarks>
     public async Task<Result<FormVersionDto>> SaveVersionAsync(SaveFormVersionDto aObjDto)
     {
         int lnumFormId = aObjDto.FormId;
@@ -109,6 +230,10 @@ public class FormService : IFormService
             var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(aObjDto.FormVersionId.Value);
             if (lobjVersion == null)
                 return Result<FormVersionDto>.Fail("Form version not found.");
+            if (lobjVersion.FormId != aObjDto.FormId)
+                return Result<FormVersionDto>.Fail("The form version does not belong to the specified form.");
+            if (string.Equals(lobjVersion.Status, FormStatus.Published, StringComparison.OrdinalIgnoreCase))
+                return Result<FormVersionDto>.Fail("Published form versions cannot be modified. Save as a new Draft version.");
 
             // update stored JSON/layout/description
             lobjVersion.FormDefinitionJson = aObjDto.FormDefinitionJson;
@@ -159,7 +284,7 @@ public class FormService : IFormService
             await _uow.SaveChangesAsync();
         }
 
-        return await GetLatestVersionAsync(lnumFormId);
+        return await GetVersionByIdAsync(lobjNewVersion.FormVersionId);
     }
 
     public async Task<Result<FormVersionDto>> GetLatestVersionAsync(int aNumFormId)

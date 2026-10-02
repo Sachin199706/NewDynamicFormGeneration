@@ -12,7 +12,7 @@
     <div class="flex-grow-1 d-flex flex-column">
         <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
             Version of Template: <label class="fw-bold">{{ istrTemplateName }}</label>
-            <button class="btn btn-primary btn-sm" (click)="save()">
+            <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="iboolSaving || iboolLoadingVersion || iboolLoadFailed">
                 <i class="bi bi-floppy"></i> Save
             </button>
             <button class="btn btn-outline-primary btn-sm" (click)="openPreview()">
@@ -247,6 +247,14 @@
                 <div class="fw-bold">{{ istrVersionDescription || 'Untitled Form' }}</div>
                 <div class="small text-muted">Preview — rules applied live, nothing is saved here</div>
             </div>
+
+            <app-generic-dialog *ngIf="dialogConfig"
+                                [config]="dialogConfig"
+                                (show)="onDialogShow()"
+                                (hide)="onDialogHide()"
+                                (closed)="closeDialog()"
+                                (actionError)="onDialogActionError($event)">
+            </app-generic-dialog>
             <button class="btn btn-sm btn-outline-secondary" (click)="closePreview()">Close</button>
         </div>
 
@@ -296,4 +304,3 @@
         </div>
     </div>
 </div>
-

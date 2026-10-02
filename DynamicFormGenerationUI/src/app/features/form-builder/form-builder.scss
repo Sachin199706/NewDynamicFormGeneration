@@ -38,7 +38,7 @@
     background: #fafbfc;
 
     .section-header {
-        padding: .5rem .75rem;
+        padding: 0.5rem 0.75rem;
         border-bottom: 1px solid #e5e7eb;
 
         .section-title {
@@ -56,7 +56,7 @@
     background: #fff;
 
     .form-section-header {
-        padding: .6rem 1rem;
+        padding: 0.5rem 0.75rem;
         border-bottom: 1px solid #e5e7eb;
         font-weight: 600;
         background: #f8f9fb;
@@ -146,7 +146,7 @@
 }
 
 .form-layout-columns {
-    gap: 12px;
+    gap: 0.75rem;
 }
 
 .selected-row {
@@ -162,17 +162,17 @@
 
 .layout-preset {
     min-width: 0;
-    min-height: 62px;
-    padding: 7px;
+    min-height: 56px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     border: 1px solid #d8dee8;
     border-radius: 6px;
     background: #fff;
     color: #334155;
-    font-size: 0.72rem;
+    font-size: 0.8125rem;
     text-align: left;
 }
 
@@ -200,14 +200,14 @@
 .layout-preset__preview--custom {
     align-items: center;
     color: #64748b;
-    font-size: 0.95rem;
+    font-size: 0.875rem;
 }
 
 .section-preview {
     display: flex;
     width: 100%;
-    min-height: 76px;
-    margin-top: 12px;
+    min-height: 64px;
+    margin-top: 10px;
     overflow: hidden;
     border: 1px dashed #a8b3c3;
     border-radius: 5px;
@@ -216,8 +216,8 @@
 
 .section-preview__item {
     min-width: 0;
-    min-height: 76px;
-    padding: 6px 2px;
+    min-height: 64px;
+    padding: 5px 2px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -228,7 +228,7 @@
     border-right: 1px solid #cbd5e1;
     background: #f8fafc;
     color: #334155;
-    font-size: 0.68rem;
+    font-size: 0.8125rem;
     text-align: center;
 }
 
@@ -238,7 +238,7 @@
 
 .section-preview__item small {
     color: #64748b;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
 }
 
 .section-preview__item:hover,
@@ -261,21 +261,21 @@
 }
 
 .builder-sidebar {
-    width: 84px;
+    width: 72px;
     background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
     border-right: 1px solid rgba(148, 163, 184, 0.35);
-    padding: 14px 10px;
+    padding: 12px 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .builder-sidebar__header {
     width: 100%;
     text-align: center;
     color: #475569;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -285,14 +285,14 @@
 .builder-sidebar__list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
     align-items: center;
 }
 
 .dfg-toolbox-item {
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
     border-radius: 12px;
     background: #ffffff;
     border: 1px solid rgba(148, 163, 184, 0.38);

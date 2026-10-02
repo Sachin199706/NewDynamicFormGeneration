@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 
@@ -7,20 +7,28 @@ import {FormService} from "../../core/services/form";
 import { CreateFormTemplateRequest, FormListItem } from "../../core/models/form.model";
 import { CreateFormTemplate } from '../create-form-template/create-form-template';
 import { ToastrService } from 'ngx-toastr';
+import { Pagination } from '../pagination/pagination';
 
 
 @Component({
 selector:"app-form-template",
-imports:[CommonModule, FormsModule, RouterLink, CreateFormTemplate],
+imports:[CommonModule, FormsModule, RouterLink, CreateFormTemplate, Pagination],
 templateUrl:"../form-template/form-template.html",
 styleUrl:"../form-template/form-template.scss"
 })
 
-export class FormTemplate implements OnInit{
+export class FormTemplate implements OnInit, OnDestroy{
     iarrForms: FormListItem[] = [];
     strSearch:string = "";
     dtFromDate: string | null = null;
     dtToDate: string | null = null;
+    inumCurrentPage = 1;
+    inumPageSize = 10;
+    inumTotalCount = 0;
+    inumTotalPages = 0;
+    Math = Math;
+    private searchTimer: ReturnType<typeof setTimeout> | undefined;
+    private loadRequestId = 0;
    // Controls Create Form Template dialog
     isCreateTemplateVisible: boolean = false;
     editingTemplate: FormListItem | null = null;
@@ -30,6 +38,11 @@ export class FormTemplate implements OnInit{
     ngOnInit():void
     {
         this.search();
+    }
+
+    ngOnDestroy(): void {
+        this.clearSearchTimer();
+        this.loadRequestId++;
     }
 
     createFormTemplate()
@@ -46,7 +59,9 @@ export class FormTemplate implements OnInit{
 
     search()
     {
-        this.iobjFormService.getForms(1, 10, this.strSearch, this.dtFromDate, this.dtToDate).subscribe(res => { this.iarrForms = res.items; });
+        this.clearSearchTimer();
+        this.inumCurrentPage = 1;
+        this.loadForms();
     }
 
    clearFilters(): void { 
@@ -55,6 +70,79 @@ export class FormTemplate implements OnInit{
       this.dtToDate = null; 
       this.search();
    }
+
+    onFilterChange(): void {
+        this.inumCurrentPage = 1;
+        this.loadRequestId++;
+        this.clearSearchTimer();
+        this.searchTimer = setTimeout(() => {
+            this.searchTimer = undefined;
+            this.loadForms();
+        }, 250);
+    }
+
+    onPageSizeChange(): void {
+        this.clearSearchTimer();
+        this.inumCurrentPage = 1;
+        this.loadForms();
+    }
+
+    goToPage(aNumPage: number): void {
+        if (aNumPage < 1 || aNumPage > this.inumTotalPages || aNumPage === this.inumCurrentPage) {
+            return;
+        }
+
+        this.clearSearchTimer();
+        this.inumCurrentPage = aNumPage;
+        this.loadForms();
+    }
+
+    private loadForms(): void {
+        const lnumRequestId = ++this.loadRequestId;
+        this.iobjFormService.getForms(
+            this.inumCurrentPage,
+            this.inumPageSize,
+            this.strSearch,
+            this.dtFromDate,
+            this.dtToDate
+        ).subscribe({
+            next: (res) => {
+                if (lnumRequestId !== this.loadRequestId) {
+                    return;
+                }
+
+                if (res.totalPages > 0 && this.inumCurrentPage > res.totalPages) {
+                    this.inumCurrentPage = res.totalPages;
+                    this.loadForms();
+                    return;
+                }
+
+                this.inumTotalCount = res.totalCount;
+                this.inumTotalPages = res.totalPages;
+                if (res.totalPages === 0) {
+                    this.inumCurrentPage = 1;
+                }
+                this.iarrForms = res.items;
+            },
+            error: () => {
+                if (lnumRequestId !== this.loadRequestId) {
+                    return;
+                }
+
+                this.iarrForms = [];
+                this.inumTotalCount = 0;
+                this.inumTotalPages = 0;
+                this.toastr.error('Unable to load form templates.', 'Error');
+            }
+        });
+    }
+
+    private clearSearchTimer(): void {
+        if (this.searchTimer !== undefined) {
+            clearTimeout(this.searchTimer);
+            this.searchTimer = undefined;
+        }
+    }
 
     // Called when template is created 
     onTemplateCreated(template: CreateFormTemplateRequest): void 
@@ -95,9 +183,6 @@ export class FormTemplate implements OnInit{
          this.isCreateTemplateVisible = false;
             this.editingTemplate = null;
     }
-    onFilterChange(){
-        this.search();
-    }  
     openVersions(formListItem: FormListItem): void {
         // Navigate to the versions page for the selected form template
         this.router.navigate(['/formtemplates', formListItem.formId, 'versions'], {

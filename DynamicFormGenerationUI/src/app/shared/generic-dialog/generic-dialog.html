@@ -1,0 +1,36 @@
+<div class="modal-backdrop fade show" aria-hidden="true" (click)="onBackdropClick($event)"></div>
+<div class="modal fade show d-block"
+     tabindex="-1"
+     role="dialog"
+     aria-modal="true"
+     [attr.aria-labelledby]="titleId"
+     (click)="onBackdropClick($event)"
+     (keydown)="onKeydown($event)">
+    <div #dialogElement class="modal-dialog modal-dialog-centered" tabindex="-1">
+        <div class="modal-content" [attr.data-dialog-type]="config.type ?? 'information'">
+            <div class="modal-header">
+                <h2 class="modal-title h5" [id]="titleId">{{ config.title }}</h2>
+                <button type="button"
+                        class="btn-close"
+                        aria-label="Close dialog"
+                [disabled]="processing()"
+                        (click)="closed.emit()"></button>
+            </div>
+            <div class="modal-body">
+                <p *ngIf="config.message" class="mb-0 dialog-message">{{ config.message }}</p>
+                <ng-content></ng-content>
+            </div>
+            <div class="modal-footer" *ngIf="config.buttons.length">
+                <button *ngFor="let button of config.buttons"
+                        type="button"
+                        class="btn"
+                        [ngClass]="'btn-' + (button.variant ?? 'secondary')"
+                        [hidden]="button.visible === false"
+                        [disabled]="processing()"
+                        (click)="selectAction(button)">
+                    {{ button.label }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

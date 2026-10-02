@@ -1,0 +1,25 @@
+:host {
+    position: fixed;
+    inset: 0;
+    z-index: 1055;
+}
+
+.modal-backdrop {
+    z-index: 0;
+}
+
+.modal {
+    z-index: 1;
+}
+
+.dialog-message {
+    white-space: pre-line;
+}
+
+.modal-content[data-dialog-type='warning'] .modal-header {
+    border-bottom-color: var(--bs-warning-border-subtle);
+}
+
+.modal-content[data-dialog-type='error'] .modal-header {
+    border-bottom-color: var(--bs-danger-border-subtle);
+}

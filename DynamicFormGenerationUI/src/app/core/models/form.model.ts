@@ -164,6 +164,7 @@ export interface SaveFormVersionRequest {
 export interface FormVersion {
     formVersionId: number;
     formId: number;
+    formName: string;
     versionDescription: string;
     versionNo: number;
     status: string;

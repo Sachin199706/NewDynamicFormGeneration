@@ -8,12 +8,44 @@ using System.Text.Json;
 
 namespace FormGen.Application.Services;
 
+/// <summary>
+/// Service for managing form submissions including capture, validation, file handling, and analytics.
+/// </summary>
+/// <remarks>
+/// <para>
+/// SubmissionService orchestrates the complete form submission lifecycle:
+/// <list type="bullet">
+/// <item><description>Form submission capture with file attachment processing</description></item>
+/// <item><description>Submission data validation and persistence</description></item>
+/// <item><description>Submission detail retrieval and admin review workflows</description></item>
+/// <item><description>Submission status tracking (read/unread)</description></item>
+/// <item><description>Analytics and statistics queries</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// Each submission maintains a JSON snapshot of submitted form data, enabling:
+/// <list type="bullet">
+/// <item><description>Historical record of exactly what data was submitted</description></item>
+/// <item><description>Support for form versioning (submissions remain tied to their version)</description></item>
+/// <item><description>Audit trails (submission code encodes form, version, and submission ID)</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// File attachments are saved via the IFileStorageService abstraction, supporting flexible storage backends.
+/// </para>
+/// </remarks>
 public class SubmissionService : ISubmissionService
 {
     private readonly IUnitOfWork _uow;
     private readonly IFileStorageService _fileStorage;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SubmissionService"/> class.
+    /// </summary>
+    /// <param name="uow">The unit of work for database access.</param>
+    /// <param name="fileStorage">The file storage service for attachment handling.</param>
+    /// <param name="mapper">The AutoMapper instance for DTO to entity mapping.</param>
     public SubmissionService(IUnitOfWork uow, IFileStorageService fileStorage, IMapper mapper)
     {
         _uow = uow;
@@ -22,6 +54,36 @@ public class SubmissionService : ISubmissionService
 
     }
 
+    /// <summary>
+    /// Submits a completed form with values and optional file attachments.
+    /// </summary>
+    /// <param name="aobjDto">The submission request containing form ID, version ID, and control values.</param>
+    /// <param name="aObjFiles">File attachments (if any) uploaded with the form.</param>
+    /// <returns>
+    /// A <see cref="Result{int}"/> containing the resulting SubmissionId if successful;
+    /// otherwise, a failure result with error messages.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method processes a form submission through the following steps:
+    /// <list type="number">
+    /// <item><description>Load the form version to capture version information</description></item>
+    /// <item><description>Save any attached files via IFileStorageService</description></item>
+    /// <item><description>Map the SubmitFormDto to a FormSubmission entity</description></item>
+    /// <item><description>Persist the submission to generate a SubmissionId</description></item>
+    /// <item><description>Generate a human-readable submission code using form code, version, and ID</description></item>
+    /// <item><description>Update the submission with the generated code</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Validation rules are enforced by the frontend (Angular RuleEngineService), not the backend.
+    /// File upload size is limited by the MultipartBodyLengthLimit configured in Program.cs (10 MB max).
+    /// </para>
+    /// <para>
+    /// The submission captures a JSON snapshot of submitted values, enabling historical tracking
+    /// and version-specific data correlation.
+    /// </para>
+    /// </remarks>
     public async Task<Result<int>> SubmitAsync(SubmitFormDto aobjDto, IFormFileCollection aObjFiles)
     {
         // Needed for the submission code below — VersionNo is part of it.
@@ -50,6 +112,19 @@ public class SubmissionService : ISubmissionService
         return Result<int>.Ok(lobjSubmission.SubmissionId, "Submitted successfully.");
     }
 
+    /// <summary>
+    /// Marks a submission as read by an administrator.
+    /// </summary>
+    /// <param name="submissionId">The submission ID to mark as read.</param>
+    /// <returns>
+    /// A <see cref="Result{bool}"/> indicating success; HTTP 404 if the submission is not found.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method updates the IsRead flag to indicate that an administrator or reviewer
+    /// has viewed the submission. Used in admin dashboards to highlight new or unreviewed submissions.
+    /// </para>
+    /// </remarks>
     public async Task<Result<bool>> MarkAsReadAsync(int submissionId)
     {
         var submission = await _uow.Repository<FormSubmission>().GetByIdAsync(submissionId);

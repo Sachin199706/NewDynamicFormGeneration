@@ -1,17 +1,75 @@
-/* You can add global styles to this file, and also import other style files */
-/* global styles */
+/* Shared enterprise typography and spacing scale. A 14px rem base keeps
+   Bootstrap utilities, controls, and component spacing compact and consistent. */
+:root {
+    font-size: 87.5%;
+    --app-font-family: 'Segoe UI', Roboto, sans-serif;
+    --app-font-size: 1rem;
+    --app-line-height: 1.45;
+    --app-space-1: 0.25rem;
+    --app-space-2: 0.5rem;
+    --app-space-3: 0.75rem;
+    --app-space-4: 1rem;
+}
+
 body {
     margin: 0;
-    font-family: 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--app-font-family);
+    font-size: var(--app-font-size);
+    line-height: var(--app-line-height);
     background: #f4f6fb;
 }
 
-.table > :not(caption) > * > *
-{
-    padding: .375rem .75rem;
+h1,
+.h1 {
+    font-size: 1.75rem;
 }
+
+h2,
+.h2 {
+    font-size: 1.5rem;
+}
+
+h3,
+.h3 {
+    font-size: 1.25rem;
+}
+
+h4,
+.h4 {
+    font-size: 1.125rem;
+}
+
+h5,
+.h5 {
+    font-size: 1rem;
+}
+
+h6,
+.h6 {
+    font-size: 0.875rem;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+    line-height: 1.25;
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.4rem 0.65rem;
+}
+
 .table {
-    --bs-table-cell-padding-y: .375rem;
+    --bs-table-cell-padding-y: 0.4rem;
 }
 
 .dfg-left-panel,
@@ -55,11 +113,12 @@ body {
     .rule-type-item {
         display: flex;
         align-items: center;
-        gap: .5rem;
-        padding: .55rem .75rem;
+        gap: var(--app-space-2);
+        padding: 0.5rem 0.65rem;
         cursor: pointer;
         border-left: 3px solid transparent;
-        font-size: .9rem;
+        font-size: 0.875rem;
+        line-height: 1.35;
 
         &:hover {
             background: #f3f4f6;
@@ -76,17 +135,18 @@ body {
 
 .example-tile {
     border: 1px solid #e5e7eb;
-    border-radius: .5rem;
-    padding: .75rem;
+    border-radius: 0.5rem;
+    padding: var(--app-space-3);
     height: 100%;
 
     .example-title {
-        font-size: .9rem;
+        font-size: 0.875rem;
         font-weight: 600;
     }
 
     .example-sub {
-        font-size: .78rem;
+        font-size: 0.8125rem;
+        line-height: 1.4;
         color: #6b7280;
     }
 }
@@ -95,7 +155,7 @@ body {
     background: #eef4ff;
     color: #1d4ed8;
     border-radius: 1rem;
-    padding: .2rem .6rem;
-    font-size: .8rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8125rem;
     display: inline-block;
 }

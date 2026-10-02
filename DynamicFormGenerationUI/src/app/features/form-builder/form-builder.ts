@@ -9,6 +9,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ToastrService } from 'ngx-toastr';
+import { GenericDialog, GenericDialogConfig } from '../../shared/generic-dialog/generic-dialog';
 
 interface CanvasControl extends FormControlDef {
   tempId: string;
@@ -16,13 +17,15 @@ interface CanvasControl extends FormControlDef {
 
 @Component({
   selector: 'app-form-builder',
-  imports: [CommonModule, FormsModule, DragDropModule],
+  imports: [CommonModule, FormsModule, DragDropModule, GenericDialog],
   templateUrl: './form-builder.html',
   styleUrl: './form-builder.scss',
 })
 export class FormBuilder implements OnInit {
   inumTemplateId: number | null = null;
   inumVersionId: number | null = null;
+  inumVersionNo: number | null = null;
+  istrStatus = 'Draft';
   istrVersionDescription = '';
   istrTemplateName = '';
   iarrControlTypes: ControlType[] = [];
@@ -54,6 +57,11 @@ export class FormBuilder implements OnInit {
 
   istrPublishError = '';
   iboolDirty = false;
+  iboolSaving = false;
+  iboolLoadingVersion = false;
+  iboolLoadFailed = false;
+  iboolDialogVisible = false;
+  dialogConfig: GenericDialogConfig | null = null;
 
   constructor(
     private iobjControlTypeService: ControlTypeService,
@@ -72,22 +80,54 @@ export class FormBuilder implements OnInit {
     const lStrVersionParam = this.iobjRoute.snapshot.queryParamMap.get('version');
 
     if (lStrIdParam) {
-      this.inumTemplateId = Number(lStrIdParam);
+      const lnumFormId = Number(lStrIdParam);
+      if (!Number.isInteger(lnumFormId) || lnumFormId <= 0) {
+        this.iboolLoadFailed = true;
+        this.toastr.error('Invalid form ID.', 'Error');
+        return;
+      }
+      this.inumTemplateId = lnumFormId;
       if (lStrTemplateName) this.istrTemplateName = String(lStrTemplateName);
 
-      const lobjVersionLoad$ = this.iobjFormService.getVersionById(Number(lStrVersionParam));
-
-      lobjVersionLoad$.subscribe(res => {
-        if (res.success && res.data) {
-          this.istrVersionDescription = res.data.versionDescription;
-          this.inumVersionId = res.data.formVersionId;
-          this.iarrCanvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
-          this.layoutRows = this.buildLayoutFromControls(res.data.layoutDefinitionJson ?? '');
-          this.inumColumnLayout = this.layoutRows.reduce((max, row) => Math.max(max, row.columns.length), 1);
-          this.syncControlLayoutAssignments();
-          this.selectRow(0);
+      if (lStrVersionParam) {
+        const lnumVersionId = Number(lStrVersionParam);
+        if (!Number.isInteger(lnumVersionId) || lnumVersionId <= 0) {
+          this.iboolLoadFailed = true;
+          this.toastr.error('Invalid form version ID.', 'Error');
+          return;
         }
-      });
+
+        this.iboolLoadingVersion = true;
+        this.iobjFormService.getVersionById(lnumVersionId).subscribe({
+          next: res => {
+            if (!res.success || !res.data) {
+              this.iboolLoadingVersion = false;
+              this.iboolLoadFailed = true;
+              this.toastr.error(res.message ?? 'Unable to load the form version.', 'Error');
+              return;
+            }
+
+            this.iboolLoadingVersion = false;
+            this.inumTemplateId = res.data.formId;
+            this.inumVersionId = res.data.formVersionId;
+            this.inumVersionNo = res.data.versionNo;
+            this.istrStatus = res.data.status;
+            this.istrTemplateName = res.data.formName || this.istrTemplateName;
+            this.istrVersionDescription = res.data.versionDescription;
+            this.iarrCanvasControls = res.data.controls.map(c => ({ ...c, tempId: crypto.randomUUID() }));
+            this.layoutRows = this.buildLayoutFromControls(res.data.layoutDefinitionJson ?? '');
+            this.inumColumnLayout = this.layoutRows.reduce((max, row) => Math.max(max, row.columns.length), 1);
+            this.syncControlLayoutAssignments();
+            this.selectRow(0);
+          },
+          error: err => {
+            this.iboolLoadingVersion = false;
+            this.iboolLoadFailed = true;
+            console.error('Unable to load form version:', err);
+            this.toastr.error('Unable to load the form version.', 'Error');
+          }
+        });
+      }
     }
 
     this.ensureLayoutRows();
@@ -639,7 +679,29 @@ export class FormBuilder implements OnInit {
     this.iboolDirty = true;
   }
 
-  save(aFnOnSaved?: () => void): void {
+  save(aFnOnSaved?: () => void, aBoolSkipConfirmation = false): void {
+    if (this.iboolSaving || this.iboolLoadingVersion || this.iboolLoadFailed) return;
+
+    if (!aBoolSkipConfirmation) {
+      this.dialogConfig = {
+        title: 'Save Confirmation',
+        message: this.istrStatus === 'Published'
+          ? 'You are editing a Published form. Saving will create a new Draft version while keeping the existing Published form unchanged. Do you want to continue?'
+          : 'Do you want to save the changes made to this form?',
+        type: 'confirmation',
+        buttons: [
+          { action: 'confirm', label: 'Yes', variant: 'primary', callback: () => this.save(aFnOnSaved, true) },
+          { action: 'cancel', label: 'No', variant: 'outline-secondary' }
+        ]
+      };
+      return;
+    }
+
+    if (this.inumTemplateId == null) {
+      this.toastr.error('A form must be selected before it can be saved.', 'Error');
+      return;
+    }
+
     this.syncControlLayoutAssignments();
     const larrControlsWithRules = this.iarrCanvasControls.map(({ tempId, ...rest }) => ({
       ...rest,
@@ -665,25 +727,39 @@ export class FormBuilder implements OnInit {
 
     const lobjDto = {
       formId: this.inumTemplateId,
-      formVersionId: this.inumVersionId,
+      formVersionId: this.istrStatus === 'Published' ? null : this.inumVersionId,
       versionDescription: this.istrVersionDescription || 'Untitled Form',
       formDefinitionJson: JSON.stringify({ controls: larrControlsWithRules }),
       layoutDefinitionJson: JSON.stringify(lobjLayout),
       controls: larrControlsWithRules
     };
 
-    let lstrMessage = 'Form version created successfully.';
-    if (lobjDto.formId != undefined && lobjDto.formVersionId != undefined) {
-       lstrMessage = 'Form version updated successfully.';
-    }
-    this.iobjFormService.saveVersion(lobjDto).subscribe(res => {
-      if (res.success && res.data) {
+    const lstrSuccessMessage = lobjDto.formVersionId == null
+      ? 'Form version created successfully.'
+      : 'Form version updated successfully.';
+    this.iboolSaving = true;
+    this.iobjFormService.saveVersion(lobjDto).subscribe({
+      next: res => {
+        if (!res.success || !res.data) {
+          this.toastr.error(res.message || res.errors?.join(' ') || 'Unable to save the form.', 'Error');
+          return;
+        }
+
         this.inumTemplateId = res.data.formId;
         this.inumVersionId = res.data.formVersionId;
+        this.inumVersionNo = res.data.versionNo;
+        this.istrStatus = res.data.status;
+        this.istrVersionDescription = res.data.versionDescription;
         this.iboolDirty = false;
-        this.toastr.success(lstrMessage, 'Success');
+        this.toastr.success(lstrSuccessMessage, 'Success');
         aFnOnSaved?.();
-      }
+      },
+      error: err => {
+        this.iboolSaving = false;
+        console.error('Unable to save form version:', err);
+        this.toastr.error(err?.error?.message || 'Unable to save the form. Please try again.', 'Error');
+      },
+      complete: () => this.iboolSaving = false
     });
   }
 
@@ -730,9 +806,37 @@ export class FormBuilder implements OnInit {
       return;
     }
 
-    if (confirm(`You have unsaved changes. Save the form before opening ${lstrTarget}?`)) {
-      this.save(() => this.navigateToRules());
-    }
+    this.dialogConfig = {
+      title: 'Unsaved Changes',
+      message: `You have unsaved changes. Save the form before opening ${lstrTarget}?`,
+      type: 'confirmation',
+      buttons: [
+        {
+          action: 'save-and-continue',
+          label: 'Save and continue',
+          variant: 'primary',
+          callback: () => this.save(() => this.navigateToRules(), true)
+        },
+        { action: 'cancel', label: 'Cancel', variant: 'outline-secondary' }
+      ]
+    };
+  }
+
+  closeDialog(): void {
+    this.dialogConfig = null;
+  }
+
+  onDialogShow(): void {
+    this.iboolDialogVisible = true;
+  }
+
+  onDialogHide(): void {
+    this.iboolDialogVisible = false;
+  }
+
+  onDialogActionError(event: { action: string; error: unknown }): void {
+    console.error(`Dialog action "${event.action}" failed:`, event.error);
+    this.toastr.error('The requested action could not be completed.', 'Error');
   }
 
   onLabelChange(aStrValue: string): void {
