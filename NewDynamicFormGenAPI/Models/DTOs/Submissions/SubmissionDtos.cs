@@ -187,7 +187,7 @@ public class SubmissionOverviewItemDto
     /// <summary>
     /// Gets or sets the public identifier of the form version, used to build the fill link.
     /// </summary>
-    public Guid PublicId { get; set; }
+    public string PublicId { get; set; } = string.Empty;
 }
 
 /// <summary>

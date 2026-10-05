@@ -7,26 +7,6 @@ using NewDynamicFormGenAPI.API.Middleware;
 using NewDynamicFormGenAPI.Models.Interfaces;
 using NewDynamicFormGenAPI.Models.Services;
 
-/// <summary>
-/// ASP.NET Core application entry point and configuration.
-/// </summary>
-/// <remarks>
-/// <para>
-/// This file configures the Form Generation API application, including:
-/// <list type="bullet">
-///   <item><description>Database connection and Entity Framework Core configuration</description></item>
-///   <item><description>Dependency injection for services, repositories, and middleware</description></item>
-///   <item><description>CORS policy for Angular frontend development server communication</description></item>
-///   <item><description>File upload size limits (10 MB max)</description></item>
-///   <item><description>AutoMapper configuration for DTO mapping</description></item>
-///   <item><description>HTTP logging and exception handling middleware</description></item>
-/// </list>
-/// </para>
-/// <para>
-/// No authentication/authorization is currently configured. If access control is needed in the future,
-/// add JWT or other auth mechanisms here using AddAuthentication() and register [Authorize] on protected endpoints.
-/// </para>
-/// </remarks>
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +39,8 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 /// <summary>
 /// Registers business logic services.
 /// </summary>
+
+builder.Services.AddSingleton<IPublicIdEncoder, PublicIdEncoder>();
 builder.Services.AddScoped<IFormService, FormService>();
 builder.Services.AddScoped<IRuleEngineService, RuleEngineService>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
@@ -89,6 +71,7 @@ var app = builder.Build();
 /// <summary>
 /// Registers global exception handling middleware.
 /// </summary>
+//app.Services.GetRequiredService<IPublicIdEncoder>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();

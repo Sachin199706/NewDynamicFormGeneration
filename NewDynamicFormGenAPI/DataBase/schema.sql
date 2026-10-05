@@ -86,19 +86,3 @@ GO
 CREATE INDEX IX_FormVersions_FormId    ON FormVersions(FormId);
 CREATE INDEX IX_FormSubmissions_FormId ON FormSubmissions(FormId);
 GO
-
-IF COL_LENGTH('FormVersions', 'PublicId') IS NULL
-BEGIN
-    -- NEWID() is evaluated per row, so every existing version gets its own value.
-    ALTER TABLE FormVersions
-        ADD PublicId UNIQUEIDENTIFIER NOT NULL
-            CONSTRAINT DF_FormVersions_PublicId DEFAULT (NEWID());
-END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_FormVersions_PublicId')
-BEGIN
-    ALTER TABLE FormVersions
-        ADD CONSTRAINT UQ_FormVersions_PublicId UNIQUE (PublicId);
-END
-GO

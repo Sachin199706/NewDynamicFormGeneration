@@ -298,10 +298,10 @@ public class FormsController : ControllerBase
         var lobjResult = await _formService.GetDashboardVersionsAsync(aNumPage, aNumPageSize, search);
         return Ok(lobjResult);
     }
-    [HttpGet("public/{aGuidPublicId:guid}/render")]
-    public async Task<IActionResult> GetRenderPayload(Guid aGuidPublicId)
+    [HttpGet("public/{aStrPublicId}/render")]
+    public async Task<IActionResult> GetRenderPayload(string aStrPublicId)
     {
-        var lobjResult = await _formService.GetRenderPayloadAsync(aGuidPublicId);
+        var lobjResult = await _formService.GetRenderPayloadAsync(aStrPublicId);
         return lobjResult.Success ? Ok(lobjResult) : NotFound(lobjResult);
     }
 }
