@@ -164,13 +164,4 @@ public class FormVersion
     /// Gets or sets the date and time when this form version was published in UTC, or <c>null</c> if not yet published.
     /// </summary>
     public DateTime? PublishedDate { get; set; }
-
-    /// <summary>
-    /// Gets or sets the random public identifier used in the shareable fill link.
-    /// </summary>
-    /// <remarks>
-    /// The fill link carries this value in place of the numeric form and version IDs,
-    /// so a link cannot be guessed by counting up from another one.
-    /// </remarks>
-    public Guid PublicId { get; set; } = Guid.NewGuid();
 }

@@ -31,13 +31,16 @@ public class FormService : IFormService
 {
     private readonly IUnitOfWork _uow;
     private readonly IRuleEngineService _ruleEngine;
+    private readonly IPublicIdEncoder _publicIdEncoder;
+
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    public FormService(IUnitOfWork uow, IRuleEngineService ruleEngine)
+    public FormService(IUnitOfWork uow, IRuleEngineService ruleEngine, IPublicIdEncoder publicIdEncoder)
     {
         _uow = uow;
         _ruleEngine = ruleEngine;
+        _publicIdEncoder = publicIdEncoder;
     }
 
     public async Task<PagedResult<FormListItemDto>> GetFormsAsync(int aNumPage, int aNumPageSize, string? aStrSearch, DateTime? fromDate, DateTime? toDate)
@@ -261,7 +264,7 @@ public class FormService : IFormService
 
         return larrVersions.Select(v => new FormVersionListItemDto
         {
-            PublicId=v.PublicId,
+            PublicId = _publicIdEncoder.Encode(v.FormVersionId),
             FormId = v.FormId,
             FormVersionId = v.FormVersionId,
             FormName = lobjFormNamesById.GetValueOrDefault(v.FormId, "Unknown"),
@@ -306,7 +309,7 @@ public class FormService : IFormService
         {
             Items = larrVersions.Select(v => new FormVersionListItemDto
             {
-                PublicId = v.PublicId,
+                PublicId = _publicIdEncoder.Encode(v.FormVersionId),
                 FormId = v.FormId,
                 FormVersionId = v.FormVersionId,
                 FormName = lstrFormName,
@@ -344,7 +347,6 @@ public class FormService : IFormService
             .Take(aNumPageSize)
             .Select(x => new FormPublishHistoryItemDto
             {
-                PublicId=x.v.PublicId,
                 FormId = x.h.FormId,
                 FormVersionId = x.h.FormVersionId,
                 FormName = x.f.FormName,
@@ -353,7 +355,7 @@ public class FormService : IFormService
                 VersionDescription = x.v.VersionDescription
             })
             .ToList();
-
+        larrItems.ForEach(x => x.PublicId = _publicIdEncoder.Encode(x.FormVersionId));
         var lobjResult = new PagedResult<FormPublishHistoryItemDto>
         {
             Items = larrItems,
@@ -439,7 +441,7 @@ public class FormService : IFormService
                 orderby v.CreatedDate descending
                 select new FormVersionListItemDto
                 {
-                    PublicId= v.PublicId,
+                   
                     FormId = v.FormId,
                     FormVersionId = v.FormVersionId,
                     FormName = f.FormName,
@@ -450,7 +452,7 @@ public class FormService : IFormService
                 }
             ).Take(10).ToList()
         };
-
+        lobjDashboard.RecentForms.ForEach(x => x.PublicId = _publicIdEncoder.Encode(x.FormVersionId));
         return await Task.FromResult(lobjDashboard);
     }
     internal static List<FormSectionDto> ParseSections(string aStrFormDefinitionJson)
@@ -494,7 +496,7 @@ public class FormService : IFormService
             .Take(aNumPageSize)
             .Select(v => new FormVersionListItemDto
             {
-                PublicId = v.PublicId,
+               
                 FormId = v.FormId,
                 FormVersionId = v.FormVersionId,
                 FormName = v.Form.FormName,
@@ -504,7 +506,7 @@ public class FormService : IFormService
                 VersionDescription = v.VersionDescription
             })
             .ToList();
-
+        larrItems.ForEach(x => x.PublicId = _publicIdEncoder.Encode(x.FormVersionId));
         var lobjResult = new PagedResult<FormVersionListItemDto>
         {
             Items = larrItems,
@@ -515,9 +517,11 @@ public class FormService : IFormService
 
         return await Task.FromResult(lobjResult);
     }
-    public async Task<Result<FormRenderDto>> GetRenderPayloadAsync(Guid aGuidPublicId)
+    public async Task<Result<FormRenderDto>> GetRenderPayloadAsync(string aStrPublicId)
     {
-        var lobjVersion = _uow.Repository<FormVersion>().Query().FirstOrDefault(v => v.PublicId == aGuidPublicId);
+        if (!_publicIdEncoder.TryDecode(aStrPublicId, out var lnumFormVersionId))
+            return Result<FormRenderDto>.Fail("Form not found.");
+       var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(lnumFormVersionId);
         if (lobjVersion == null) return Result<FormRenderDto>.Fail("Form not found.");
 
         var lobjForm = await _uow.Repository<Form>().GetByIdAsync(lobjVersion.FormId);
@@ -528,7 +532,7 @@ public class FormService : IFormService
 
         return Result<FormRenderDto>.Ok(new FormRenderDto
         {
-            PublicId = lobjVersion.PublicId,
+            PublicId = _publicIdEncoder.Encode(lobjVersion.FormVersionId),
             FormName = lobjForm.FormName,
             LayoutDefinitionJson = lobjVersionDto.LayoutDefinitionJson,
             Controls = lobjVersionDto.Controls,

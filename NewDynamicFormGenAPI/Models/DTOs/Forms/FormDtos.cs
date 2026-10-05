@@ -379,7 +379,7 @@ public class FormRenderDto
     /// <remarks>
     /// The numeric form and version IDs are deliberately not part of this payload.
     /// </remarks>
-    public Guid PublicId { get; set; }
+    public string PublicId { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -424,11 +424,9 @@ public class FormVersionListItemDto
     /// Gets or sets the date when the version was last modified.
     /// </summary>
     public DateTime ModifiedDate { get; set; }
-    /// <summary>
-    /// Gets or sets the public identifier of the form version, used to build the fill link.
-    /// </summary>
-    public Guid PublicId { get; set; }
+    public string PublicId { get; set; } = string.Empty;
 }
+
 
 /// <summary>
 /// Data transfer object for form publication history entries.
@@ -467,7 +465,7 @@ public class FormPublishHistoryItemDto
     /// Gets or sets the date when the version was published.
     /// </summary>
     public DateTime PublishedOn { get; set; }
-    public Guid PublicId { get; set; }
+    public string PublicId { get; set; } = string.Empty;
 
 }
 

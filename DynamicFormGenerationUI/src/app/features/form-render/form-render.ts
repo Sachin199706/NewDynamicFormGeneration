@@ -38,26 +38,37 @@ export class FormRender implements OnInit {
 
   constructor(private route: ActivatedRoute, private formService: FormService, private submissionService: SubmissionService, private ruleEngine: RuleEngineService) { }
 
-  ngOnInit(): void {
+   ngOnInit(): void {
     this.istrPublicId = this.route.snapshot.paramMap.get('publicId') ?? '';
     const lStrSubmissionIdParam = this.route.snapshot.queryParamMap.get('submissionId');
     this.formService.getRenderPayload(this.istrPublicId).subscribe(res => {
       if (!res.success || !res.data) return;
+
+      // Submitted-result link: the form is shown only after the submission is found.
+      if (lStrSubmissionIdParam) {
+        this.loadSubmissionForViewing(Number(lStrSubmissionIdParam), res.data);
+        return;
+      }
+
       this.payload = res.data;
       this.buildForm(res.data);
-
-      if (lStrSubmissionIdParam) {
-        this.loadSubmissionForViewing(Number(lStrSubmissionIdParam));
-      }
     });
   }
 
-  private loadSubmissionForViewing(aNumSubmissionId: number): void {
-    this.submissionService.getDetail(aNumSubmissionId).subscribe(res => {
-      if (!res.success || !res.data) return;
-      this.iboolReadOnly = true;
-      this.form.patchValue(res.data.values);
-      this.form.disable();
+  private loadSubmissionForViewing(aNumSubmissionId: number, aObjPayload: FormRenderPayload): void {
+    this.submissionService.getDetail(aNumSubmissionId).subscribe({
+      next: res => {
+        // Submission not found: nothing is shown.
+        if (!res.success || !res.data) return;
+
+        this.payload = aObjPayload;
+        this.buildForm(aObjPayload);
+        this.iboolReadOnly = true;
+        this.form.patchValue(res.data.values);
+        this.form.disable();
+      },
+      // The API answers 404 when the submission does not exist: nothing is shown.
+      error: () => { }
     });
   }
 

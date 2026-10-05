@@ -39,6 +39,7 @@ public class SubmissionService : ISubmissionService
     private readonly IUnitOfWork _uow;
     private readonly IFileStorageService _fileStorage;
     private readonly IMapper _mapper;
+    private readonly IPublicIdEncoder _publicIdEncoder;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SubmissionService"/> class.
@@ -46,12 +47,13 @@ public class SubmissionService : ISubmissionService
     /// <param name="uow">The unit of work for database access.</param>
     /// <param name="fileStorage">The file storage service for attachment handling.</param>
     /// <param name="mapper">The AutoMapper instance for DTO to entity mapping.</param>
-    public SubmissionService(IUnitOfWork uow, IFileStorageService fileStorage, IMapper mapper)
+    /// <param name="publicIdEncoder">The public ID encoder for generating readable submission codes.</param>
+    public SubmissionService(IUnitOfWork uow, IFileStorageService fileStorage, IMapper mapper, IPublicIdEncoder publicIdEncoder)
     {
         _uow = uow;
         _fileStorage = fileStorage;
         _mapper = mapper;
-
+        _publicIdEncoder = publicIdEncoder;
     }
 
     /// <summary>
@@ -209,23 +211,24 @@ public class SubmissionService : ISubmissionService
         };
 
         var larrItems = lobjOrderedQuery
-            .ThenBy(x => x.s.SubmissionId)
-            .Skip((aObjFilter.Page - 1) * aObjFilter.PageSize)
-            .Take(aObjFilter.PageSize)
-            .Select(x => new SubmissionOverviewItemDto
-            {
-                PublicId = x.v.PublicId,
-                SubmissionId = x.s.SubmissionId,
-                SubmissionCode = x.s.SubmissionCode,
-                FormId = x.f.FormId,
-                FormVersionId = x.s.FormVersionId,
-                FormName = x.f.FormName,
-                VersionNo = x.v.VersionNo,
-                SubmittedOn = x.s.SubmittedOn,
-                IsRead = x.s.IsRead
-            })
-            .ToList();
+     .ThenBy(x => x.s.SubmissionId)
+     .Skip((aObjFilter.Page - 1) * aObjFilter.PageSize)
+     .Take(aObjFilter.PageSize)
+     .Select(x => new SubmissionOverviewItemDto
+     {
+         SubmissionId = x.s.SubmissionId,
+         SubmissionCode = x.s.SubmissionCode,
+         FormId = x.f.FormId,
+         FormVersionId = x.s.FormVersionId,
+         FormName = x.f.FormName,
+         VersionNo = x.v.VersionNo,
+         SubmittedOn = x.s.SubmittedOn,
+         IsRead = x.s.IsRead
+     })
+     .ToList();
 
+        // The public identifier is calculated here, after the database query has run.
+        larrItems.ForEach(x => x.PublicId = _publicIdEncoder.Encode(x.FormVersionId));
         return new PagedResult<SubmissionOverviewItemDto>
         {
             Items = larrItems,
@@ -258,11 +261,12 @@ public class SubmissionService : ISubmissionService
             ReadSubmissions = lobjQuery.Count(s => s.IsRead)
         };
     }
-    public async Task<Result<int>> SubmitByPublicIdAsync(Guid aGuidPublicId, Dictionary<string, object?> aObjValues, IFormFileCollection aObjFiles)
+    public async Task<Result<int>> SubmitByPublicIdAsync(string aStrPublicId, Dictionary<string, object?> aObjValues, IFormFileCollection aObjFiles)
     {
-        var lobjVersion = _uow.Repository<FormVersion>().Query().FirstOrDefault(v => v.PublicId == aGuidPublicId);
+        if (!_publicIdEncoder.TryDecode(aStrPublicId, out var lnumFormVersionId))
+            return Result<int>.Fail("Form not found.");
+        var lobjVersion = await _uow.Repository<FormVersion>().GetByIdAsync(lnumFormVersionId);
         if (lobjVersion == null) return Result<int>.Fail("Form not found.");
-
         var lobjDto = new SubmitFormDto
         {
             FormId = lobjVersion.FormId,

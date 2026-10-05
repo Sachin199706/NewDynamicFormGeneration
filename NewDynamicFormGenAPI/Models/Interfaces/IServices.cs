@@ -196,7 +196,7 @@ public interface IFormService
     /// </remarks>
     Task<PagedResult<FormVersionListItemDto>> GetDashboardVersionsAsync(int aNumPage, int aNumPageSize, string? aStrSearch);
     /// <param name="aGuidPublicId">The public identifier of the form version to render.</param>
-    Task<Result<FormRenderDto>> GetRenderPayloadAsync(Guid aGuidPublicId);
+    Task<Result<FormRenderDto>> GetRenderPayloadAsync(string aStrPublicId);
 }
 
 /// <summary>
@@ -375,5 +375,5 @@ public interface ISubmissionService
     /// This is the entry point for the shareable fill link. It looks up the form and version
     /// from the public identifier and then follows the same steps as <see cref="SubmitAsync"/>.
     /// </remarks>
-    Task<Result<int>> SubmitByPublicIdAsync(Guid aGuidPublicId, Dictionary<string, object?> aObjValues, IFormFileCollection aObjFiles);
+    Task<Result<int>> SubmitByPublicIdAsync(string aStrPublicId, Dictionary<string, object?> aObjValues, IFormFileCollection aObjFiles);
 }
