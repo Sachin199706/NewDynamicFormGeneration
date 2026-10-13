@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { catchError, of, throwError } from 'rxjs';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
@@ -8,8 +8,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // ({ success:false, errors:[...] }) — route them back to the caller's normal
       // .subscribe(res => ...) instead of erroring out, since that's what every
       // component in this app expects to read res.success/res.errors from.
+      // It must be re-emitted as an HttpResponse: HttpClient only passes HttpResponse events on to
+      // .subscribe(), so a plain object here would be dropped and the caller would get nothing.
       if (err.status === 400 && err.error && typeof err.error.success === 'boolean') {
-        return of(err.error);
+        return of(new HttpResponse({ body: err.error, status: err.status, headers: err.headers, url: err.url ?? undefined }));
       }
 
       // Genuine failures (network down, 404, 500, etc.) — log and rethrow so

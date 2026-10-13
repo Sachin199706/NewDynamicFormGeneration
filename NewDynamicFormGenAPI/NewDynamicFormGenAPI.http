@@ -4,3 +4,17 @@ GET {{NewDynamicFormGenAPI_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### Upload Form Image: is the AI service available?
+GET {{NewDynamicFormGenAPI_HostAddress}}/api/form-image/status
+Accept: application/json
+
+### Upload Form Image: ask the AI for the type of each label (can take 1-2 minutes)
+POST {{NewDynamicFormGenAPI_HostAddress}}/api/form-image/classify-labels
+Content-Type: application/json
+
+{
+  "labels": ["Employee Name", "Leave Type", "From Date", "Number of Days", "Upload Photo", "Personal Details"]
+}
+
+###

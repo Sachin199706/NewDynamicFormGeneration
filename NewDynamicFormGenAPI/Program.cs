@@ -2,8 +2,10 @@ using FormGen.Application.Services;
 using FormGen.Infrastructure.Persistence;
 using FormGen.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using NewDynamicFormGenAPI.API.Middleware;
+using NewDynamicFormGenAPI.Models.Common;
 using NewDynamicFormGenAPI.Models.Interfaces;
 using NewDynamicFormGenAPI.Models.Services;
 
@@ -46,6 +48,53 @@ builder.Services.AddScoped<IRuleEngineService, RuleEngineService>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
+// ---- AI (Upload Form Image): local Ollama settings ----
+/// <summary>
+/// Binds the "Ollama" section of appsettings.json to <see cref="OllamaOptions"/>.
+/// </summary>
+builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
+
+var lobjOllamaOptions = builder.Configuration.GetSection(OllamaOptions.SectionName).Get<OllamaOptions>()
+                        ?? new OllamaOptions();
+
+/// <summary>
+/// Registers the typed HttpClient that calls the local Ollama server.
+/// The base address and the timeout come from the "Ollama" settings.
+/// </summary>
+builder.Services.AddHttpClient<IOllamaClient, OllamaClient>(client =>
+{
+    client.BaseAddress = new Uri(lobjOllamaOptions.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(10, lobjOllamaOptions.TimeoutSeconds));
+});
+
+/// <summary>
+/// Registers the service that asks the AI for the control type of field labels (Upload Form Image).
+/// </summary>
+builder.Services.AddScoped<IFormImageAnalysisService, FormImageAnalysisService>();
+
+/// <summary>
+/// Limits how many AI analysis requests are accepted per minute. The API has no login and the
+/// local model is slow, so this protects the machine from being overloaded.
+/// </summary>
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter(OllamaOptions.RateLimitPolicyName, limiter =>
+    {
+        limiter.PermitLimit = Math.Max(1, lobjOllamaOptions.MaxRequestsPerMinute);
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            Result<object>.Fail("Too many AI requests. Please wait one minute and try again."),
+            cancellationToken);
+    };
+});
+
 // ---- CORS for the Angular dev server ----
 /// <summary>
 /// Configures CORS policy to enable communication between ASP.NET API and Angular frontend development server.
@@ -76,6 +125,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AngularClient");
+app.UseRateLimiter();
 app.MapControllers();
 
 app.Run();

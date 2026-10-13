@@ -1,0 +1,193 @@
+<div class="p-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-1">Upload Form Image</h3>
+            <div class="text-muted small">Upload an image of a form. The fields are found for you, you check them, and a new Draft form is created.</div>
+        </div>
+        <span *ngIf="iboolAiStatusChecked()" class="badge rounded-pill"
+            [ngClass]="iboolAiAvailable() ? 'text-bg-success' : 'text-bg-warning'"
+            [title]="iboolAiAvailable() ? 'Local AI model: ' + iobjAiStatus()?.modelName : 'Start the Ollama container to let the AI choose field types.'">
+            <i class="bi" [ngClass]="iboolAiAvailable() ? 'bi-cpu' : 'bi-exclamation-triangle'"></i>
+            {{ iboolAiAvailable() ? 'AI ready' : 'AI not available' }}
+        </span>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <!-- 1. Image -->
+        <div class="col-lg-5">
+            <div class="card bg-white p-3 h-100">
+                <h5 class="mb-3">1. Form image</h5>
+
+                <label class="dfg-drop-zone mb-2" [class.dfg-drop-zone--active]="iboolDragOver()"
+                    [class.dfg-drop-zone--disabled]="iboolBusy()"
+                    (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+                    <input type="file" class="visually-hidden" [accept]="istrAcceptedTypes" [disabled]="iboolBusy()"
+                        (change)="onFileInputChange($event)" />
+                    <img *ngIf="istrPreviewUrl() as lstrUrl; else emptyDropZone" [src]="lstrUrl" alt="Selected form image"
+                        class="dfg-drop-zone__preview" />
+                    <ng-template #emptyDropZone>
+                        <i class="bi bi-file-earmark-image fs-1 text-primary"></i>
+                        <div class="fw-semibold mt-2">Drop an image here or click to choose</div>
+                        <div class="text-muted small">PNG or JPG, up to {{ inumMaxFileSizeMb }} MB</div>
+                    </ng-template>
+                </label>
+
+                <div *ngIf="iobjSelectedFile() as lobjFile" class="small text-muted mb-2 text-truncate" [title]="lobjFile.name">
+                    <i class="bi bi-paperclip"></i> {{ lobjFile.name }}
+                </div>
+                <div *ngIf="istrFileError()" class="text-danger small mb-2">{{ istrFileError() }}</div>
+
+                <ul class="small text-muted ps-3 mb-3">
+                    <li>Use a clear, straight image of a printed English form.</li>
+                    <li>One page per image; crop away anything that is not the form.</li>
+                    <li>Handwriting and blurry photos give poor results.</li>
+                </ul>
+
+                <div class="d-flex gap-2 mt-auto">
+                    <button type="button" class="btn btn-primary" [disabled]="!iobjSelectedFile() || iboolBusy()" (click)="analyzeImage()">
+                        <i class="bi bi-magic"></i>
+                        {{ istrStage() === 'review' ? 'Analyze Again' : 'Analyze Image' }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" [disabled]="iboolBusy()" (click)="startOver()">
+                        Start Over
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Details -->
+        <div class="col-lg-7">
+            <div class="card bg-white p-3 h-100">
+                <h5 class="mb-3">2. Form details</h5>
+                <form [formGroup]="iobjDetailsForm">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label">Form Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" formControlName="formName" placeholder="Filled from the image title" />
+                            <div class="text-danger small mt-1" *ngIf="isInvalid('formName')">Form name is required (up to 150 characters).</div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Form Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control text-uppercase" formControlName="formCode" placeholder="e.g. EMP-LEAVE" />
+                            <div class="text-danger small mt-1" *ngIf="isInvalid('formCode')">Form code is required (up to 50 characters).</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="3" formControlName="description" placeholder="Optional"></textarea>
+                            <div class="text-danger small mt-1" *ngIf="isInvalid('description')">Up to 500 characters.</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div *ngIf="iboolBusy()" class="card bg-white p-3 mb-3 d-flex flex-row align-items-center gap-3" role="status" aria-live="polite">
+        <div class="spinner-border text-primary" aria-hidden="true"></div>
+        <div>
+            <ng-container [ngSwitch]="istrStage()">
+                <div *ngSwitchCase="'reading'" class="fw-semibold">Reading text from the image…</div>
+                <div *ngSwitchCase="'classifying'" class="fw-semibold">The AI is choosing the field types…</div>
+                <div *ngSwitchCase="'creating'" class="fw-semibold">Creating the form…</div>
+            </ng-container>
+            <div class="text-muted small" *ngIf="istrStage() !== 'creating'">
+                {{ inumElapsedSeconds() }} s
+                <span *ngIf="istrStage() === 'classifying'"> · this can take one to two minutes on this computer</span>
+                <span *ngIf="istrStage() === 'reading' && inumElapsedSeconds() < 3"> · the first time, the reader loads its data</span>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="istrAnalyzeError()" class="alert alert-danger">
+        <i class="bi bi-x-circle"></i> {{ istrAnalyzeError() }}
+    </div>
+
+    <!-- 3. Review -->
+    <div *ngIf="istrStage() === 'review' || (istrStage() === 'creating' && iarrFields().length > 0)" class="card bg-white p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">3. Check the fields <span class="text-muted fw-normal small">({{ iarrFields().length }})</span></h5>
+            <span *ngIf="inumOcrConfidence() !== null" class="small text-muted">Text read with {{ inumOcrConfidence() }}% confidence</span>
+        </div>
+        <div class="small text-muted mb-3">
+            Fields are listed top to bottom. Fields that sit side by side in the image are placed side by side in the form.
+            "Rules" and "AI" show how each type was found.
+        </div>
+
+        <div *ngIf="iarrWarnings.length > 0" class="alert alert-warning py-2">
+            <div *ngFor="let lobjWarning of iarrWarnings" class="small">
+                <i class="bi bi-exclamation-triangle"></i> {{ lobjWarning.message }}
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-2">
+                <thead>
+                    <tr>
+                        <th class="dfg-col-label">Label</th>
+                        <th class="dfg-col-type">Type</th>
+                        <th class="text-center">Required</th>
+                        <th>Options / Text</th>
+                        <th class="text-center">Found by</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let lobjField of iarrFields(); trackBy: trackByTempId" [class.table-warning]="hasWarning(lobjField)">
+                        <td>
+                            <input type="text" class="form-control form-control-sm" [(ngModel)]="lobjField.label"
+                                [ngModelOptions]="{ standalone: true }" [disabled]="iboolBusy()" maxlength="200"
+                                [class.is-invalid]="!lobjField.label.trim()" aria-label="Label" />
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm" [ngModel]="lobjField.controlType"
+                                (ngModelChange)="onControlTypeChange(lobjField, $event)" [ngModelOptions]="{ standalone: true }"
+                                [disabled]="iboolBusy()" aria-label="Type">
+                                <option *ngFor="let lstrType of iarrControlTypes" [ngValue]="lstrType">{{ lstrType }}</option>
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input" [(ngModel)]="lobjField.isRequired"
+                                [ngModelOptions]="{ standalone: true }" [disabled]="iboolBusy() || lobjField.controlType === 'Label'"
+                                aria-label="Required" />
+                        </td>
+                        <td>
+                            <input *ngIf="needsOptions(lobjField)" type="text" class="form-control form-control-sm"
+                                [ngModel]="optionsText(lobjField)" (ngModelChange)="onOptionsTextChange(lobjField, $event)"
+                                [ngModelOptions]="{ standalone: true, updateOn: 'blur' }" [disabled]="iboolBusy()"
+                                placeholder="Option 1, Option 2, …" aria-label="Options" />
+                            <input *ngIf="lobjField.controlType === 'Checkbox'" type="text" class="form-control form-control-sm"
+                                [(ngModel)]="lobjField.checkboxText" [ngModelOptions]="{ standalone: true }" [disabled]="iboolBusy()"
+                                placeholder="Text next to the tick box" aria-label="Checkbox text" />
+                            <span *ngIf="!needsOptions(lobjField) && lobjField.controlType !== 'Checkbox'" class="text-muted small">—</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge" [ngClass]="lobjField.source === 'ai' ? 'text-bg-info' : lobjField.source === 'user' ? 'text-bg-secondary' : 'text-bg-light border'">
+                                {{ sourceLabel(lobjField) }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="iboolBusy()"
+                                (click)="removeField(lobjField)" title="Remove field" aria-label="Remove field">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="iboolBusy()" (click)="addField()">
+                <i class="bi bi-plus-lg"></i> Add Field
+            </button>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary" [disabled]="iboolBusy()" (click)="startOver()">Cancel</button>
+                <button type="button" class="btn btn-success" [disabled]="iboolBusy() || iarrFields().length === 0" (click)="createForm()">
+                    <i class="bi bi-check2-circle"></i> Create Form
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

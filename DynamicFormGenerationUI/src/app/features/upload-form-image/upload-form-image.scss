@@ -1,0 +1,41 @@
+.dfg-drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    padding: 1rem;
+    border: 2px dashed #cbd5e1;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover,
+    &:focus-within,
+    &--active {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+
+    &--disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+}
+
+.dfg-drop-zone__preview {
+    max-width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 0.25rem;
+}
+
+.dfg-col-label {
+    min-width: 220px;
+}
+
+.dfg-col-type {
+    min-width: 140px;
+}
