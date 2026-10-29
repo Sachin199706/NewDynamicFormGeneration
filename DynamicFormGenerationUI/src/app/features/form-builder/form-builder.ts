@@ -29,6 +29,11 @@ interface CopiedRow {
   row: FormLayoutRow;
 }
 
+interface CopiedRowWithControls {
+  row: FormLayoutRow;
+  controls: CanvasControl[];
+}
+
 @Component({
   selector: 'app-form-builder',
   imports: [CommonModule, FormsModule, DragDropModule, GenericDialog],
@@ -63,6 +68,7 @@ export class FormBuilder implements OnInit {
   private copiedControl: CopiedControl | null = null;
   private copiedColumn: CopiedColumn | null = null;
   private copiedRow: CopiedRow | null = null;
+  private copiedRowWithControls: CopiedRowWithControls | null = null;
 
   iboolPreviewOpen = false;
   iarrPreviewRules: FormRule[] = [];
@@ -283,8 +289,11 @@ export class FormBuilder implements OnInit {
   }
 
   get canPasteControl(): boolean {
-    const rowIndex = this.contextMenu?.mode === 'row' ? this.selectedRowIndex ?? -1 : -1;
-    return this.copiedControl !== null && !!this.layoutRows[rowIndex]?.columns[0];
+    const rowIndex = this.contextMenu?.mode === 'row' ? this.contextMenu.rowIndex : -1;
+    const columnIndex = this.selectedColumnRowIndex === rowIndex ? this.selectedColumnIndex : null;
+    return this.copiedControl !== null
+      && columnIndex != null
+      && !!this.layoutRows[rowIndex]?.columns[columnIndex];
   }
 
   get canPasteColumn(): boolean {
@@ -297,6 +306,10 @@ export class FormBuilder implements OnInit {
 
   get canPasteRow(): boolean {
     return this.copiedRow !== null && this.contextMenu?.mode === 'row';
+  }
+
+  get canPasteRowWithControls(): boolean {
+    return this.copiedRowWithControls !== null && this.contextMenu?.mode === 'row';
   }
 
   get columnDropListTargets(): string[] {
@@ -458,7 +471,7 @@ export class FormBuilder implements OnInit {
     this.insertRowAt(this.layoutRows.length, this.layoutRows[this.layoutRows.length - 1]);
   }
 
-  private insertRowAt(index: number, sourceRow?: FormLayoutRow): void {
+  private insertRowAt(index: number, sourceRow?: FormLayoutRow): number {
     const insertionIndex = Math.min(this.layoutRows.length, Math.max(0, index));
     const row = this.cloneRowLayout(sourceRow);
     this.layoutRows.splice(insertionIndex, 0, row);
@@ -472,6 +485,7 @@ export class FormBuilder implements OnInit {
     this.selectedColumnIndex = null;
     this.configureRowLayoutEditor(row);
     this.iboolDirty = true;
+    return insertionIndex;
   }
 
   removeRow(rowIndex: number): void {
@@ -519,7 +533,12 @@ export class FormBuilder implements OnInit {
 
   openRowContextMenu(event: MouseEvent, rowIndex: number): void {
     event.preventDefault();
+    const selectedColumnIndex = this.selectedColumnRowIndex === rowIndex ? this.selectedColumnIndex : null;
     this.selectRow(rowIndex);
+    if (selectedColumnIndex != null && this.layoutRows[rowIndex]?.columns[selectedColumnIndex]) {
+      this.selectedColumnRowIndex = rowIndex;
+      this.selectedColumnIndex = selectedColumnIndex;
+    }
     this.showContextMenu(event, { rowIndex, columnIndex: null, mode: 'row' });
   }
 
@@ -530,6 +549,48 @@ export class FormBuilder implements OnInit {
       row: this.cloneRowLayout(row)
     };
     this.toastr.success('Row layout copied.', 'Copied');
+    this.closeContextMenu();
+  }
+
+  copySelectedRowWithControls(): void {
+    const rowIndex = this.contextMenu?.mode === 'row' ? this.contextMenu.rowIndex : -1;
+    const row = this.layoutRows[rowIndex];
+    if (!row) return;
+
+    this.copiedRowWithControls = {
+      row: this.cloneRowLayout(row),
+      controls: this.iarrCanvasControls
+        .filter(control => control.layoutRowIndex === rowIndex)
+        .map(control => this.snapshotControl(control))
+    };
+    this.toastr.success('Row and controls copied.', 'Copied');
+    this.closeContextMenu();
+  }
+
+  pasteRowWithControls(position: 'above' | 'below'): void {
+    const copiedRow = this.copiedRowWithControls;
+    const targetIndex = this.contextMenu?.rowIndex;
+    if (!copiedRow || targetIndex == null || !this.layoutRows[targetIndex]) return;
+
+    const insertionIndex = this.insertRowAt(
+      targetIndex + (position === 'below' ? 1 : 0),
+      copiedRow.row
+    );
+    const clonedControls = this.cloneControls(copiedRow.controls);
+    clonedControls.forEach(control => {
+      control.layoutRowIndex = insertionIndex;
+    });
+
+    const nextRowControlIndex = this.iarrCanvasControls.findIndex(control =>
+      typeof control.layoutRowIndex === 'number' && control.layoutRowIndex > insertionIndex
+    );
+    this.iarrCanvasControls.splice(
+      nextRowControlIndex < 0 ? this.iarrCanvasControls.length : nextRowControlIndex,
+      0,
+      ...clonedControls
+    );
+    this.syncControlLayoutAssignments();
+    this.iboolDirty = true;
     this.closeContextMenu();
   }
 
@@ -573,9 +634,9 @@ export class FormBuilder implements OnInit {
 
   pasteControl(): void {
     const copiedControl = this.copiedControl;
-    const rowIndex = this.contextMenu?.mode === 'row' ? this.selectedRowIndex ?? -1 : -1;
-    const columnIndex = 0;
-    if (!copiedControl || !this.layoutRows[rowIndex]?.columns[columnIndex]) return;
+    const rowIndex = this.contextMenu?.mode === 'row' ? this.contextMenu.rowIndex : -1;
+    const columnIndex = this.selectedColumnRowIndex === rowIndex ? this.selectedColumnIndex : null;
+    if (!copiedControl || columnIndex == null || !this.layoutRows[rowIndex]?.columns[columnIndex]) return;
 
     const clone = this.cloneControls([copiedControl.control])[0];
     clone.layoutRowIndex = rowIndex;
@@ -1160,13 +1221,10 @@ export class FormBuilder implements OnInit {
   }
 
   private cloneControls(controls: CanvasControl[]): CanvasControl[] {
-    const keyMap = new Map(controls.map(control => [
-      control.controlKey,
-      `${control.controlKey}_copy_${crypto.randomUUID()}`
-    ]));
+    const usedControlKeys = new Set(this.iarrCanvasControls.map(control => control.controlKey));
 
     return controls.map(control => {
-      const controlKey = keyMap.get(control.controlKey) ?? `${control.controlKey}_copy_${crypto.randomUUID()}`;
+      const controlKey = this.createUniqueControlKey(control.controlTypeCode, usedControlKeys);
       return {
         ...this.snapshotControl(control),
         tempId: crypto.randomUUID(),
@@ -1174,6 +1232,17 @@ export class FormBuilder implements OnInit {
         controlKey
       };
     });
+  }
+
+  private createUniqueControlKey(controlTypeCode: string, usedControlKeys: Set<string>): string {
+    let timestamp = Date.now();
+    let controlKey = `${controlTypeCode.toLowerCase()}_${timestamp}`;
+    while (usedControlKeys.has(controlKey)) {
+      timestamp += 1;
+      controlKey = `${controlTypeCode.toLowerCase()}_${timestamp}`;
+    }
+    usedControlKeys.add(controlKey);
+    return controlKey;
   }
 
   private configureRowLayoutEditor(row: FormLayoutRow): void {

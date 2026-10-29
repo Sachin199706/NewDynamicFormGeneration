@@ -1,4 +1,4 @@
 export const environment = {
     production: true,
-    apiUrl: 'https://api.vendorfromsapp.live/api'
+    apiUrl: 'https://apivendorfromsapp.live/api/'
 };

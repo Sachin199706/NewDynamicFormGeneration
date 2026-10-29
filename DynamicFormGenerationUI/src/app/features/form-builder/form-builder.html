@@ -117,10 +117,14 @@
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="copySelectedRow()" *ngIf="contextMenu.mode === 'row'">Copy Row</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteRow('above')" [disabled]="!canPasteRow" *ngIf="contextMenu.mode === 'row'">Paste Above</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteRow('below')" [disabled]="!canPasteRow" *ngIf="contextMenu.mode === 'row'">Paste Below</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="copySelectedRowWithControls()" *ngIf="contextMenu.mode === 'row'">Copy Row With Controls</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteRowWithControls('above')" [disabled]="!canPasteRowWithControls" *ngIf="contextMenu.mode === 'row'">Paste Row With Controls Above</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteRowWithControls('below')" [disabled]="!canPasteRowWithControls" *ngIf="contextMenu.mode === 'row'">Paste Row With Controls Below</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteControl(); closeContextMenu();" [disabled]="!canPasteControl" *ngIf="contextMenu.mode === 'row'">Paste Control</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" (click)="addRowAbove(); closeContextMenu();" *ngIf="contextMenu.mode === 'row'">Add Row Above</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" (click)="addRowBelow(); closeContextMenu();" *ngIf="contextMenu.mode === 'row'">Add Row Below</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="copySelectedControl(); closeContextMenu();" *ngIf="contextMenu.mode === 'control'">Copy Control</button>
+                <button class="btn btn-sm btn-outline-danger w-100 mb-2" type="button" (click)="removeSelected(); closeContextMenu();" *ngIf="contextMenu.mode === 'control'">Delete Control</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="copySelectedColumn()" *ngIf="contextMenu.mode === 'column'">Copy Column</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteColumn()" [disabled]="!canPasteColumn" *ngIf="contextMenu.mode === 'column'">Paste Column After Source</button>
                 <button class="btn btn-sm btn-outline-secondary w-100 mb-2" (click)="removeColumnFromRow(contextMenu.rowIndex); closeContextMenu();" *ngIf="contextMenu.mode === 'column' && canRemoveColumn(contextMenu.rowIndex)">Remove Column</button>
