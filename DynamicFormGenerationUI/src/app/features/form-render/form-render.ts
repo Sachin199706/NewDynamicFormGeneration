@@ -133,15 +133,8 @@ export class FormRender implements OnInit {
     }
   }
 
-  hasSharedTopBorder(rowIndex: number): boolean {
-    return rowIndex > 0
-      && this.layoutRows[rowIndex]?.borderEnabled === true
-      && this.layoutRows[rowIndex - 1]?.borderEnabled === true;
-  }
-
-  columnFlexBasis(span: number, columnCount: number): string {
-    const gapSharePx = Math.max(0, columnCount - 1) * span;
-    return `0 0 calc(${(span / 12) * 100}% - ${gapSharePx}px)`;
+  columnFlexBasis(span: number): string {
+    return `0 0 ${(span / 12) * 100}%`;
   }
 
   private buildValidatorsFor(aObjControl: FormControlDef, aArrRules: FormRule[], aBoolRequired: boolean): ValidatorFn[] {

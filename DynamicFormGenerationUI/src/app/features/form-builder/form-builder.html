@@ -1,4 +1,4 @@
-<div class="d-flex" style="height:100vh;">
+<div class="form-builder-shell d-flex" style="height:100vh;">
     <aside class="builder-sidebar">
         <div class="builder-sidebar__header">Controls</div>
         <div cdkDropList id="toolboxList" [cdkDropListConnectedTo]="columnDropListTargets" [cdkDropListData]="iarrControlTypes"
@@ -9,8 +9,8 @@
         </div>
     </aside>
 
-    <div class="flex-grow-1 d-flex flex-column">
-        <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
+    <div class="builder-main flex-grow-1 d-flex flex-column">
+        <div class="builder-toolbar p-3 border-bottom bg-white d-flex align-items-center gap-3">
             Version of Template: <label class="fw-bold">{{ istrTemplateName }}</label>
             <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="!iboolDirty || iboolSaving || iboolLoadingVersion || iboolLoadFailed">
                 <i class="bi bi-floppy"></i> Save
@@ -26,12 +26,12 @@
             </button>
         </div>
 
-        <div class="p-3 border-bottom bg-white d-flex align-items-center gap-3">
+        <div class="builder-description p-3 border-bottom bg-white d-flex align-items-center gap-3">
             <label class="fw-bold">Description:</label>
             <input class="form-control" style="width:70%;" [(ngModel)]="istrVersionDescription" (ngModelChange)="onVersionDescriptionChange($event)" placeholder="Describe the form..." />
         </div>
 
-        <div class="p-3 flex-grow-1" style="overflow-y:auto;">
+        <div class="builder-canvas p-3 flex-grow-1">
             <div *ngIf="layoutRows.length === 0" class="border rounded p-3 text-muted small fst-italic">Canvas empty — default row created.</div>
             <div cdkDropList id="layoutRowsList" [cdkDropListData]="layoutRows" cdkDropListOrientation="vertical" (cdkDropListDropped)="reorderRows($event)" class="builder-rows-list">
             <div *ngFor="let row of layoutRows; let rowIndex = index" cdkDrag [cdkDragData]="row" class="row-layout mb-2 p-1" (click)="selectRow(rowIndex)" (contextmenu)="openRowContextMenu($event, rowIndex)"
@@ -64,8 +64,8 @@
                         class="dfg-layout-column p-1 bg-light">
                         <div *ngIf="controlsInCell(rowIndex, columnIndex).length === 0" class="text-muted small fst-italic">Drop controls here</div>
 
-                        <div *ngFor="let c of controlsInCell(rowIndex, columnIndex)" cdkDrag [cdkDragData]="c" class="dfg-control-wrapper mb-2" [class.selected]="iobjSelected === c" (click)="select(c); $event.stopPropagation()">
-                            <label *ngIf="c.controlTypeCode !== 'Label'" class="form-label small mb-1">{{ c.label }} <span *ngIf="isRequiredOnCanvas(c)" class="text-danger">*</span></label>
+                        <div *ngFor="let c of controlsInCell(rowIndex, columnIndex)" cdkDrag [cdkDragData]="c" class="dfg-control-wrapper mb-2" [class.selected]="iobjSelected === c" (click)="select(c); $event.stopPropagation()" (contextmenu)="openControlContextMenu($event, c)">
+                            <label *ngIf="c.controlTypeCode !== 'Label' && c.label" class="form-label small mb-1">{{ c.label }} <span *ngIf="isRequiredOnCanvas(c)" class="text-danger">*</span></label>
                             <ng-container [ngSwitch]="c.controlTypeCode">
                                 <textarea *ngSwitchCase="'TextArea'" class="form-control" disabled></textarea>
                                 <select *ngSwitchCase="'Dropdown'" class="form-control" disabled>
@@ -109,13 +109,22 @@
             </div>
             </div>
 
-            <div *ngIf="contextMenu" class="builder-context-menu position-fixed shadow border rounded bg-white p-2" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y" style="z-index:2000; min-width:180px;">
-                <div class="mb-2 small text-muted">{{ contextMenu.mode === 'row' ? 'Row actions' : 'Column actions' }}</div>
+            <div class="builder-canvas-bottom-space" aria-hidden="true"></div>
 
+            <div *ngIf="contextMenu" #builderContextMenu class="builder-context-menu position-fixed shadow border rounded bg-white p-2" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y">
+                <div class="mb-2 small text-muted">{{ contextMenu.mode === 'row' ? 'Row actions' : contextMenu.mode === 'column' ? 'Column actions' : 'Control actions' }}</div>
+
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="copySelectedRow()" *ngIf="contextMenu.mode === 'row'">Copy Row</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteRow('above')" [disabled]="!canPasteRow" *ngIf="contextMenu.mode === 'row'">Paste Above</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteRow('below')" [disabled]="!canPasteRow" *ngIf="contextMenu.mode === 'row'">Paste Below</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteControl(); closeContextMenu();" [disabled]="!canPasteControl" *ngIf="contextMenu.mode === 'row'">Paste Control</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" (click)="addRowAbove(); closeContextMenu();" *ngIf="contextMenu.mode === 'row'">Add Row Above</button>
                 <button class="btn btn-sm btn-outline-primary w-100 mb-2" (click)="addRowBelow(); closeContextMenu();" *ngIf="contextMenu.mode === 'row'">Add Row Below</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="copySelectedControl(); closeContextMenu();" *ngIf="contextMenu.mode === 'control'">Copy Control</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="copySelectedColumn()" *ngIf="contextMenu.mode === 'column'">Copy Column</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" (click)="pasteColumn()" [disabled]="!canPasteColumn" *ngIf="contextMenu.mode === 'column'">Paste Column After Source</button>
                 <button class="btn btn-sm btn-outline-secondary w-100 mb-2" (click)="removeColumnFromRow(contextMenu.rowIndex); closeContextMenu();" *ngIf="contextMenu.mode === 'column' && canRemoveColumn(contextMenu.rowIndex)">Remove Column</button>
-                <button class="btn btn-sm btn-outline-danger w-100" (click)="removeRow(contextMenu.rowIndex); closeContextMenu();" *ngIf="layoutRows.length > 1">Delete Row</button>
+                <button class="btn btn-sm btn-outline-danger w-100" (click)="removeRow(contextMenu.rowIndex); closeContextMenu();" *ngIf="contextMenu.mode === 'row' && layoutRows.length > 1">Delete Row</button>
             </div>
         </div>
     </div>

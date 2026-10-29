@@ -1,7 +1,7 @@
 <div class="global-loader" *ngIf="iobjloadingService.iboolLoading()">
   <div class="spinner-border text-primary" role="status"></div>
 </div>
-<div class="app-shell">
+<div class="app-shell" [class.app-shell--public-form]="!iboolShowSidebar">
   <nav *ngIf="iboolShowSidebar" class="app-sidebar" aria-label="Main navigation">
     <!-- <div class="app-sidebar__brand" title="Dynamic Form Generation">
       <i class="bi bi-grid-1x2-fill"></i>

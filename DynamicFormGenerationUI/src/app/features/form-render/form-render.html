@@ -1,41 +1,45 @@
-<div class="alert alert-info" *ngIf="iboolReadOnly">
-    Viewing a submitted response.
-</div>
+<main class="form-render-page" *ngIf="payload">
+    <div class="alert alert-info form-render-readonly" *ngIf="iboolReadOnly">
+        Viewing a submitted response.
+    </div>
 
-<div class="p-4" style="max-width:900px; margin:0 auto;" *ngIf="payload">
-    <h4 class="mb-3">{{ payload.formName }}</h4>
+    <section class="form-render-card">
+        <header class="form-render-header">
+            <h1>{{ payload.formName }}</h1>
+        </header>
 
-    <form [formGroup]="form" (ngSubmit)="submit()">
-        <div *ngFor="let row of layoutRows; let rowIndex = index" class="fill-layout-row" [class.shared-row-border]="hasSharedTopBorder(rowIndex)"
-            [style.border-style]="row.borderEnabled ? row.borderStyle : null"
-            [style.border-width.px]="row.borderEnabled ? row.borderWidth : null"
-            [style.border-color]="row.borderEnabled ? row.borderColor : null">
-            <div class="d-flex flex-wrap align-items-stretch form-layout-columns" [class.form-layout-columns--divided]="row.columnBordersEnabled">
-                <ng-container *ngFor="let column of row.columns; let columnIndex = index">
-                    <div class="fill-layout-column" [style.flex]="row.columnBordersEnabled ? '0 0 ' + ((column.span / 12) * 100) + '%' : columnFlexBasis(column.span, row.columns.length)" [style.minWidth]="'0'"
-                        [class.column-divider-enabled]="row.columnBordersEnabled && columnIndex < row.columns.length - 1">
-                        <div class="d-flex flex-column gap-3">
-                            <ng-container *ngFor="let c of controlsInRowColumn(rowIndex, columnIndex); trackBy: trackByControlKey">
-                                <ng-container *ngTemplateOutlet="controlTpl; context: { $implicit: c }"></ng-container>
-                            </ng-container>
+        <form [formGroup]="form" (ngSubmit)="submit()">
+            <div *ngFor="let row of layoutRows; let rowIndex = index" class="fill-layout-row"
+                [style.border-style]="row.borderEnabled ? row.borderStyle : null"
+                [style.border-width.px]="row.borderEnabled ? row.borderWidth : null"
+                [style.border-color]="row.borderEnabled ? row.borderColor : null">
+                <div class="d-flex flex-wrap align-items-stretch form-layout-columns">
+                    <ng-container *ngFor="let column of row.columns; let columnIndex = index">
+                        <div class="fill-layout-column" [style.flex]="columnFlexBasis(column.span)" [style.minWidth]="'0'"
+                            [class.column-divider-enabled]="columnIndex < row.columns.length - 1">
+                            <div class="d-flex flex-column form-control-stack">
+                                <ng-container *ngFor="let c of controlsInRowColumn(rowIndex, columnIndex); trackBy: trackByControlKey">
+                                    <ng-container *ngTemplateOutlet="controlTpl; context: { $implicit: c }"></ng-container>
+                                </ng-container>
+                            </div>
                         </div>
-                    </div>
-                </ng-container>
+                    </ng-container>
+                </div>
             </div>
-        </div>
 
-        <div class="alert alert-danger" *ngIf="serverErrors.length">
-            <div *ngFor="let e of serverErrors">{{ e }}</div>
-        </div>
-        <div class="alert alert-success" *ngIf="submitted">Submitted successfully.</div>
+            <div class="alert alert-danger" *ngIf="serverErrors.length">
+                <div *ngFor="let e of serverErrors">{{ e }}</div>
+            </div>
+            <div class="alert alert-success" *ngIf="submitted">Submitted successfully.</div>
 
-        <button type="submit" class="btn btn-primary" [disabled]="form.invalid" *ngIf="!iboolReadOnly">Submit</button>
-    </form>
-</div>
+            <button type="submit" class="btn form-submit-button" [disabled]="form.invalid" *ngIf="!iboolReadOnly">Submit</button>
+        </form>
+    </section>
+</main>
 
 <ng-template #controlTpl let-c>
-    <div class="mb-3" [formGroup]="form" [hidden]="!isVisible(c.controlKey)" [style.width]="'100%'">
-        <label *ngIf="c.controlTypeCode !== 'Label'" class="form-label">
+    <div [formGroup]="form" [hidden]="!isVisible(c.controlKey)" [style.width]="'100%'">
+        <label *ngIf="c.controlTypeCode !== 'Label' && c.label" class="form-label">
             {{ c.label }}
             <span class="text-danger" *ngIf="isRequired(c.controlKey)">*</span>
         </label>
